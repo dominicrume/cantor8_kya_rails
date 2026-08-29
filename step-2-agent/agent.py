@@ -16,12 +16,21 @@ from kya_chain import Chain
 SIGNED_BY = "mandate signed by DeskOwner + KyaAgent"
 ALLOWED = ["customer", "partner"]          # roles, resolved to parties on DevNet
 
+# One name per party, everywhere: the chat, the receipt and KyaTest.daml.
+# A judge reading "customer" in a receipt and "VerifiedCustomer" on screen
+# has to work out they are the same party. Make them not have to.
+NAMES = {"customer": "VerifiedCustomer", "partner": "LiquidityPartner",
+         "unverified": "UnverifiedWallet"}
+
 
 class MockLedger:
     """MOCKED: mirrors the assertions in KyaMandate.daml, line for line."""
 
     label = "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)"
     currency, instrument = "CC", "Amulet (MOCKED, no coin moves)"
+
+    def name(self, role):
+        return NAMES[role]
 
     def open_mandate(self, cap=5.0, life_seconds=86400):
         self.m = {"cap": cap, "spent": 0.0, "allowed": list(ALLOWED),
@@ -64,7 +73,7 @@ def main(argv):
         ("ATTACK: pay an unverified wallet", 1.0, "unverified"),
     ]:
         outcome, rule = L.charge(amount, payee)
-        chain.stamp(what, amount, payee, rule, outcome, SIGNED_BY,
+        chain.stamp(what, amount, L.name(payee), rule, outcome, SIGNED_BY,
                     L.label, L.currency, L.instrument)
 
     # Expiry gets its own mandate, as testAfterExpiryRefused uses a fresh
@@ -72,14 +81,14 @@ def main(argv):
     # would report the revoke and the expiry fence would never be shown.
     L.open_mandate(cap=5.0, life_seconds=-3600)
     outcome, rule = L.charge(1.0, "customer")
-    chain.stamp("ATTACK: charge after the mandate expired", 1.0, "customer",
+    chain.stamp("ATTACK: charge after the mandate expired", 1.0, L.name("customer"),
                 rule, outcome, SIGNED_BY + ", clock past expiresAt",
                 L.label, L.currency, L.instrument)
 
     L.open_mandate(cap=5.0)
     L.revoke()
     outcome, rule = L.charge(0.5, "customer")
-    chain.stamp("ATTACK: charge after revoke", 0.5, "customer",
+    chain.stamp("ATTACK: charge after revoke", 0.5, L.name("customer"),
                 rule, outcome, "owner exercised Revoke",
                 L.label, L.currency, L.instrument)
 

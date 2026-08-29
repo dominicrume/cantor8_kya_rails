@@ -7,7 +7,7 @@ Canton actually returned.
 
 Requires C8_CLIENT_SECRET in the environment. Never in a file: THE-RULES.md.
 """
-import datetime, os, re, sys, time
+import datetime, os, re, sys, time, uuid
 
 # MUST run before `import c8lab`. The toolkit reads C8_USER at import time and
 # freezes it into submit()'s `sub=USER` default argument, and submit() puts that
@@ -33,6 +33,10 @@ USER = os.environ["C8_USER"]        # passed explicitly, never left to the defau
 NS  = "::12204e94c0e449c0efcd270dd1e68259c36471cebef132e5c7dfc2750fe8c9eed77f"
 PKG = "6d13f9948206e73684461925d830261bff5a5d265191b5c764258c98f40dc241"
 TPL, PROP = f"{PKG}:KyaMandate:KyaMandate", f"{PKG}:KyaMandate:KyaMandateProposal"
+# Commands take a package ID. ACS filters insist on a package NAME reference
+# and reject an ID outright: "expected a package name". Same template, two
+# spellings, and the error only tells you which one you got wrong.
+TPL_BY_NAME = "#kya-mandate:KyaMandate:KyaMandate"
 PARTY = {r: f"kya-{r}-1{NS}" for r in
          ("owner", "agent", "customer", "partner", "unverified")}
 
@@ -89,6 +93,21 @@ def _retry(fn, tries=8):
         "recorded. Last error: %s" % (tries, str(last)[:200]))
 
 
+def _submit(commands, act_as, want_transaction=True):
+    """Retry the SAME command id, so a retry is idempotent.
+
+    c8lab.submit mints a fresh commandId per call. Over a link that drops
+    responses, a command can commit on the ledger while the reply is lost;
+    the retry is then a NEW command that finds the contract already consumed
+    and comes back CONTRACT_NOT_FOUND. That looks like a bug in the mandate
+    and is really a lost packet. One id, and Canton deduplicates for us.
+    """
+    cid = "kya-%s" % uuid.uuid4()
+    return _retry(lambda: c8lab.submit(commands, act_as=act_as, sub=USER,
+                                       command_id=cid,
+                                       want_transaction=want_transaction))
+
+
 def _rule(m):
     hit = RULES.search(m)
     if hit:
@@ -114,6 +133,45 @@ def _created(r, entity="KyaMandate"):
             return c.get("contractId")
 
 
+def _active_mandates(expires_at=None):
+    """Live KyaMandate contracts for the agent.
+
+    After an ambiguous failure -- command committed, response lost -- a cached
+    contract id is stale, and the next exercise returns CONTRACT_NOT_FOUND.
+    Believing that would stamp "mandate no longer active" on a receipt while
+    the mandate is alive and well. Reconcile from state; never guess.
+
+    `expires_at` narrows to OUR mandate. Earlier runs leave live mandates
+    behind, and "any active mandate" is not "the one we just opened" -- pick
+    the wrong one and every charge comes back "mandate expired" against a
+    mandate we never created. expiresAt is minted per run and identifies it.
+    """
+    def query():
+        body = {"filter": {"filtersByParty": {PARTY["agent"]: {"cumulative": [
+                    {"identifierFilter": {"TemplateFilter": {"value": {
+                        "templateId": TPL_BY_NAME,
+                        "includeCreatedEventBlob": False}}}}]}}},
+                "verbose": True, "activeAtOffset": c8lab.ledger_end(sub=USER)}
+        return c8lab.call("/v2/state/active-contracts", body, sub=USER)
+
+    try:
+        ok, res = _retry(query, tries=4)
+    except LedgerUnreachable:
+        return None          # cannot see the ledger: decline to guess
+    if not ok:
+        return None
+    out = []
+    for item in res:
+        ev = item.get("contractEntry", {}).get("JsActiveContract", {}).get("createdEvent", {})
+        if not ev.get("contractId"):
+            continue
+        args = ev.get("createArgument", {}) or {}
+        if expires_at is not None and args.get("expiresAt") != expires_at:
+            continue
+        out.append(ev["contractId"])
+    return out
+
+
 class DevNetLedger:
     """Same charge() contract as MockLedger. NOT MOCKED: this is real Canton."""
 
@@ -122,9 +180,17 @@ class DevNetLedger:
     # coin yet -- see SHORTCUTS.md. Saying so is cheaper than being caught.
     currency, instrument = "CC", "Amulet (recorded, not transferred)"
 
+    def name(self, role):
+        """On the real rail the receipt names the actual on-ledger party.
+        A judge can paste this into the ledger API and find the contract."""
+        from agent import NAMES
+        return "%s (%s)" % (NAMES[role], PARTY[role].split("::")[0])
+
     def __init__(self):
         _configure()
         self.cid = None
+        self.revoked = False
+        self.exp = None
 
     def open_mandate(self, cap=5.0, life_seconds=86400):
         """Owner proposes, agent accepts. Both signatures, as the template demands.
@@ -137,38 +203,62 @@ class DevNetLedger:
         exp = (datetime.datetime.now(datetime.timezone.utc)
                + datetime.timedelta(seconds=life_seconds)
                ).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
-        ok, r = _retry(lambda: c8lab.submit([{"CreateCommand": {
+        self.exp = exp          # identifies OUR mandate if we have to reconcile
+        ok, r = _submit([{"CreateCommand": {
             "templateId": PROP, "createArguments": {
                 "owner": PARTY["owner"], "spender": PARTY["agent"],
                 "cap": "%.1f" % float(cap),
                 "expiresAt": exp,
                 "allowed": [PARTY["customer"], PARTY["partner"]]}}}],
-            act_as=PARTY["owner"], sub=USER, want_transaction=True))
+            act_as=PARTY["owner"])
         if not ok:
             raise RuntimeError("could not propose the mandate: " + str(r)[:160])
-        ok, r = _retry(lambda: c8lab.submit([{"ExerciseCommand": {
+        ok, r = _submit([{"ExerciseCommand": {
             "templateId": PROP, "contractId": _created(r, "KyaMandateProposal"),
             "choice": "Accept", "choiceArgument": {}}}],
-            act_as=PARTY["agent"], sub=USER, want_transaction=True))
+            act_as=PARTY["agent"])
         if not ok:
-            raise RuntimeError("agent could not accept: " + str(r)[:160])
+            live = (_active_mandates(exp) or [None])[0]   # Accept may have committed
+            if not live:
+                raise RuntimeError("agent could not accept: " + str(r)[:160])
+            self.cid = live
+            self.revoked = False
+            return self.cid, exp
         self.cid = _created(r, "KyaMandate")
+        self.revoked = False
         return self.cid, exp
 
     def charge(self, amount, payee):
         """No state here: the mandate lives on the ledger, which is the point."""
-        ok, r = _retry(lambda: c8lab.submit([{"ExerciseCommand": {
-            "templateId": TPL, "contractId": self.cid, "choice": "Charge",
-            "choiceArgument": {"amount": "%.1f" % amount,
-                               "payee": PARTY.get(payee, payee),
-                               "memo": "KYA Rails demo"}}}],
-            act_as=PARTY["agent"], sub=USER, want_transaction=True))
+        def attempt():
+            return _submit([{"ExerciseCommand": {
+                "templateId": TPL, "contractId": self.cid, "choice": "Charge",
+                "choiceArgument": {"amount": "%.1f" % amount,
+                                   "payee": PARTY.get(payee, payee),
+                                   "memo": "KYA Rails demo"}}}],
+                act_as=PARTY["agent"])
+
+        ok, r = attempt()
+        # If WE revoked it, NOT_FOUND is the right answer and reconciling would
+        # go hunting for some other live mandate and charge that instead --
+        # stamping "expired" on what was really a revoke. Only an UNEXPLAINED
+        # disappearance is ambiguous.
+        if not ok and not self.revoked \
+           and ("NOT_FOUND" in str(r) or "CONTRACT_NOT_ACTIVE" in str(r)):
+            # Either the mandate really is gone, or our cid is stale after a
+            # lost response. The ledger knows which; ask it before recording.
+            live = (_active_mandates(self.exp) or [None])[0]
+            if live and live != self.cid:
+                self.cid = live
+                ok, r = attempt()
         if not ok:
             return "REFUSED", _rule(str(r))
         self.cid = _created(r, "KyaMandate") or self.cid
         return "ACCEPTED", "cap and allow-list satisfied, committed on DevNet"
 
     def revoke(self):
-        _retry(lambda: c8lab.submit([{"ExerciseCommand": {
+        _submit([{"ExerciseCommand": {
             "templateId": TPL, "contractId": self.cid,
-            "choice": "Revoke", "choiceArgument": {}}}], act_as=PARTY["owner"], sub=USER))
+            "choice": "Revoke", "choiceArgument": {}}}],
+            act_as=PARTY["owner"], want_transaction=False)
+        self.revoked = True
