@@ -1,0 +1,181 @@
+# KYA Rails
+
+**A spend-limited wallet for an AI agent, enforced on Canton.**
+
+Cantor8 *Build on Canton* hackathon, challenge D1.
+Built with the KYA Method: Promise it. Attack it. Inspect it. Prove it.
+
+---
+
+## The problem
+
+A trading desk gives an AI agent authority to settle trades. An attacker talks
+the agent into paying a wallet the desk never authorised. That is **payout
+redirection**, and it costs desks **$3,000–$5,000 per incident**.
+
+Every mitigation people reach for first — a limit in the agent's prompt, a check
+in the application code, a policy document — is the agent policing itself. Edit
+the file, or talk the agent past its own check, and the money is gone.
+
+## The approach
+
+The mandate is a Daml contract on Canton: a **cap**, a **counterparty
+allow-list**, an **expiry**, and a **revoke**. All four are asserted inside the
+`Charge` choice body, so Canton validates them *before the transaction can
+exist*. There is nothing to roll back and nothing to detect afterwards, because
+the spend never happens.
+
+Both parties sign it (`signatory owner, spender`), so the agent consents to its
+own leash and then cannot take it off. We tested exactly that: the agent tried to
+raise its own cap and the ledger answered *"missing authorization from owner"*.
+
+**Every attempt is sealed into a receipt chain — including the ones the ledger
+refused.** Most systems log what succeeded. This one proves what was *tried and
+stopped*, which is the artefact an auditor actually asks for.
+
+---
+
+## The numbers
+
+| Claim | Evidence |
+| --- | --- |
+| Attack suite green | **10 / 10** `daml test` scripts |
+| Fences enforced on-ledger | cap, allow-list, expiry, revoke — all in the `Charge` choice body |
+| Deployed on Cantor8 DevNet | package `6d13f9948206e73684461925d830261bff5a5d265191b5c764258c98f40dc241` |
+| Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
+| Receipt chain | 6 receipts, 2 accepted, 4 refused, chain verifies end to end |
+| Tamper evident | edit one receipt, every later seal breaks |
+| Real Canton Coin held | 5.0000 Amulet, unlocked, in `kya-agent-1` |
+
+The expiry proof is the strongest single piece of evidence: **the same mandate,
+same payee, same amount — ACCEPTED at T, REFUSED at T+100s on a real clock.**
+Only time changed. `expiresAt` is just a field until the assertion in `Charge`
+makes it a rule.
+
+---
+
+## Quick start
+
+Offline, no network, no install. Python is stdlib only.
+
+```bash
+python3 step-2-agent/agent.py          # writes step-3-verify/receipts.js
+open step-3-verify/verifier.html       # press Play, then Verify, then Tamper
+```
+
+Against real Canton DevNet:
+
+```bash
+export C8_CLIENT_SECRET=...            # shell only, never committed
+python3 step-2-agent/agent.py --devnet
+```
+
+The attack suite:
+
+```bash
+cd step-1-mandate && daml test
+```
+
+---
+
+## Architecture
+
+```
+  [verifier.html]        [agent.py]                 [Canton DevNet]
+  chat replay      <--   attempts charges      -->  KyaMandate.daml
+  + receipt panel        never decides              cap / allow-list /
+  + VERIFY + TAMPER          |                      expiry / revoke
+                             v                      enforced IN THE
+                        kya_chain.py                CHOICE BODY
+                        seal = sha256(
+                          canonical(receipt)
+                          + previous seal)
+                             |
+                             v
+                        receipts.js
+```
+
+Three stages, one job each. The output of one is the input of the next; the
+filesystem is the pipeline.
+
+| Stage | Job |
+| --- | --- |
+| [`step-1-mandate/`](step-1-mandate/) | the Daml contract and the attack suite. The ledger enforces. |
+| [`step-2-agent/`](step-2-agent/) | the agent and the sealed receipt chain. It only *tries*. |
+| [`step-3-verify/`](step-3-verify/) | the offline verifier a judge touches. It reads receipts; it never calls the ledger. |
+
+`MockLedger` and `DevNetLedger` expose the **same `charge()` interface**, so
+`agent.py` cannot tell them apart. Swapping the entire ledger backend touched one
+file — `kya_chain.py` and `verifier.html` were never opened.
+
+### The canonicalisation contract
+
+The seal must be byte-identical in Python and JavaScript:
+
+```
+seal = sha256( canonical(receipt_without_seal) + previous_seal )
+canonical = JSON, sorted keys, separators "," and ":", ASCII only
+```
+
+ASCII is not decoration. Python escapes non-ASCII to `\uXXXX`; `JSON.stringify`
+emits the raw character. Same receipt, different bytes, different hash — the
+chain would verify in Python and go red in the browser. `assert_ascii()` refuses
+to seal what the verifier cannot reproduce. Currency **codes** live in the
+receipt; **symbols** are rendered at display time only.
+
+---
+
+## What is mocked, stated plainly
+
+Honesty is scored, and overclaiming loses.
+
+- **The demo rail is labelled on every receipt**, inside the seal, as either
+  `DevNet (real Canton, package …)` or `MOCKED (mirrors KyaMandate.daml)`. A
+  judge can tell which produced the artefact in front of them without asking.
+- **The coin does not move.** `Charge` records the spend on-ledger; it does not
+  transfer Canton Coin. The 5 CC in `kya-agent-1` is untouched. Every receipt
+  says `Amulet (recorded, not transferred)`.
+- **`MockLedger` mirrors the Daml assertions in Python** so the demo survives a
+  dead venue network. It is labelled MOCKED in code, in the receipt, and on the
+  page.
+- A network failure is **never** recorded as a ledger refusal. If the ledger
+  cannot be reached, the run stops, records nothing, and says so.
+
+See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
+
+---
+
+## Repo map
+
+| File | What it is |
+| --- | --- |
+| [THE-RULES.md](THE-RULES.md) | the promises this build keeps, and the NOT list |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | why the system is shaped this way |
+| [CONTEXT.md](CONTEXT.md) | routing: which stage owns which question |
+| [SHORTCUTS.md](SHORTCUTS.md) | debts taken, consciously, with repayment plans |
+| [scoreboard/THIRTEEN-CHECKS.md](scoreboard/THIRTEEN-CHECKS.md) | honest self-score |
+| [step-1-mandate/daml/KyaMandate.daml](step-1-mandate/daml/KyaMandate.daml) | the contract. The fences are here. |
+| [step-1-mandate/daml/KyaTest.daml](step-1-mandate/daml/KyaTest.daml) | every test is named after the attack it proves |
+| [step-2-agent/DEVNET-PARTIES.md](step-2-agent/DEVNET-PARTIES.md) | DevNet parties, rights, and the traps that cost us hours |
+
+---
+
+## Method
+
+The folder structure is the agent architecture: one stage, one job, plain text as
+the interface, every output an edit surface. `THE-RULES.md` is read before any
+change; each stage carries its own `CONTEXT.md` and a `THE-JOB.md` with an
+explicit **NOT** list.
+
+That is why the spending rules are still in Daml and not in Python, and why
+swapping the ledger backend was a one-file change.
+
+---
+
+## Credits
+
+Built by **Rume Dominic** (O'Rume Dominic Uririe), Aston University — creator of
+the KYA Framework.
+
+`KyaMandate.daml` extends the Cantor8 hackathon starter `Mandate.daml`; the
+organisers' toolkit is a dependency, never modified.
