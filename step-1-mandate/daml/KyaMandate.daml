@@ -3,6 +3,22 @@
 -- The cap is enforced HERE. A cap checked in Python is a suggestion.
 module KyaMandate where
 
+-- One contract per accepted charge, so the audit trail lives on the ledger and
+-- not only in our receipt chain. Signed by the same two parties as the mandate;
+-- the payee observes, so they can read what was paid to them without being able
+-- to authorise anything.
+template ChargeRecord
+  with
+    owner   : Party
+    spender : Party
+    payee   : Party
+    amount  : Decimal
+    memo    : Text
+    chargedAt : Time
+  where
+    signatory owner, spender
+    observer payee
+
 template KyaMandate
   with
     owner     : Party
@@ -28,6 +44,8 @@ template KyaMandate
         assertMsg "amount must be positive" (amount > 0.0)
         assertMsg "charge would exceed the cap" (spent + amount <= cap)
         assertMsg "payee is not on the allow-list" (payee `elem` allowed)
+        create ChargeRecord with
+          owner; spender; payee; amount; memo; chargedAt = now
         create this with spent = spent + amount
 
     choice Revoke : ()

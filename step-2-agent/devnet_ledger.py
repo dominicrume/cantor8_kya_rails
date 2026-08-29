@@ -31,7 +31,7 @@ import c8lab
 USER = os.environ["C8_USER"]        # passed explicitly, never left to the default
 
 NS  = "::12204e94c0e449c0efcd270dd1e68259c36471cebef132e5c7dfc2750fe8c9eed77f"
-PKG = "1032e858662a4a9aa61774e8ddad9b7d8e968708897aca55dc90ac5fc150f874"
+PKG = "6d13f9948206e73684461925d830261bff5a5d265191b5c764258c98f40dc241"
 TPL, PROP = f"{PKG}:KyaMandate:KyaMandate", f"{PKG}:KyaMandate:KyaMandateProposal"
 PARTY = {r: f"kya-{r}-1{NS}" for r in
          ("owner", "agent", "customer", "partner", "unverified")}
@@ -94,6 +94,9 @@ class DevNetLedger:
     """Same charge() contract as MockLedger. NOT MOCKED: this is real Canton."""
 
     label = "DevNet (real Canton, package %s)" % PKG[:12]
+    # Canton Coin. The mandate records the spend; it does not move the
+    # coin yet -- see SHORTCUTS.md. Saying so is cheaper than being caught.
+    currency, instrument = "CC", "Amulet (recorded, not transferred)"
 
     def __init__(self):
         _configure()

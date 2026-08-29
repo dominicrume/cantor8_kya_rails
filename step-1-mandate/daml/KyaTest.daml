@@ -139,3 +139,32 @@ testOwnerCannotChargeAsSpender = script do
   submitMustFail d.owner do
     exerciseCmd m0 Charge with
       amount = 1.0; payee = d.customer; memo = "owner using the spender's choice"
+
+-- 8. An accepted charge leaves a record ON THE LEDGER, not only in our receipt
+--    chain. The owner and the payee can both read it; a party who was not
+--    involved cannot. `observer payee` is what makes the payee's half true,
+--    and it gives them no power to authorise anything.
+testChargeRecordReadableByOwnerAndPayee : Script ()
+testChargeRecordReadableByOwnerAndPayee = script do
+  (d, m0) <- desk
+  _ <- submit d.agent do
+    exerciseCmd m0 Charge with
+      amount = 40.0; payee = d.customer; memo = "trade 1193 settle customer"
+  byOwner    <- query @ChargeRecord d.owner
+  byPayee    <- query @ChargeRecord d.customer
+  byOutsider <- query @ChargeRecord d.unverified
+  assertMsg "owner cannot read the charge record"          (length byOwner == 1)
+  assertMsg "payee cannot read their own payment record"   (length byPayee == 1)
+  assertMsg "an uninvolved party can read the record"      (null byOutsider)
+
+-- 9. A REFUSED charge leaves nothing on the ledger. The whole transaction
+--    rolls back, record included. That is precisely why the receipt chain
+--    exists: the ledger keeps what happened, the chain keeps what was TRIED.
+testRefusedChargeLeavesNoRecord : Script ()
+testRefusedChargeLeavesNoRecord = script do
+  (d, m0) <- desk
+  submitMustFail d.agent do
+    exerciseCmd m0 Charge with
+      amount = 10.0; payee = d.unverified; memo = "attacker's own destination"
+  recs <- query @ChargeRecord d.owner
+  assertMsg "a refused charge left a record on the ledger" (null recs)

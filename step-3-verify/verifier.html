@@ -10,6 +10,7 @@
   header { text-align:center; color:#fff; padding:22px 16px 10px; }
   header h1 { font-size:22px; letter-spacing:.5px; }
   header p { font-size:13px; opacity:.75; margin-top:4px; }
+  .prov { font-size:10.5px; color:#8a8f98; margin-top:3px; }
   .honesty { text-align:center; font-size:11.5px; color:#c8b458; padding:4px 16px 14px; }
   .stage { display:flex; gap:26px; justify-content:center; align-items:flex-start; flex-wrap:wrap; padding:0 16px 30px; }
 
@@ -84,7 +85,7 @@
   <h1>KYA RAILS &middot; Know Your AgenticAI</h1>
   <p>The agent trades in chat. The proof lives on chain. Screenshots can lie. Sealed receipts cannot.</p>
 </header>
-<div class="honesty">Demo honesty: scripted replay of a real agent run. Ledger mode is labelled on every receipt. Works fully offline.</div>
+<div class="honesty">Demo honesty: scripted replay of a real agent run. Every receipt names the ledger that produced it &mdash; real DevNet or MOCKED &mdash; and that label is inside the seal. Works fully offline.</div>
 <div class="stage">
   <div class="phone"><div class="screen">
     <div class="ph-top"><div class="avatar">K</div><div><b>KYA Agent</b><small>mandate active &middot; cap 5 CC</small></div></div>
@@ -132,6 +133,12 @@ const SCRIPT = [
 const chat = document.getElementById('chat'), recBox = document.getElementById('receipts'), pill = document.getElementById('pill');
 let shownReceipts = 0, playing = false;
 
+// Currency symbols are a DISPLAY concern. The sealed receipt carries an ASCII
+// code, because Python escapes non-ASCII and JS does not, and the seals would
+// diverge. Render the glyph here, never hash it.
+const SYMBOL = {CC:'\u20b5', USD:'$', GBP:'\u00a3', EUR:'\u20ac'};
+const money = r => (SYMBOL[r.currency]||'') + r.amount + ' ' + (r.currency||'CC');
+
 function stableStringify(o){ if(o===null||typeof o!=='object') return JSON.stringify(o);
   if(Array.isArray(o)) return '['+o.map(stableStringify).join(',')+']';
   return '{'+Object.keys(o).sort().map(k=>JSON.stringify(k)+':'+stableStringify(o[k])).join(',')+'}'; }
@@ -146,8 +153,10 @@ function receiptCard(r, broken){
   const d=document.createElement('div');
   d.className='r '+(r.outcome==='REFUSED'?'refused ':'')+(broken?'broken':'');
   d.innerHTML='<span class="tag '+(broken?'bad':(r.outcome==='ACCEPTED'?'ok':'no'))+'">'+(broken?'SEAL BROKEN':r.outcome)+'</span>'+
-    '<b>#'+r.n+' '+r.what+'</b><br>'+r.amount+' CC &rarr; '+r.payee+' &middot; '+r.at+
-    '<br><span class="rule">rule: '+r.rule+'</span><div class="seal">seal '+r.seal.slice(0,44)+'&hellip;</div>';
+    '<b>#'+r.n+' '+r.what+'</b><br>'+money(r)+' &rarr; '+r.payee+' &middot; '+r.at+
+    '<br><span class="rule">rule: '+r.rule+'</span>'+
+    '<div class="prov">'+(r.instrument||'')+' &middot; ledger: '+(r.ledger||'unlabelled')+'</div>'+
+    '<div class="seal">seal '+r.seal.slice(0,44)+'&hellip;</div>';
   return d;
 }
 async function renderAll(){
@@ -169,7 +178,7 @@ async function playTxn(n){
   const tick=document.getElementById('tick'), vt=document.getElementById('vtext'), vr=document.getElementById('vrule'), se=document.getElementById('sealing');
   [d[1],d[2],d[3]].forEach(x=>x.className='dot'); [b[1],b[2]].forEach(x=>x.className='bar2');
   tick.className='tick'; vt.textContent=''; vr.textContent=''; se.textContent='';
-  document.getElementById('txAmt').textContent=r.amount+' CC';
+  document.getElementById('txAmt').textContent=money(r);
   document.getElementById('txTo').textContent='to '+r.payee;
   T.classList.add('show');
   await sleep(350); d[1].classList.add('on');            // mandate checked

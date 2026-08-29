@@ -33,13 +33,17 @@ class Chain:
     def __init__(self):
         self.receipts = []
 
-    def stamp(self, what, amount, payee, rule, outcome, approved_by):
+    def stamp(self, what, amount, payee, rule, outcome, approved_by,
+              ledger, currency="CC", instrument="Amulet"):
         r = {
             "n": len(self.receipts) + 1,
             "what": what, "amount": str(amount), "payee": payee,
+            "currency": currency,    # ASCII code, never a symbol: see assert_ascii
+            "instrument": instrument,
             "rule": rule,            # which mandate line allowed or refused it
             "outcome": outcome,      # ACCEPTED or REFUSED
             "approved_by": approved_by,
+            "ledger": ledger,        # which rail produced this: real or MOCKED
             "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "prev": self.receipts[-1]["seal"] if self.receipts else "GENESIS",
         }
