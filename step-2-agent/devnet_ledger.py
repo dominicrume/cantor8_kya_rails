@@ -50,6 +50,22 @@ def _configure():
     c8lab.CSEC = os.environ["C8_CLIENT_SECRET"]
 
 
+class LedgerUnreachable(RuntimeError):
+    """We never reached the ledger. NOT a refusal, and never stamped as one."""
+
+
+def _is_ledger_answer(m):
+    """Did Canton decide, or did the network eat it?
+
+    Only these mean the ledger looked at the command and said no. Anything
+    else -- TLS timeouts, DNS, token failures, 5xx -- is us failing to ask,
+    and recording that as REFUSED would put a lie inside a sealed receipt.
+    """
+    return (bool(RULES.search(m)) or "CONTRACT_NOT_ACTIVE" in m
+            or "NOT_FOUND" in m or "uthoriz" in m
+            or "INVALID_ARGUMENT" in m or "DAML_AUTHORIZATION_ERROR" in m)
+
+
 def _retry(fn, tries=8):
     """DevNet drops TLS handshakes under load. A hang is the network, not us.
 
@@ -64,12 +80,13 @@ def _retry(fn, tries=8):
         except Exception as e:
             m = str(e).replace("\n", " ")
             last = m
-            if RULES.search(m) or "CONTRACT_NOT_ACTIVE" in m or "NOT_FOUND" in m \
-               or "uthoriz" in m:
+            if _is_ledger_answer(m):
                 return False, m            # the ledger answered; not a retry
             c8lab._tok.clear()
             time.sleep(min(2 + 3 * i, 15))
-    return False, last
+    raise LedgerUnreachable(
+        "gave up after %d tries; the ledger never answered, so nothing is "
+        "recorded. Last error: %s" % (tries, str(last)[:200]))
 
 
 def _rule(m):
@@ -83,10 +100,17 @@ def _rule(m):
     return m[:110]
 
 
-def _created(r):
+def _created(r, entity="KyaMandate"):
+    """The cid of the created contract OF THAT TEMPLATE.
+
+    Charge creates ChargeRecord first and the successor mandate second, so
+    "first created event" is the record, not the mandate. Exercising a mandate
+    choice on that cid returns WRONGLY_TYPED_CONTRACT_ID, which reads like an
+    auth problem and is not one. Match the template by name.
+    """
     for ev in r.get("transaction", {}).get("events", []):
         c = ev.get("CreatedTreeEvent", {}).get("value") or ev.get("CreatedEvent")
-        if c:
+        if c and str(c.get("templateId", "")).endswith(":" + entity):
             return c.get("contractId")
 
 
@@ -123,12 +147,12 @@ class DevNetLedger:
         if not ok:
             raise RuntimeError("could not propose the mandate: " + str(r)[:160])
         ok, r = _retry(lambda: c8lab.submit([{"ExerciseCommand": {
-            "templateId": PROP, "contractId": _created(r),
+            "templateId": PROP, "contractId": _created(r, "KyaMandateProposal"),
             "choice": "Accept", "choiceArgument": {}}}],
             act_as=PARTY["agent"], sub=USER, want_transaction=True))
         if not ok:
             raise RuntimeError("agent could not accept: " + str(r)[:160])
-        self.cid = _created(r)
+        self.cid = _created(r, "KyaMandate")
         return self.cid, exp
 
     def charge(self, amount, payee):
@@ -141,7 +165,7 @@ class DevNetLedger:
             act_as=PARTY["agent"], sub=USER, want_transaction=True))
         if not ok:
             return "REFUSED", _rule(str(r))
-        self.cid = _created(r) or self.cid
+        self.cid = _created(r, "KyaMandate") or self.cid
         return "ACCEPTED", "cap and allow-list satisfied, committed on DevNet"
 
     def revoke(self):

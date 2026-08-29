@@ -10,9 +10,9 @@ const RECEIPTS = [
     "outcome": "ACCEPTED",
     "approved_by": "mandate signed by DeskOwner + KyaAgent",
     "ledger": "DevNet (real Canton, package 6d13f9948206)",
-    "at": "2026-08-29T17:44:10Z",
+    "at": "2026-08-29T18:01:46Z",
     "prev": "GENESIS",
-    "seal": "59daf7e79abd9fd4090a942d0f89ded902d4171e7be478b67f2939bb63bc6233"
+    "seal": "14f44219142c1b6894b60aa60fcfa65c5dc98af7560af1e12e2e936b82ae71e9"
   },
   {
     "n": 2,
@@ -21,13 +21,13 @@ const RECEIPTS = [
     "payee": "partner",
     "currency": "CC",
     "instrument": "Amulet (recorded, not transferred)",
-    "rule": "HTTP 400 from https://api.validator.dev.digik.cantor8.tech/api/ledger/v2/commands/submit-and-wait-for-transact",
-    "outcome": "REFUSED",
+    "rule": "cap and allow-list satisfied, committed on DevNet",
+    "outcome": "ACCEPTED",
     "approved_by": "mandate signed by DeskOwner + KyaAgent",
     "ledger": "DevNet (real Canton, package 6d13f9948206)",
-    "at": "2026-08-29T17:46:37Z",
-    "prev": "59daf7e79abd9fd4090a942d0f89ded902d4171e7be478b67f2939bb63bc6233",
-    "seal": "6998c131bbc5aca200b5bbf030670d7f0a94a0d25c226af5762d0cd29e3ebcf7"
+    "at": "2026-08-29T18:01:54Z",
+    "prev": "14f44219142c1b6894b60aa60fcfa65c5dc98af7560af1e12e2e936b82ae71e9",
+    "seal": "f7c78c4441e170b49f7da65c6aa6f5cdf9798d5d37ef07a959de7481e20461fb"
   },
   {
     "n": 3,
@@ -36,13 +36,13 @@ const RECEIPTS = [
     "payee": "customer",
     "currency": "CC",
     "instrument": "Amulet (recorded, not transferred)",
-    "rule": "HTTP 400 from https://api.validator.dev.digik.cantor8.tech/api/ledger/v2/commands/submit-and-wait-for-transact",
+    "rule": "charge would exceed the cap",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by DeskOwner + KyaAgent",
     "ledger": "DevNet (real Canton, package 6d13f9948206)",
-    "at": "2026-08-29T17:49:34Z",
-    "prev": "6998c131bbc5aca200b5bbf030670d7f0a94a0d25c226af5762d0cd29e3ebcf7",
-    "seal": "6244145d15c7cec0d0c16419e88cadf28020d2dd975bac1742baaf4f29642137"
+    "at": "2026-08-29T18:01:54Z",
+    "prev": "f7c78c4441e170b49f7da65c6aa6f5cdf9798d5d37ef07a959de7481e20461fb",
+    "seal": "de453bcb52c4f05d6946fad4eaeac48a51b710361b009eb3f62c8a9c43b70da3"
   },
   {
     "n": 4,
@@ -51,13 +51,13 @@ const RECEIPTS = [
     "payee": "unverified",
     "currency": "CC",
     "instrument": "Amulet (recorded, not transferred)",
-    "rule": "could not get a token from https://auth.dev.digik.cantor8.tech: <urlopen error _ssl.c:1015: The handshake oper",
+    "rule": "payee is not on the allow-list",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by DeskOwner + KyaAgent",
     "ledger": "DevNet (real Canton, package 6d13f9948206)",
-    "at": "2026-08-29T17:52:32Z",
-    "prev": "6244145d15c7cec0d0c16419e88cadf28020d2dd975bac1742baaf4f29642137",
-    "seal": "2cf2c9002cf61dede31b4f8cb58b0fd7c741bf9309e116891dadf1801682af9c"
+    "at": "2026-08-29T18:01:54Z",
+    "prev": "de453bcb52c4f05d6946fad4eaeac48a51b710361b009eb3f62c8a9c43b70da3",
+    "seal": "329c4207ca10d83fe82959c3ea09f13b0eef101ea7dd84df169cd18a6960d07d"
   },
   {
     "n": 5,
@@ -70,9 +70,9 @@ const RECEIPTS = [
     "outcome": "REFUSED",
     "approved_by": "mandate signed by DeskOwner + KyaAgent, clock past expiresAt",
     "ledger": "DevNet (real Canton, package 6d13f9948206)",
-    "at": "2026-08-29T17:52:42Z",
-    "prev": "2cf2c9002cf61dede31b4f8cb58b0fd7c741bf9309e116891dadf1801682af9c",
-    "seal": "efca9d2598a4a5f93bee0c2911af6df0c68b3c94e88a2c7757a4aa3f528f61f1"
+    "at": "2026-08-29T18:03:25Z",
+    "prev": "329c4207ca10d83fe82959c3ea09f13b0eef101ea7dd84df169cd18a6960d07d",
+    "seal": "7dc91813e434e77591ef4e317580d0cef8f9e3ebf6dce42d580c7c83ab2664c9"
   },
   {
     "n": 6,
@@ -85,8 +85,8 @@ const RECEIPTS = [
     "outcome": "REFUSED",
     "approved_by": "owner exercised Revoke",
     "ledger": "DevNet (real Canton, package 6d13f9948206)",
-    "at": "2026-08-29T17:52:56Z",
-    "prev": "efca9d2598a4a5f93bee0c2911af6df0c68b3c94e88a2c7757a4aa3f528f61f1",
-    "seal": "67f3cff77af6155b7a8551696fe9c3b38d5c791d373c94a455736e160e949b3f"
+    "at": "2026-08-29T18:03:37Z",
+    "prev": "7dc91813e434e77591ef4e317580d0cef8f9e3ebf6dce42d580c7c83ab2664c9",
+    "seal": "d5736dae87875682690fe6dc5e33e17474e4722fa0662291c3648237a243571e"
   }
 ];

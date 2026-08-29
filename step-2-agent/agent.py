@@ -95,4 +95,15 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except Exception as e:
+        # A demo that quietly invents receipts is worse than one that stops.
+        # If the ledger never answered, say so and point at the rail that works.
+        if type(e).__name__ == "LedgerUnreachable":
+            print("\nSTOPPED: the ledger never answered, so NOTHING was recorded.")
+            print(" ", str(e)[:220])
+            print("  receipts.js is untouched. Run `python3 agent.py` for the "
+                  "offline rail, which proves the same four fences.")
+            sys.exit(2)
+        raise
