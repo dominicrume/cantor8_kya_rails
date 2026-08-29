@@ -39,6 +39,8 @@
   .pill { display:inline-block; margin-top:10px; font-size:12px; font-weight:700; padding:5px 12px; border-radius:14px; background:#ffffff22; }
   .mandate { padding:12px 18px; border-bottom:1px solid #eee; font-size:12.5px; color:#444; background:#fafaf7; }
   .mandate b { color:var(--green); }
+  .why { padding:11px 18px; font-size:11.5px; line-height:1.5; color:#4a4a4a; background:#f4f7f4; border-bottom:1px solid #eee; }
+  .why b { color:var(--green); }
   .receipts { padding:8px 14px 4px; max-height:360px; overflow-y:auto; }
   .r { border:1px solid #e4e4e4; border-left:5px solid var(--ok); border-radius:9px; padding:9px 11px; margin:8px 0;
        font-size:12.5px; opacity:0; transform:translateY(8px); transition:all .35s ease; }
@@ -110,6 +112,13 @@
       <span class="pill" id="pill">receipts: 0</span>
     </div>
     <div class="mandate"><b>The mandate:</b> spend &le; 5 CC &middot; only VerifiedCustomer &amp; LiquidityPartner &middot; expires &middot; owner may revoke any time &middot; all four enforced in the Daml choice body, not in Python.</div>
+    <div class="why"><b>Why the rule lives in Daml, not Python.</b>
+      A cap in Python is the agent checking itself &mdash; edit the file, or talk the
+      agent past its own check, and the money is gone. A cap in the Daml choice body
+      is checked by Canton <i>before the transaction can exist</i>. There is nothing to
+      roll back and nothing to detect afterwards, because the spend never happens.
+      The agent cannot skip it: it tried to raise its own cap and the ledger answered
+      <i>&ldquo;missing authorization from owner&rdquo;</i>.</div>
     <div class="receipts" id="receipts"></div>
     <div id="status"></div>
     <div class="w-bar"><button id="verifyBtn">Verify every seal</button><button id="tamperBtn">Tamper with receipt 2</button></div>
@@ -172,7 +181,11 @@ async function renderAll(){
   else { st.textContent='TAMPERING DETECTED at receipt '+bf+'. Every later seal is broken.'; st.style.color='var(--bad)'; }
 }
 
-let PACE = 1.8;   // demo pace: 1.8 = slow enough for a judge to read every stage; 1.0 = original speed
+// 2-minute demo. A judge reads a chat bubble in about five seconds, so that
+// is the dwell. 9 plain messages at 5s plus 6 sealed charges at ~3.5s puts the
+// story near 65s, leaving a minute to talk over it.
+const MSG_MS = 5000;
+let PACE = 1.0;   // 1.0 = five seconds a message. Fast halves it.
 const sleep = ms => new Promise(r=>setTimeout(r,ms*PACE));
 async function playTxn(n){
   const r = RECEIPTS[n-1]; if(!r) return;
@@ -208,10 +221,10 @@ async function play(){ if(playing) return; playing=true;
   document.getElementById('status').textContent='';
   for(const m of SCRIPT){ addMsg(m);
     if(m.receipt){ await sleep(500); await playTxn(m.receipt); }
-    else { await sleep(1500); } }
+    else { await sleep(MSG_MS); } }
   await renderAll(); playing=false; }
-document.getElementById('paceBtn').onclick=e=>{ PACE = (PACE===1.8) ? 1.0 : 1.8;
-  e.target.textContent = (PACE===1.8) ? 'Slow' : 'Fast'; };
+document.getElementById('paceBtn').onclick=e=>{ PACE = (PACE===1.0) ? 0.55 : 1.0;
+  e.target.textContent = (PACE===1.0) ? 'Slow' : 'Fast'; };
 document.getElementById('playBtn').onclick=play;
 document.getElementById('skipBtn').onclick=async()=>{ playing=false; chat.innerHTML='';
   SCRIPT.forEach(m=>{const d=document.createElement('div'); d.className='msg show '+m.who; d.textContent=m.text; chat.appendChild(d);});
