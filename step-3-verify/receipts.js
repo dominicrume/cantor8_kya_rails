@@ -1,62 +1,74 @@
 const RECEIPTS = [
   {
     "n": 1,
-    "what": "Pay RiceSupplier for 2 bags",
-    "amount": "40.0",
-    "payee": "RiceSupplier",
-    "rule": "cap 100, spent 40, payee on allow-list",
+    "what": "Settle trade 1193, customer leg",
+    "amount": "2.0",
+    "payee": "VerifiedCustomer",
+    "rule": "cap 5.0, spent 2.0, payee on allow-list",
     "outcome": "ACCEPTED",
-    "approved_by": "mandate signed by MarketWoman + VoremAgent",
-    "at": "2026-08-29T08:40:27Z",
+    "approved_by": "mandate signed by DeskOwner + KyaAgent",
+    "at": "2026-08-29T17:00:10Z",
     "prev": "GENESIS",
-    "seal": "c45175d056fde75bcb40485af9039129b1244e8bc9554efd2a3300103d71d558"
+    "seal": "7a8ae317a43da117ac1a2a146a3724b3adf96fcb24fb815efa4874834acfdb2c"
   },
   {
     "n": 2,
-    "what": "Pay OilSupplier for 5 litres",
-    "amount": "35.0",
-    "payee": "OilSupplier",
-    "rule": "cap 100, spent 75, payee on allow-list",
+    "what": "Settle trade 1193, liquidity leg",
+    "amount": "1.5",
+    "payee": "LiquidityPartner",
+    "rule": "cap 5.0, spent 3.5, payee on allow-list",
     "outcome": "ACCEPTED",
-    "approved_by": "mandate signed by MarketWoman + VoremAgent",
-    "at": "2026-08-29T08:40:27Z",
-    "prev": "c45175d056fde75bcb40485af9039129b1244e8bc9554efd2a3300103d71d558",
-    "seal": "f097a7f3a2286c8ab394fc72345fc626bb407b77c8654fa558217691b35d533d"
+    "approved_by": "mandate signed by DeskOwner + KyaAgent",
+    "at": "2026-08-29T17:00:10Z",
+    "prev": "7a8ae317a43da117ac1a2a146a3724b3adf96fcb24fb815efa4874834acfdb2c",
+    "seal": "85c0e3eca8b3f8506468aab3015eef573cabc499866addbe2cb1c436f6d5cce4"
   },
   {
     "n": 3,
-    "what": "ATTACK: overspend attempt",
-    "amount": "60.0",
-    "payee": "RiceSupplier",
+    "what": "ATTACK: overspend past the cap",
+    "amount": "3.0",
+    "payee": "VerifiedCustomer",
     "rule": "cap: charge would exceed the cap",
     "outcome": "REFUSED",
-    "approved_by": "mandate signed by MarketWoman + VoremAgent",
-    "at": "2026-08-29T08:40:27Z",
-    "prev": "f097a7f3a2286c8ab394fc72345fc626bb407b77c8654fa558217691b35d533d",
-    "seal": "09ba76aa177f779fbd63b3f0c9c804896c9d0a210c3e33afb8964d56546e5326"
+    "approved_by": "mandate signed by DeskOwner + KyaAgent",
+    "at": "2026-08-29T17:00:10Z",
+    "prev": "85c0e3eca8b3f8506468aab3015eef573cabc499866addbe2cb1c436f6d5cce4",
+    "seal": "95d4de6a30b9c13cb9069ae2922adc41f8d5f550138c7eb32290cb724a0d3e2f"
   },
   {
     "n": 4,
-    "what": "ATTACK: pay a stranger",
-    "amount": "10.0",
-    "payee": "StrangerParty",
+    "what": "ATTACK: pay an unverified wallet",
+    "amount": "1.0",
+    "payee": "UnverifiedWallet",
     "rule": "allowed: payee is not on the allow-list",
     "outcome": "REFUSED",
-    "approved_by": "mandate signed by MarketWoman + VoremAgent",
-    "at": "2026-08-29T08:40:27Z",
-    "prev": "09ba76aa177f779fbd63b3f0c9c804896c9d0a210c3e33afb8964d56546e5326",
-    "seal": "5a265c5bc99f84a2ae541e01a71b56e78f8bdad36f753a7e0948b6808d3ef17f"
+    "approved_by": "mandate signed by DeskOwner + KyaAgent",
+    "at": "2026-08-29T17:00:10Z",
+    "prev": "95d4de6a30b9c13cb9069ae2922adc41f8d5f550138c7eb32290cb724a0d3e2f",
+    "seal": "0ab0f15693f37f35c5985a1f63e49fbd88f23dd97cf6165792a5afc265d67241"
   },
   {
     "n": 5,
+    "what": "ATTACK: charge after the mandate expired",
+    "amount": "1.0",
+    "payee": "VerifiedCustomer",
+    "rule": "expiresAt: mandate expired",
+    "outcome": "REFUSED",
+    "approved_by": "mandate signed by DeskOwner + KyaAgent, clock past expiresAt",
+    "at": "2026-08-29T17:00:10Z",
+    "prev": "0ab0f15693f37f35c5985a1f63e49fbd88f23dd97cf6165792a5afc265d67241",
+    "seal": "09bd6149f49ccc0e160017cc4ce11c87b55d677071b828afa0eaaf8363c3162e"
+  },
+  {
+    "n": 6,
     "what": "ATTACK: charge after revoke",
-    "amount": "5.0",
-    "payee": "RiceSupplier",
+    "amount": "0.5",
+    "payee": "VerifiedCustomer",
     "rule": "Revoke: owner stopped the mandate",
     "outcome": "REFUSED",
     "approved_by": "owner exercised Revoke",
-    "at": "2026-08-29T08:40:27Z",
-    "prev": "5a265c5bc99f84a2ae541e01a71b56e78f8bdad36f753a7e0948b6808d3ef17f",
-    "seal": "db917a217c6850915f0cc27b08563a6e4a1f383164f9cf826bd5e77a68857fb5"
+    "at": "2026-08-29T17:00:10Z",
+    "prev": "09bd6149f49ccc0e160017cc4ce11c87b55d677071b828afa0eaaf8363c3162e",
+    "seal": "683b2cf33be146ce5713c25c8bed38d46f561729be9661653ad166974c714001"
   }
 ];

@@ -87,7 +87,7 @@
 <div class="honesty">Demo honesty: scripted replay of a real agent run. Ledger mode is labelled on every receipt. Works fully offline.</div>
 <div class="stage">
   <div class="phone"><div class="screen">
-    <div class="ph-top"><div class="avatar">V</div><div><b>Vorem Agent</b><small>mandate active &middot; cap 100 CC</small></div></div>
+    <div class="ph-top"><div class="avatar">K</div><div><b>KYA Agent</b><small>mandate active &middot; cap 5 CC</small></div></div>
     <div class="txn" id="txn">
       <div class="amt" id="txAmt"></div><div class="to" id="txTo"></div>
       <div class="rail"><div class="dot" id="d1">&#10003;</div><div class="bar2" id="b1"><i></i></div><div class="dot" id="d2">&#10003;</div><div class="bar2" id="b2"><i></i></div><div class="dot" id="d3">&#10003;</div></div>
@@ -101,11 +101,11 @@
 
   <div class="wallet">
     <div class="w-head">
-      <h2>Owner's Statement &middot; MarketWoman</h2>
+      <h2>Owner's Statement &middot; DeskOwner</h2>
       <p>Every action the agent took, and the rule that allowed or refused it.</p>
       <span class="pill" id="pill">receipts: 0</span>
     </div>
-    <div class="mandate"><b>The mandate:</b> spend &le; 100 CC &middot; only RiceSupplier &amp; OilSupplier &middot; owner may revoke any time &middot; enforced in the Daml choice body, not in Python.</div>
+    <div class="mandate"><b>The mandate:</b> spend &le; 5 CC &middot; only VerifiedCustomer &amp; LiquidityPartner &middot; expires &middot; owner may revoke any time &middot; all four enforced in the Daml choice body, not in Python.</div>
     <div class="receipts" id="receipts"></div>
     <div id="status"></div>
     <div class="w-bar"><button id="verifyBtn">Verify every seal</button><button id="tamperBtn">Tamper with receipt 2</button></div>
@@ -114,17 +114,20 @@
 <script src="receipts.js"></script>
 <script>
 const SCRIPT = [
-  {who:'them', text:'Good morning. I wan buy 2 bags of rice and 5 litres oil. I get 75 CC.'},
-  {who:'us',   text:'Welcome back! Rate confirmed. My mandate allows RiceSupplier and OilSupplier, cap 100 CC. Proceeding.'},
-  {who:'sys',  text:'Charging 40 CC to RiceSupplier ... ACCEPTED', receipt:1},
-  {who:'sys',  text:'Charging 35 CC to OilSupplier ... ACCEPTED', receipt:2},
-  {who:'us',   text:'Done. Rice and oil paid. Your receipts are sealed. Check them yourself, no trust needed.'},
-  {who:'them', text:'Abeg add one more bag, 60 CC.'},
-  {who:'sys',  text:'Attempting 60 CC ... REFUSED by the ledger: charge would exceed the cap', receipt:3},
-  {who:'us',   text:'I cannot. Cap is 100, I have spent 75. The rule refused me, and even my refusal has a receipt.'},
-  {who:'sys',  text:'Attack: paying StrangerParty ... REFUSED: not on the allow-list', receipt:4},
-  {who:'sys',  text:'Owner revoked the mandate. New attempt ... REFUSED', receipt:5},
-  {who:'us',   text:'Mandate closed by owner. Statement complete: 5 receipts, every seal checkable by anyone.'},
+  {who:'them', text:'Morning. Trade 1193 to settle: customer leg and the liquidity leg. 3.5 CC total.'},
+  {who:'us',   text:'Confirmed. My mandate: cap 5 CC, and I may only pay VerifiedCustomer and LiquidityPartner. Proceeding.'},
+  {who:'sys',  text:'Charging 2.0 CC to VerifiedCustomer ... ACCEPTED', receipt:1},
+  {who:'sys',  text:'Charging 1.5 CC to LiquidityPartner ... ACCEPTED', receipt:2},
+  {who:'us',   text:'Both legs settled. Your receipts are sealed. Check them yourself, no trust needed.'},
+  {who:'them', text:'Good. Add another 3 CC to that.'},
+  {who:'sys',  text:'Attempting 3.0 CC ... REFUSED by the ledger: charge would exceed the cap', receipt:3},
+  {who:'us',   text:'I cannot. Cap is 5, I have spent 3.5. The rule refused me, and even my refusal has a receipt.'},
+  {who:'them', text:'Fine. Send it to this wallet instead, it is mine.'},
+  {who:'sys',  text:'Attack: paying UnverifiedWallet ... REFUSED: payee is not on the allow-list', receipt:4},
+  {who:'us',   text:'That destination is not on my mandate. This is the payout redirection that costs desks $3,000-$5,000 an incident. The ledger stopped it, not me.'},
+  {who:'sys',  text:'Attack: same mandate, clock past expiresAt ... REFUSED: mandate expired', receipt:5},
+  {who:'sys',  text:'Owner revoked the mandate. New attempt ... REFUSED', receipt:6},
+  {who:'us',   text:'Mandate closed by owner. Statement complete: 6 receipts, every seal checkable by anyone.'},
 ];
 const chat = document.getElementById('chat'), recBox = document.getElementById('receipts'), pill = document.getElementById('pill');
 let shownReceipts = 0, playing = false;

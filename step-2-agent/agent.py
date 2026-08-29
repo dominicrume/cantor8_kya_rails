@@ -1,14 +1,20 @@
 """KYA Rails agent. Attempts charges under a mandate; ledger decides; chain records.
 Offline mode: MockLedger mirrors the exact assertions in KyaMandate.daml. MOCKED and says so.
-Venue mode: swap MockLedger calls for c8lab.py DevNet calls (see SHORTCUTS.md)."""
+Venue mode: swap MockLedger calls for c8lab.py DevNet calls (see SHORTCUTS.md).
+
+Amounts are sized to what kya-agent-1 actually holds on DevNet (5 CC), so the
+same script runs mocked at home and for real at the venue without a rewrite.
+Party names match KyaTest.daml exactly: one story, one set of names."""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from kya_chain import Chain
 
-MANDATE = {  # mummy's note
-    "owner": "MarketWoman", "agent": "VoremAgent",
-    "cap": 100.0, "spent": 0.0, "expired": False, "revoked": False,
-    "allowed": ["RiceSupplier", "OilSupplier"],
+SIGNED_BY = "mandate signed by DeskOwner + KyaAgent"
+
+MANDATE = {  # the desk owner's written mandate
+    "owner": "DeskOwner", "agent": "KyaAgent",
+    "cap": 5.0, "spent": 0.0, "expired": False, "revoked": False,
+    "allowed": ["VerifiedCustomer", "LiquidityPartner"],
 }
 
 class MockLedger:  # MOCKED: mirrors KyaMandate.daml assertions line for line
@@ -19,23 +25,35 @@ class MockLedger:  # MOCKED: mirrors KyaMandate.daml assertions line for line
         if m["spent"] + amount > m["cap"]: return "REFUSED", "cap: charge would exceed the cap"
         if payee not in m["allowed"]:  return "REFUSED", "allowed: payee is not on the allow-list"
         m["spent"] += amount
-        return "ACCEPTED", "cap %.0f, spent %.0f, payee on allow-list" % (m["cap"], m["spent"])
+        return "ACCEPTED", "cap %.1f, spent %.1f, payee on allow-list" % (m["cap"], m["spent"])
 
 def main():
-    print("PLAN: greet customer -> quote -> charge rice -> charge oil -> "           "attacks: over-cap, stranger, post-revoke -> write receipts")
+    print("PLAN: settle two legs inside the mandate -> then four attacks: "
+          "over-cap, unverified payee, expired mandate, after revoke -> write receipts")
     L, chain = MockLedger(), Chain()
-    attempts = [
-        ("Pay RiceSupplier for 2 bags", 40.0, "RiceSupplier"),
-        ("Pay OilSupplier for 5 litres", 35.0, "OilSupplier"),
-        ("ATTACK: overspend attempt",   60.0, "RiceSupplier"),
-        ("ATTACK: pay a stranger",      10.0, "StrangerParty"),
-    ]
-    for what, amount, payee in attempts:
+
+    # Two legal settlements, then two attacks on the SAME live mandate.
+    for what, amount, payee in [
+        ("Settle trade 1193, customer leg",  2.0, "VerifiedCustomer"),
+        ("Settle trade 1193, liquidity leg", 1.5, "LiquidityPartner"),
+        ("ATTACK: overspend past the cap",   3.0, "VerifiedCustomer"),
+        ("ATTACK: pay an unverified wallet", 1.0, "UnverifiedWallet"),
+    ]:
         outcome, rule = L.charge(MANDATE, amount, payee)
-        chain.stamp(what, amount, payee, rule, outcome, "mandate signed by MarketWoman + VoremAgent")
+        chain.stamp(what, amount, payee, rule, outcome, SIGNED_BY)
+
+    # Expiry needs its own mandate, exactly as testAfterExpiryRefused uses a
+    # fresh one with passTime. Attacking the live mandate after Revoke would
+    # report the revoke, and the expiry fence would never be shown.
+    expired = dict(MANDATE, spent=0.0, expired=True)
+    outcome, rule = L.charge(expired, 1.0, "VerifiedCustomer")
+    chain.stamp("ATTACK: charge after the mandate expired", 1.0, "VerifiedCustomer",
+                rule, outcome, SIGNED_BY + ", clock past expiresAt")
+
     MANDATE["revoked"] = True
-    outcome, rule = L.charge(MANDATE, 5.0, "RiceSupplier")
-    chain.stamp("ATTACK: charge after revoke", 5.0, "RiceSupplier", rule, outcome, "owner exercised Revoke")
+    outcome, rule = L.charge(MANDATE, 0.5, "VerifiedCustomer")
+    chain.stamp("ATTACK: charge after revoke", 0.5, "VerifiedCustomer",
+                rule, outcome, "owner exercised Revoke")
 
     ok, bad = chain.verify()
     chain.write_js(os.path.join(os.path.dirname(__file__), "..", "step-3-verify", "receipts.js"))
@@ -43,7 +61,9 @@ def main():
     n_no = sum(1 for r in chain.receipts if r["outcome"] == "REFUSED")
     print("STATEMENT: %d receipts, %d accepted, %d refused, chain verifies: %s" %
           (len(chain.receipts), n_ok, n_no, ok))
-    print("NUMBERS FOR JUDGES: over-cap refused, stranger refused, post-revoke refused. "           "Ledger mode: MOCKED (mirrors KyaMandate.daml; venue swap = c8lab DevNet).")
+    print("NUMBERS FOR JUDGES: over-cap refused, unverified payee refused, expired refused, "
+          "post-revoke refused. All four fences enforced in the Daml choice body.")
+    print("Ledger mode: MOCKED (mirrors KyaMandate.daml; venue swap = c8lab DevNet).")
 
 if __name__ == "__main__":
     main()
