@@ -1,58 +1,82 @@
-"""KYA Rails agent. Attempts charges under a mandate; ledger decides; chain records.
-Offline mode: MockLedger mirrors the exact assertions in KyaMandate.daml. MOCKED and says so.
-Venue mode: swap MockLedger calls for c8lab.py DevNet calls (see SHORTCUTS.md).
+"""KYA Rails agent. Attempts charges under a mandate; the ledger decides; the chain records.
+
+Two rails, one code path. The agent cannot tell them apart, and that is the
+NOT list in THE-JOB.md holding: no spending rule lives in this file.
+
+    python3 agent.py              MOCKED, offline, mirrors KyaMandate.daml
+    python3 agent.py --devnet     real Canton DevNet, needs C8_CLIENT_SECRET
 
 Amounts are sized to what kya-agent-1 actually holds on DevNet (5 CC), so the
-same script runs mocked at home and for real at the venue without a rewrite.
-Party names match KyaTest.daml exactly: one story, one set of names."""
+same script runs at home and at the venue without a rewrite. Party names match
+KyaTest.daml exactly: one story, one set of names."""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from kya_chain import Chain
 
 SIGNED_BY = "mandate signed by DeskOwner + KyaAgent"
+ALLOWED = ["customer", "partner"]          # roles, resolved to parties on DevNet
 
-MANDATE = {  # the desk owner's written mandate
-    "owner": "DeskOwner", "agent": "KyaAgent",
-    "cap": 5.0, "spent": 0.0, "expired": False, "revoked": False,
-    "allowed": ["VerifiedCustomer", "LiquidityPartner"],
-}
 
-class MockLedger:  # MOCKED: mirrors KyaMandate.daml assertions line for line
-    def charge(self, m, amount, payee):
-        if m["revoked"]:               return "REFUSED", "Revoke: owner stopped the mandate"
-        if m["expired"]:               return "REFUSED", "expiresAt: mandate expired"
-        if amount <= 0:                return "REFUSED", "amount must be positive"
-        if m["spent"] + amount > m["cap"]: return "REFUSED", "cap: charge would exceed the cap"
-        if payee not in m["allowed"]:  return "REFUSED", "allowed: payee is not on the allow-list"
+class MockLedger:
+    """MOCKED: mirrors the assertions in KyaMandate.daml, line for line."""
+
+    label = "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)"
+
+    def open_mandate(self, cap=5.0, life_seconds=86400):
+        self.m = {"cap": cap, "spent": 0.0, "allowed": list(ALLOWED),
+                  "expired": life_seconds < 0, "revoked": False}
+        return None, "mock"
+
+    def charge(self, amount, payee):
+        m = self.m
+        if m["revoked"]:  return "REFUSED", "Revoke: mandate no longer active on the ledger"
+        if m["expired"]:  return "REFUSED", "mandate expired"
+        if amount <= 0:   return "REFUSED", "amount must be positive"
+        if m["spent"] + amount > m["cap"]: return "REFUSED", "charge would exceed the cap"
+        if payee not in m["allowed"]:      return "REFUSED", "payee is not on the allow-list"
         m["spent"] += amount
         return "ACCEPTED", "cap %.1f, spent %.1f, payee on allow-list" % (m["cap"], m["spent"])
 
-def main():
+    def revoke(self):
+        self.m["revoked"] = True
+
+
+def build_ledger(argv):
+    if "--devnet" in argv:
+        from devnet_ledger import DevNetLedger
+        return DevNetLedger()
+    return MockLedger()
+
+
+def main(argv):
+    L = build_ledger(argv)
+    chain = Chain()
     print("PLAN: settle two legs inside the mandate -> then four attacks: "
           "over-cap, unverified payee, expired mandate, after revoke -> write receipts")
-    L, chain = MockLedger(), Chain()
+    print("LEDGER:", L.label)
 
-    # Two legal settlements, then two attacks on the SAME live mandate.
+    L.open_mandate(cap=5.0)
     for what, amount, payee in [
-        ("Settle trade 1193, customer leg",  2.0, "VerifiedCustomer"),
-        ("Settle trade 1193, liquidity leg", 1.5, "LiquidityPartner"),
-        ("ATTACK: overspend past the cap",   3.0, "VerifiedCustomer"),
-        ("ATTACK: pay an unverified wallet", 1.0, "UnverifiedWallet"),
+        ("Settle trade 1193, customer leg",  2.0, "customer"),
+        ("Settle trade 1193, liquidity leg", 1.5, "partner"),
+        ("ATTACK: overspend past the cap",   3.0, "customer"),
+        ("ATTACK: pay an unverified wallet", 1.0, "unverified"),
     ]:
-        outcome, rule = L.charge(MANDATE, amount, payee)
+        outcome, rule = L.charge(amount, payee)
         chain.stamp(what, amount, payee, rule, outcome, SIGNED_BY)
 
-    # Expiry needs its own mandate, exactly as testAfterExpiryRefused uses a
-    # fresh one with passTime. Attacking the live mandate after Revoke would
-    # report the revoke, and the expiry fence would never be shown.
-    expired = dict(MANDATE, spent=0.0, expired=True)
-    outcome, rule = L.charge(expired, 1.0, "VerifiedCustomer")
-    chain.stamp("ATTACK: charge after the mandate expired", 1.0, "VerifiedCustomer",
+    # Expiry gets its own mandate, as testAfterExpiryRefused uses a fresh
+    # deskWithExpiry plus passTime. Attacking the live mandate after Revoke
+    # would report the revoke and the expiry fence would never be shown.
+    L.open_mandate(cap=5.0, life_seconds=-3600)
+    outcome, rule = L.charge(1.0, "customer")
+    chain.stamp("ATTACK: charge after the mandate expired", 1.0, "customer",
                 rule, outcome, SIGNED_BY + ", clock past expiresAt")
 
-    MANDATE["revoked"] = True
-    outcome, rule = L.charge(MANDATE, 0.5, "VerifiedCustomer")
-    chain.stamp("ATTACK: charge after revoke", 0.5, "VerifiedCustomer",
+    L.open_mandate(cap=5.0)
+    L.revoke()
+    outcome, rule = L.charge(0.5, "customer")
+    chain.stamp("ATTACK: charge after revoke", 0.5, "customer",
                 rule, outcome, "owner exercised Revoke")
 
     ok, bad = chain.verify()
@@ -63,7 +87,8 @@ def main():
           (len(chain.receipts), n_ok, n_no, ok))
     print("NUMBERS FOR JUDGES: over-cap refused, unverified payee refused, expired refused, "
           "post-revoke refused. All four fences enforced in the Daml choice body.")
-    print("Ledger mode: MOCKED (mirrors KyaMandate.daml; venue swap = c8lab DevNet).")
+    print("Ledger mode:", L.label)
+
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
