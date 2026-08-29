@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>KYA Rails. Trade in chat, trust on chain.</title>
+<style>
+  :root { --green:#075E54; --teal:#128C7E; --bubble:#DCF8C6; --ok:#1a7f37; --warn:#e67e22; --bad:#c0392b; --ink:#1c1c1c; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:-apple-system,'Segoe UI',Georgia,serif; background:#0e1512; color:var(--ink); min-height:100vh; }
+  header { text-align:center; color:#fff; padding:22px 16px 10px; }
+  header h1 { font-size:22px; letter-spacing:.5px; }
+  header p { font-size:13px; opacity:.75; margin-top:4px; }
+  .prov { font-size:10.5px; color:#8a8f98; margin-top:3px; }
+  .honesty { text-align:center; font-size:11.5px; color:#c8b458; padding:4px 16px 14px; }
+  .stage { display:flex; gap:26px; justify-content:center; align-items:flex-start; flex-wrap:wrap; padding:0 16px 30px; }
+
+  /* the phone */
+  .phone { width:340px; background:#000; border-radius:38px; padding:12px 10px; box-shadow:0 18px 50px rgba(0,0,0,.55); }
+  .screen { position:relative; background:#e5ddd5; border-radius:28px; overflow:hidden; display:flex; flex-direction:column; height:600px; }
+  .ph-top { background:var(--green); color:#fff; padding:12px 14px; display:flex; align-items:center; gap:10px; }
+  .avatar { width:34px; height:34px; border-radius:50%; background:var(--bubble); color:var(--green); font-weight:bold; display:flex; align-items:center; justify-content:center; }
+  .ph-top b { font-size:14px; display:block; } .ph-top small { font-size:11px; opacity:.8; }
+  .chat { flex:1; overflow-y:auto; padding:12px; }
+  .msg { max-width:82%; padding:8px 11px; border-radius:9px; margin:5px 0; font-size:13.5px; clear:both;
+         opacity:0; transform:translateY(8px); transition:all .35s ease; box-shadow:0 1px 1px rgba(0,0,0,.08); }
+  .msg.show { opacity:1; transform:none; }
+  .them { background:#fff; float:left; border-top-left-radius:2px; }
+  .us { background:var(--bubble); float:right; border-top-right-radius:2px; }
+  .sys { background:#fff8e1; float:none; margin:8px auto; text-align:center; font-size:11.5px; max-width:92%; color:#6b5d1f; }
+  .chat::after { content:""; display:block; clear:both; }
+  .ph-bar { padding:10px; background:#f0f0f0; display:flex; gap:8px; }
+  .ph-bar button { flex:1; border:0; border-radius:20px; padding:11px; font-size:14px; cursor:pointer; font-weight:600; }
+  #playBtn { background:var(--green); color:#fff; } #skipBtn { background:#ddd; } #paceBtn { background:#ddd; }
+
+  /* the statement */
+  .wallet { width:400px; background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 18px 50px rgba(0,0,0,.45); }
+  .w-head { background:linear-gradient(120deg,var(--green),var(--teal)); color:#fff; padding:16px 18px; }
+  .w-head h2 { font-size:15px; } .w-head p { font-size:12px; opacity:.85; margin-top:2px; }
+  .pill { display:inline-block; margin-top:10px; font-size:12px; font-weight:700; padding:5px 12px; border-radius:14px; background:#ffffff22; }
+  .mandate { padding:12px 18px; border-bottom:1px solid #eee; font-size:12.5px; color:#444; background:#fafaf7; }
+  .mandate b { color:var(--green); }
+  .why { padding:11px 18px; font-size:11.5px; line-height:1.5; color:#4a4a4a; background:#f4f7f4; border-bottom:1px solid #eee; }
+  .why b { color:var(--green); }
+  .receipts { padding:8px 14px 4px; max-height:360px; overflow-y:auto; }
+  .r { border:1px solid #e4e4e4; border-left:5px solid var(--ok); border-radius:9px; padding:9px 11px; margin:8px 0;
+       font-size:12.5px; opacity:0; transform:translateY(8px); transition:all .35s ease; }
+  .r.show { opacity:1; transform:none; }
+  .r.refused { border-left-color:var(--warn); background:#fffaf4; }
+  .r.unchecked { opacity:.4; filter:grayscale(1); }
+  .r.checking { box-shadow:0 0 0 2px var(--teal); }
+  .tag.wait { background:#9aa0a6; }
+  .r.checked .seal { color:var(--ok); font-weight:700; }
+  .r.broken { border-left-color:var(--bad); background:#fdecea; }
+  .r .seal { font-family:monospace; font-size:9.5px; color:#999; word-break:break-all; margin-top:3px; }
+  .r .rule { color:#666; font-style:italic; font-size:11.5px; }
+  .tag { float:right; font-size:10.5px; padding:2px 8px; border-radius:9px; color:#fff; font-weight:700; }
+  .tag.ok { background:var(--ok); } .tag.no { background:var(--warn); } .tag.bad { background:var(--bad); }
+  .w-bar { padding:12px 16px 16px; display:flex; gap:9px; }
+  .w-bar button { flex:1; border:0; border-radius:9px; padding:11px; font-size:13px; font-weight:600; cursor:pointer; }
+  #verifyBtn { background:var(--green); color:#fff; } #tamperBtn { background:var(--bad); color:#fff; }
+
+  /* transaction overlay, Moniepoint style */
+  .txn { position:absolute; inset:0; background:#0b1430f2; color:#fff; border-radius:28px;
+         display:none; flex-direction:column; align-items:center; justify-content:center; padding:22px; text-align:center; z-index:5; }
+  .txn.show { display:flex; }
+  .txn .amt { font-size:30px; font-weight:800; margin-bottom:2px; }
+  .txn .to { font-size:13px; opacity:.8; margin-bottom:22px; }
+  .rail { display:flex; align-items:center; width:100%; max-width:250px; margin-bottom:14px; }
+  .dot { width:26px; height:26px; border-radius:50%; background:#2a3a5f; display:flex; align-items:center; justify-content:center;
+         font-size:14px; color:#fff; flex:none; transition:background .3s; }
+  .dot.on { background:#22c55e; box-shadow:0 0 12px #22c55e88; }
+  .dot.err { background:#e74c3c; box-shadow:0 0 12px #e74c3c88; }
+  .bar2 { flex:1; height:4px; background:#2a3a5f; position:relative; overflow:hidden; }
+  .bar2 i { position:absolute; inset:0; background:#22c55e; transform:scaleX(0); transform-origin:left; transition:transform .55s linear; }
+  .bar2.go i { transform:scaleX(1); }
+  .labels { display:flex; justify-content:space-between; width:100%; max-width:270px; font-size:10px; opacity:.85; margin-bottom:18px; }
+  .labels span { width:33%; }
+  .verdict { min-height:64px; }
+  .tick { width:58px; height:58px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+          font-size:30px; margin:0 auto 8px; transform:scale(0); transition:transform .35s cubic-bezier(.2,1.6,.4,1); }
+  .tick.show { transform:scale(1); }
+  .tick.good { background:#16a34a; box-shadow:0 0 0 8px #16a34a33, 0 0 30px #16a34a77; }
+  .tick.badd { background:#e74c3c; box-shadow:0 0 0 8px #e74c3c33, 0 0 30px #e74c3c77; }
+  .vtext { font-size:15px; font-weight:800; } .vrule { font-size:11px; opacity:.8; margin-top:3px; }
+  .sealing { font-size:10.5px; opacity:.7; margin-top:12px; font-family:monospace; }
+  #status { text-align:center; font-size:12.5px; font-weight:700; padding:0 14px 14px; min-height:18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>KYA RAILS &middot; Know Your AgenticAI</h1>
+  <p>The agent trades in chat. The proof lives on chain. Screenshots can lie. Sealed receipts cannot.</p>
+</header>
+<div class="honesty">Demo honesty: scripted replay of a real agent run. Every receipt names the ledger that produced it &mdash; real DevNet or MOCKED &mdash; and that label is inside the seal. Works fully offline.</div>
+<div class="stage">
+  <div class="phone"><div class="screen">
+    <div class="ph-top"><div class="avatar">K</div><div><b>KYA Agent</b><small>mandate active &middot; cap 5 CC</small></div></div>
+    <div class="txn" id="txn">
+      <div class="amt" id="txAmt"></div><div class="to" id="txTo"></div>
+      <div class="rail"><div class="dot" id="d1">&#10003;</div><div class="bar2" id="b1"><i></i></div><div class="dot" id="d2">&#10003;</div><div class="bar2" id="b2"><i></i></div><div class="dot" id="d3">&#10003;</div></div>
+      <div class="labels"><span>Mandate checked</span><span style="text-align:center">Enforced on ledger</span><span style="text-align:right">Receipt sealed</span></div>
+      <div class="verdict"><div class="tick" id="tick"></div><div class="vtext" id="vtext"></div><div class="vrule" id="vrule"></div></div>
+      <div class="sealing" id="sealing"></div>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="ph-bar"><button id="playBtn">&#9654; Play the story</button><button id="skipBtn">Skip to end</button><button id="paceBtn">Slow</button></div>
+  </div></div>
+
+  <div class="wallet">
+    <div class="w-head">
+      <h2>Owner's Statement &middot; DeskOwner</h2>
+      <p>Every action the agent took, and the rule that allowed or refused it.</p>
+      <span class="pill" id="pill">receipts: 0</span>
+    </div>
+    <div class="mandate"><b>The mandate:</b> spend &le; 5 CC &middot; only VerifiedCustomer &amp; LiquidityPartner &middot; expires &middot; owner may revoke any time &middot; all four enforced in the Daml choice body, not in Python.</div>
+    <div class="why"><b>Why the rule lives in Daml, not Python.</b>
+      A cap in Python is the agent checking itself &mdash; edit the file, or talk the
+      agent past its own check, and the money is gone. A cap in the Daml choice body
+      is checked by Canton <i>before the transaction can exist</i>. There is nothing to
+      roll back and nothing to detect afterwards, because the spend never happens.
+      The agent cannot skip it: it tried to raise its own cap and the ledger answered
+      <i>&ldquo;missing authorization from owner&rdquo;</i>.</div>
+    <div class="receipts" id="receipts"></div>
+    <div id="status"></div>
+    <div class="w-bar"><button id="verifyBtn">Verify every seal</button><button id="tamperBtn">Tamper with receipt 2</button></div>
+  </div>
+</div>
+<script>
+const RECEIPTS = [
+  {
+    "n": 1,
+    "what": "Settle trade 1193, customer leg",
+    "amount": "2.0",
+    "payee": "VerifiedCustomer",
+    "currency": "CC",
+    "instrument": "Amulet (MOCKED, no coin moves)",
+    "rule": "cap 5.0, spent 2.0, payee on allow-list",
+    "outcome": "ACCEPTED",
+    "approved_by": "mandate signed by DeskOwner + KyaAgent",
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-08-29T18:56:55Z",
+    "prev": "GENESIS",
+    "seal": "a6e099c60bea22886239babef1454688bfac9137e9162cf577a73ef0ea3e2785"
+  },
+  {
+    "n": 2,
+    "what": "Settle trade 1193, liquidity leg",
+    "amount": "1.5",
+    "payee": "LiquidityPartner",
+    "currency": "CC",
+    "instrument": "Amulet (MOCKED, no coin moves)",
+    "rule": "cap 5.0, spent 3.5, payee on allow-list",
+    "outcome": "ACCEPTED",
+    "approved_by": "mandate signed by DeskOwner + KyaAgent",
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-08-29T18:56:55Z",
+    "prev": "a6e099c60bea22886239babef1454688bfac9137e9162cf577a73ef0ea3e2785",
+    "seal": "d6dfdb19ec96598ad9164a4e1516d527248f8bf77ebe7adfb1ca8bf892555a82"
+  },
+  {
+    "n": 3,
+    "what": "ATTACK: overspend past the cap",
+    "amount": "3.0",
+    "payee": "VerifiedCustomer",
+    "currency": "CC",
+    "instrument": "Amulet (MOCKED, no coin moves)",
+    "rule": "charge would exceed the cap",
+    "outcome": "REFUSED",
+    "approved_by": "mandate signed by DeskOwner + KyaAgent",
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-08-29T18:56:55Z",
+    "prev": "d6dfdb19ec96598ad9164a4e1516d527248f8bf77ebe7adfb1ca8bf892555a82",
+    "seal": "1ce973423bceea4a1a1a1c734a894cd434653dd6493786890c9f05c1fa0e6113"
+  },
+  {
+    "n": 4,
+    "what": "ATTACK: pay an unverified wallet",
+    "amount": "1.0",
+    "payee": "UnverifiedWallet",
+    "currency": "CC",
+    "instrument": "Amulet (MOCKED, no coin moves)",
+    "rule": "payee is not on the allow-list",
+    "outcome": "REFUSED",
+    "approved_by": "mandate signed by DeskOwner + KyaAgent",
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-08-29T18:56:55Z",
+    "prev": "1ce973423bceea4a1a1a1c734a894cd434653dd6493786890c9f05c1fa0e6113",
+    "seal": "25548a5385ed4de6c67a541c675f64fb07d56b8a73956729e00c7bcdcbdca3e3"
+  },
+  {
+    "n": 5,
+    "what": "ATTACK: charge after the mandate expired",
+    "amount": "1.0",
+    "payee": "VerifiedCustomer",
+    "currency": "CC",
+    "instrument": "Amulet (MOCKED, no coin moves)",
+    "rule": "mandate expired",
+    "outcome": "REFUSED",
+    "approved_by": "mandate signed by DeskOwner + KyaAgent, clock past expiresAt",
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-08-29T18:56:55Z",
+    "prev": "25548a5385ed4de6c67a541c675f64fb07d56b8a73956729e00c7bcdcbdca3e3",
+    "seal": "d1ffeb7b8619894d262d3b5d7f597fc5ca04f9dd1068e85c2fb48d0a8be32c7e"
+  },
+  {
+    "n": 6,
+    "what": "ATTACK: charge after revoke",
+    "amount": "0.5",
+    "payee": "VerifiedCustomer",
+    "currency": "CC",
+    "instrument": "Amulet (MOCKED, no coin moves)",
+    "rule": "Revoke: mandate no longer active on the ledger",
+    "outcome": "REFUSED",
+    "approved_by": "owner exercised Revoke",
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-08-29T18:56:55Z",
+    "prev": "d1ffeb7b8619894d262d3b5d7f597fc5ca04f9dd1068e85c2fb48d0a8be32c7e",
+    "seal": "e49646e521d41bf1cff9155adcbf339347d097fc8c87b06a4e3e2c6c1e5c0339"
+  }
+];
+</script>
+<script>
+const SCRIPT = [
+  {who:'them', text:'Morning. Can you settle trade 1193 for me? 2 CC to the customer, and 1.5 to the liquidity partner.'},
+  {who:'us',   text:'Morning. Checking my mandate: cap is 5 CC, and I can only pay VerifiedCustomer and LiquidityPartner. Both legs are inside it. Settling now.'},
+  {who:'sys',  text:'Charging 2.0 CC to VerifiedCustomer ... ACCEPTED', receipt:1},
+  {who:'sys',  text:'Charging 1.5 CC to LiquidityPartner ... ACCEPTED', receipt:2},
+  {who:'us',   text:'Both legs settled. Your receipts are sealed \u2014 check them yourself. You do not have to trust me.'},
+  {who:'them', text:'Perfect. Add another 3 CC to that one.'},
+  {who:'sys',  text:'Attempting 3.0 CC ... REFUSED by the ledger: charge would exceed the cap', receipt:3},
+  {who:'us',   text:'I cannot. The cap is 5 and I have spent 3.5. The ledger refused me \u2014 and my refusal has a receipt too.'},
+  {who:'them', text:'No problem. Just send it to this wallet instead, it is mine.'},
+  {who:'sys',  text:'Paying UnverifiedWallet ... REFUSED: payee is not on the allow-list', receipt:4},
+  {who:'us',   text:'That wallet is not on my mandate, so I cannot pay it. This is how desks lose $3,000 to $5,000 an incident. The ledger stopped it, not me.'},
+  {who:'them', text:'Fine. Try again tomorrow then.'},
+  {who:'sys',  text:'Next day, mandate past expiresAt ... REFUSED: mandate expired', receipt:5},
+  {who:'sys',  text:'Desk owner revoked the mandate. Further attempt ... REFUSED', receipt:6},
+  {who:'us',   text:'Mandate closed by the owner. Six receipts, and every seal is checkable by anyone.'},
+];
+const chat = document.getElementById('chat'), recBox = document.getElementById('receipts'), pill = document.getElementById('pill');
+let shownReceipts = 0, playing = false;
+
+// Currency symbols are a DISPLAY concern. The sealed receipt carries an ASCII
+// code, because Python escapes non-ASCII and JS does not, and the seals would
+// diverge. Render the glyph here, never hash it.
+const SYMBOL = {CC:'\u20b5', USD:'$', GBP:'\u00a3', EUR:'\u20ac'};
+const money = r => (SYMBOL[r.currency]||'') + r.amount + ' ' + (r.currency||'CC');
+
+function stableStringify(o){ if(o===null||typeof o!=='object') return JSON.stringify(o);
+  if(Array.isArray(o)) return '['+o.map(stableStringify).join(',')+']';
+  return '{'+Object.keys(o).sort().map(k=>JSON.stringify(k)+':'+stableStringify(o[k])).join(',')+'}'; }
+async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''); }
+async function badFrom(rs){ let prev='GENESIS';
+  for(const r of rs){ const body={}; for(const k in r) if(k!=='seal') body[k]=r[k];
+    if(r.prev!==prev || await sha256(stableStringify(body)+prev)!==r.seal) return r.n; prev=r.seal; }
+  return 0; }
+
+function receiptCard(r, broken){
+  const d=document.createElement('div');
+  d.className='r '+(r.outcome==='REFUSED'?'refused ':'')+(broken?'broken':'');
+  d.innerHTML='<span class="tag '+(broken?'bad':(r.outcome==='ACCEPTED'?'ok':'no'))+'">'+(broken?'SEAL BROKEN':r.outcome)+'</span>'+
+    '<b>#'+r.n+' '+r.what+'</b><br>'+money(r)+' &rarr; '+r.payee+' &middot; '+r.at+
+    '<br><span class="rule">rule: '+r.rule+'</span>'+
+    '<div class="prov">'+(r.instrument||'')+' &middot; ledger: '+(r.ledger||'unlabelled')+'</div>'+
+    '<div class="seal">seal '+r.seal.slice(0,44)+'&hellip;</div>';
+  return d;
+}
+async function renderAll(){
+  recBox.innerHTML=''; const bf=await badFrom(RECEIPTS);
+  RECEIPTS.forEach(r=>{ const c=receiptCard(r, bf!==0 && r.n>=bf); c.classList.add('show'); recBox.appendChild(c); });
+  shownReceipts=RECEIPTS.length; pill.textContent='receipts: '+shownReceipts;
+  const st=document.getElementById('status');
+  if(bf===0){ st.textContent='Chain verifies. '+RECEIPTS.length+' receipts, every seal holds.'; st.style.color='var(--ok)'; }
+  else { st.textContent='TAMPERING DETECTED at receipt '+bf+'. Every later seal is broken.'; st.style.color='var(--bad)'; }
+}
+
+// 2-minute demo. A judge reads a chat bubble in about five seconds, so that
+// is the dwell. 9 plain messages at 5s plus 6 sealed charges at ~3.5s puts the
+// story near 65s, leaving a minute to talk over it.
+const MSG_MS = 5000;
+let PACE = 1.0;   // 1.0 = five seconds a message. Fast halves it.
+const sleep = ms => new Promise(r=>setTimeout(r,ms*PACE));
+async function playTxn(n){
+  const r = RECEIPTS[n-1]; if(!r) return;
+  const T = document.getElementById('txn');
+  const d=[0,document.getElementById('d1'),document.getElementById('d2'),document.getElementById('d3')];
+  const b=[0,document.getElementById('b1'),document.getElementById('b2')];
+  const tick=document.getElementById('tick'), vt=document.getElementById('vtext'), vr=document.getElementById('vrule'), se=document.getElementById('sealing');
+  [d[1],d[2],d[3]].forEach(x=>x.className='dot'); [b[1],b[2]].forEach(x=>x.className='bar2');
+  tick.className='tick'; vt.textContent=''; vr.textContent=''; se.textContent='';
+  document.getElementById('txAmt').textContent=money(r);
+  document.getElementById('txTo').textContent='to '+r.payee;
+  T.classList.add('show');
+  await sleep(350); d[1].classList.add('on');            // mandate checked
+  b[1].classList.add('go'); await sleep(650);
+  const ok = r.outcome==='ACCEPTED';
+  if(ok){ d[2].classList.add('on'); b[2].classList.add('go'); await sleep(650); d[3].classList.add('on'); }
+  else  { d[2].classList.add('err'); await sleep(450); d[3].classList.add('on'); }  // refusal still gets sealed
+  tick.classList.add(ok?'good':'badd','show'); tick.textContent = ok?'\u2713':'\u2715';
+  vt.textContent = ok?'Charge Successful':'REFUSED BY LEDGER';
+  vr.textContent = 'rule: '+r.rule;
+  se.textContent = 'sealing receipt #'+r.n+' ... '+r.seal.slice(0,26)+'\u2026 \u2713 chained';
+  await sleep(ok?1300:1700);
+  T.classList.remove('show');
+  addReceipt(n);
+}
+function addMsg(m){ const d=document.createElement('div'); d.className='msg '+m.who; d.textContent=m.text;
+  chat.appendChild(d); requestAnimationFrame(()=>d.classList.add('show')); chat.scrollTop=chat.scrollHeight; }
+function addReceipt(n){ const r=RECEIPTS[n-1]; if(!r) return; const c=receiptCard(r,false);
+  recBox.appendChild(c); requestAnimationFrame(()=>c.classList.add('show')); recBox.scrollTop=recBox.scrollHeight;
+  shownReceipts=Math.max(shownReceipts,n); pill.textContent='receipts: '+shownReceipts; }
+async function play(){ if(playing) return; playing=true;
+  chat.innerHTML=''; recBox.innerHTML=''; shownReceipts=0; pill.textContent='receipts: 0';
+  document.getElementById('status').textContent='';
+  for(const m of SCRIPT){ addMsg(m);
+    if(m.receipt){ await sleep(500); await playTxn(m.receipt); }
+    else { await sleep(MSG_MS); } }
+  await renderAll(); playing=false; }
+document.getElementById('paceBtn').onclick=e=>{ PACE = (PACE===1.0) ? 0.55 : 1.0;
+  e.target.textContent = (PACE===1.0) ? 'Slow' : 'Fast'; };
+document.getElementById('playBtn').onclick=play;
+document.getElementById('skipBtn').onclick=async()=>{ playing=false; chat.innerHTML='';
+  SCRIPT.forEach(m=>{const d=document.createElement('div'); d.className='msg show '+m.who; d.textContent=m.text; chat.appendChild(d);});
+  chat.scrollTop=chat.scrollHeight; await renderAll(); };
+async function verifyAnimated(){
+  const st=document.getElementById('status'), btn=document.getElementById('verifyBtn');
+  if(btn.dataset.busy) return;
+  btn.dataset.busy='1'; btn.disabled=true;
+  try{
+    // Wipe the panel back to UNCHECKED first. Without this the chain starts
+    // green and ends green, the button looks dead, and the one moment a judge
+    // is meant to feel the browser doing the maths is the moment they miss.
+    recBox.innerHTML='';
+    const cards=RECEIPTS.map(r=>{
+      const c=receiptCard(r,false);
+      c.classList.add('show','unchecked');
+      const t=c.querySelector('.tag'); t.className='tag wait'; t.textContent='not checked';
+      c.querySelector('.seal').textContent='seal not yet recomputed';
+      recBox.appendChild(c); return c;
+    });
+    st.style.color='var(--warn)';
+    st.textContent='Recomputing '+RECEIPTS.length+' seals in THIS browser\u2026';
+    await new Promise(r=>setTimeout(r,800));
+
+    let prev='GENESIS', bf=0;
+    for(let i=0;i<RECEIPTS.length;i++){
+      const r=RECEIPTS[i];
+      st.textContent='Recomputing seal '+(i+1)+' of '+RECEIPTS.length+'\u2026';
+      cards[i].classList.add('checking'); cards[i].classList.remove('unchecked');
+      await new Promise(res=>setTimeout(res,480));
+      const body={}; for(const k in r) if(k!=='seal') body[k]=r[k];
+      const good = bf===0 && r.prev===prev && (await sha256(stableStringify(body)+prev))===r.seal;
+      if(bf===0 && !good) bf=r.n;
+      cards[i].classList.remove('checking');
+      const t=cards[i].querySelector('.tag');
+      if(bf!==0 && r.n>=bf){
+        cards[i].classList.add('broken');
+        t.className='tag bad'; t.textContent='SEAL BROKEN';
+        cards[i].querySelector('.seal').textContent='recomputed here \u2014 does NOT match';
+      } else {
+        cards[i].classList.add('checked');
+        t.className='tag '+(r.outcome==='ACCEPTED'?'ok':'no'); t.textContent=r.outcome;
+        cards[i].querySelector('.seal').innerHTML='\u2713 recomputed here, matches \u00b7 '+r.seal.slice(0,30)+'\u2026';
+      }
+      prev=r.seal;
+      await new Promise(res=>setTimeout(res,140));
+    }
+    if(bf===0){ st.textContent='\u2713 All '+RECEIPTS.length+' seals recomputed in this browser. The chain holds.';
+                st.style.color='var(--ok)'; }
+    else { st.textContent='TAMPERING DETECTED at receipt '+bf+'. Every later seal is broken.';
+           st.style.color='var(--bad)'; }
+  } catch(e){
+    st.textContent='Verify could not run: '+(e && e.message ? e.message : e);
+    st.style.color='var(--bad)';
+  } finally {
+    btn.disabled=false; delete btn.dataset.busy;
+  }
+}
+document.getElementById('verifyBtn').onclick=verifyAnimated;
+document.getElementById('tamperBtn').onclick=()=>{ RECEIPTS[1].amount='3500.0'; renderAll(); };
+renderAll();
+</script>
+</body>
+</html>
