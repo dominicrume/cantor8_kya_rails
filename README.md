@@ -56,12 +56,29 @@ makes it a rule.
 
 ## Quick start
 
-Offline, no network, no install. Python is stdlib only.
+Offline, no network, no install, no server. Python is stdlib only.
 
 ```bash
 python3 step-2-agent/agent.py          # writes step-3-verify/receipts.js
 open step-3-verify/verifier.html       # press Play, then Verify, then Tamper
 ```
+
+### Demoing it
+
+Three ways, in order of preference. None of them require a working venue network.
+
+1. **From the repo** — `open step-3-verify/verifier.html`. Your machine, your
+   file, no network at all.
+2. **One file you can hand over** — `step-3-verify/kya-rails-standalone.html`
+   has the receipts inlined, so it is a single document that opens by
+   double-click on any machine. Email it, AirDrop it, put it on a USB stick.
+   Rebuild it after any run with `python3 step-3-verify/build-standalone.py`.
+3. **A local URL, if a browser is fussy about `file://`** —
+   `cd step-3-verify && python3 -m http.server 8000`, then open
+   `http://localhost:8000/verifier.html`. Still entirely on your machine.
+
+The demo must never be blocked by wifi. That is a design constraint, not an
+accident: see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Against real Canton DevNet:
 
@@ -171,6 +188,13 @@ That is why the spending rules are still in Daml and not in Python, and why
 swapping the ledger backend was a one-file change.
 
 ---
+
+## Licence
+
+[MIT](LICENSE). Copyright (c) 2026 Rume Dominic (O'Rume Dominic Uririe).
+
+The licence covers the code in this repository. It grants no rights in the
+"KYA" and "KYA Rails" names or in the KYA Framework as a body of work.
 
 ## Credits
 
