@@ -1,0 +1,141 @@
+-- KyaTest: the attack suite for KyaMandate.
+--
+-- Every script is named after the attack it proves, so `daml test` output IS
+-- the scoreboard we take to judging. THE-RULES.md: no claim without a number
+-- behind it. These are the numbers.
+--
+-- NOT in this file: no receipt logic. The ledger enforces; the chain observes.
+module KyaTest where
+
+import DA.Time (RelTime, addRelTime, hours)
+import Daml.Script
+import KyaMandate
+
+-- The desk and the destinations it might pay.
+--
+-- customer and partner are on the allow-list. unverified is deliberately NOT:
+-- it stands for the attacker who watched a public chain, saw a customer's
+-- deposit land, claimed it as their own, and supplied their own payout
+-- destination. That fraud cost this desk $3,000-$5,000 per incident.
+data Desk = Desk with
+  owner      : Party
+  agent      : Party
+  customer   : Party
+  partner    : Party
+  unverified : Party
+
+-- A live mandate: cap 100, two allow-listed destinations, expiring `life` from now.
+deskWithExpiry : RelTime -> Script (Desk, ContractId KyaMandate)
+deskWithExpiry life = script do
+  owner      <- allocateParty "DeskOwner"
+  agent      <- allocateParty "KyaAgent"
+  customer   <- allocateParty "VerifiedCustomer"
+  partner    <- allocateParty "LiquidityPartner"
+  unverified <- allocateParty "UnverifiedWallet"
+  now <- getTime
+
+  -- Propose and accept. The mandate needs BOTH signatures, so the agent
+  -- consents to its own leash. This is what makes every receipt's
+  -- "approved_by" line literally true.
+  prop <- submit owner do
+    createCmd KyaMandateProposal with
+      owner
+      spender = agent
+      cap = 100.0
+      expiresAt = addRelTime now life
+      allowed = [customer, partner]
+  m <- submit agent do exerciseCmd prop Accept
+
+  let d = Desk with owner; agent; customer; partner; unverified
+  pure (d, m)
+
+desk : Script (Desk, ContractId KyaMandate)
+desk = deskWithExpiry (hours 24)
+
+-- 1. The desk settles two legs inside its cap, to allow-listed destinations.
+--    No owner signature needed for either. That is the point of a mandate.
+testChargeUnderCapAccepted : Script ()
+testChargeUnderCapAccepted = script do
+  (d, m0) <- desk
+  m1 <- submit d.agent do
+    exerciseCmd m0 Charge with
+      amount = 40.0; payee = d.customer; memo = "trade 1193 settle customer"
+  _ <- submit d.agent do
+    exerciseCmd m1 Charge with
+      amount = 35.0; payee = d.partner; memo = "trade 1193 liquidity leg"
+  pure ()
+
+-- 2. 40 + 35 = 75 spent. A further 60 would reach 135 against a cap of 100.
+--    Refused by the cap assertion in the Charge body.
+testOverCapRefused : Script ()
+testOverCapRefused = script do
+  (d, m0) <- desk
+  m1 <- submit d.agent do
+    exerciseCmd m0 Charge with amount = 40.0; payee = d.customer; memo = "leg 1"
+  m2 <- submit d.agent do
+    exerciseCmd m1 Charge with amount = 35.0; payee = d.partner; memo = "leg 2"
+  submitMustFail d.agent do
+    exerciseCmd m2 Charge with
+      amount = 60.0; payee = d.customer; memo = "would exceed the cap"
+
+-- 3. THE ONE THAT MATTERS.
+--    An attacker talks the agent into paying a destination the desk owner
+--    never authorised. Refused by the allow-list assertion in the Charge body.
+--
+--    The same amount is then paid to an ALLOW-LISTED destination and succeeds.
+--    That proves the refusal is about WHO, not about HOW MUCH -- it cannot be
+--    dismissed as a cap artefact.
+testPayoutRedirectionRefused : Script ()
+testPayoutRedirectionRefused = script do
+  (d, m0) <- desk
+  submitMustFail d.agent do
+    exerciseCmd m0 Charge with
+      amount = 10.0
+      payee = d.unverified
+      memo = "attacker claims the customer's deposit, supplies own destination"
+  _ <- submit d.agent do
+    exerciseCmd m0 Charge with
+      amount = 10.0; payee = d.customer; memo = "same amount, authorised destination"
+  pure ()
+
+-- 4. The owner revokes. Revoke is consuming and creates nothing, so the
+--    mandate stops existing. There is no flag to race and nothing left to
+--    charge against. The agent cannot block or delay it.
+testAfterRevokeRefused : Script ()
+testAfterRevokeRefused = script do
+  (d, m0) <- desk
+  submit d.owner do exerciseCmd m0 Revoke
+  submitMustFail d.agent do
+    exerciseCmd m0 Charge with
+      amount = 5.0; payee = d.customer; memo = "after the owner revoked"
+
+-- 5. Expiry. A field called expiresAt enforces nothing on its own -- the
+--    assertion in the Charge body is what makes it a rule. The organisers
+--    call this out as a real audit finding on production Canton code.
+testAfterExpiryRefused : Script ()
+testAfterExpiryRefused = script do
+  (d, m0) <- deskWithExpiry (hours 1)
+  passTime (hours 2)
+  submitMustFail d.agent do
+    exerciseCmd m0 Charge with
+      amount = 5.0; payee = d.customer; memo = "after the mandate expired"
+
+-- 6. The agent cannot widen its own limit: Adjust needs BOTH signatures.
+--    Then the owner signs alongside it and the same change succeeds, which
+--    shows the fence has a gate and only the owner holds it.
+testSpenderCannotRaiseOwnCap : Script ()
+testSpenderCannotRaiseOwnCap = script do
+  (d, m0) <- desk
+  submitMustFail d.agent do exerciseCmd m0 Adjust with newCap = 100000.0
+  _ <- submitMulti [d.owner, d.agent] [] do
+    exerciseCmd m0 Adjust with newCap = 200.0
+  pure ()
+
+-- 7. The owner cannot spend through the agent's choice. `controller spender`
+--    IS the check; nobody wrote a permission test for this.
+testOwnerCannotChargeAsSpender : Script ()
+testOwnerCannotChargeAsSpender = script do
+  (d, m0) <- desk
+  submitMustFail d.owner do
+    exerciseCmd m0 Charge with
+      amount = 1.0; payee = d.customer; memo = "owner using the spender's choice"
