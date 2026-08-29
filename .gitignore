@@ -1,0 +1,24 @@
+# Secrets. THE-RULES.md: "No secrets in this repo. Ever."
+# Hackathon credentials live in the shell only, never in a file.
+.env
+.env.*
+*.secret
+*.pem
+secrets/
+
+# Daml build output
+.daml/
+*.dar
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Auditor: spec.yaml IS committed on purpose — it records what was asked for.
+# Only its working data is ignored.
+.auditor/cache/
+.auditor/sessions/
+.auditor/*.db

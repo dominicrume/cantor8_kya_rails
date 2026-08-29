@@ -1,0 +1,61 @@
+-- KyaMandate: extends the Cantor8 hackathon starter Mandate.daml (credit: Cantor8 toolkit)
+-- Additions for KYA Rails: counterparty allow-list, charge memo for the audit trail.
+-- The cap is enforced HERE. A cap checked in Python is a suggestion.
+module KyaMandate where
+
+template KyaMandate
+  with
+    owner     : Party
+    spender   : Party        -- the AI agent
+    cap       : Decimal
+    spent     : Decimal
+    expiresAt : Time
+    allowed   : [Party]      -- counterparties the agent may pay
+  where
+    ensure cap > 0.0 && spent >= 0.0 && spent <= cap
+
+    signatory owner, spender
+
+    choice Charge : ContractId KyaMandate
+      with
+        amount : Decimal
+        payee  : Party
+        memo   : Text
+      controller spender
+      do
+        now <- getTime
+        assertMsg "mandate expired" (now < expiresAt)
+        assertMsg "amount must be positive" (amount > 0.0)
+        assertMsg "charge would exceed the cap" (spent + amount <= cap)
+        assertMsg "payee is not on the allow-list" (payee `elem` allowed)
+        create this with spent = spent + amount
+
+    choice Revoke : ()
+      controller owner
+      do pure ()
+
+    choice Adjust : ContractId KyaMandate
+      with newCap : Decimal
+      controller owner, spender
+      do
+        assertMsg "new cap below what is already spent" (newCap >= spent)
+        create this with cap = newCap
+
+template KyaMandateProposal
+  with
+    owner     : Party
+    spender   : Party
+    cap       : Decimal
+    expiresAt : Time
+    allowed   : [Party]
+  where
+    signatory owner
+    observer spender
+
+    choice Accept : ContractId KyaMandate
+      controller spender
+      do create KyaMandate with owner; spender; cap; spent = 0.0; expiresAt; allowed
+
+    choice Reject : ()
+      controller spender
+      do pure ()
