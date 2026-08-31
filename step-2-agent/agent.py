@@ -5,6 +5,7 @@ NOT list in THE-JOB.md holding: no spending rule lives in this file.
 
     python3 agent.py              MOCKED, offline, mirrors KyaMandate.daml
     python3 agent.py --devnet     real Canton DevNet, needs C8_CLIENT_SECRET
+    python3 agent.py --devnet --move-coin   and actually move the Amulet
 
 The situation: a principal in one country, an operator executing payouts in
 another, and a float the principal cannot stand next to. The operator may pay
@@ -72,7 +73,7 @@ class MockLedger:
 def build_ledger(argv):
     if "--devnet" in argv:
         from devnet_ledger import DevNetLedger
-        return DevNetLedger()
+        return DevNetLedger(move_coin="--move-coin" in argv)
     return MockLedger()
 
 

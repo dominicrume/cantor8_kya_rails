@@ -141,6 +141,29 @@ def _created(r, entity="KyaMandate"):
             return c.get("contractId")
 
 
+def discover_admin():
+    """The instrument issuer, taken from a holding we can already see.
+
+    c8lab.dso_party() scans /v2/parties for a party starting with "DSO::". On
+    the shared DevNet validator that list is paginated over thousands of
+    entries and the DSO is not in the page returned, so the lookup fails with
+    "could not find the DSO party" -- which reads like the network is not
+    ready. Every Amulet holding names its admin, so ask a holding instead.
+    """
+    for party in (PARTY["agent"], PARTY["owner"]):
+        ok, hs = _retry(lambda: c8lab.holdings(party, sub=USER), tries=4)
+        if ok and hs:
+            return hs[0]["admin"]
+    return None
+
+
+def _spendable(party):
+    ok, hs = _retry(lambda: c8lab.holdings(party, sub=USER), tries=4)
+    if not ok:
+        return 0.0
+    return sum(float(h["amount"] or 0) for h in hs if not h["locked"])
+
+
 def _active_mandates(expires_at=None):
     """Live KyaMandate contracts for the agent.
 
@@ -186,7 +209,12 @@ class DevNetLedger:
     label = "DevNet (real Canton, package %s)" % PKG[:12]
     # Canton Coin. The mandate records the spend; it does not move the
     # coin yet -- see SHORTCUTS.md. Saying so is cheaper than being caught.
-    currency, instrument = "CC", "Amulet (recorded, not transferred)"
+    currency = "CC"
+
+    @property
+    def instrument(self):
+        return ("Amulet (transferred on DevNet)" if self.move_coin
+                else "Amulet (recorded, not transferred)")
 
     def name(self, role):
         """On the real rail the receipt names the actual on-ledger party, so a
@@ -194,11 +222,22 @@ class DevNetLedger:
         from agent import NAMES
         return "%s (%s)" % (NAMES[role], PARTY[role].split("::")[0])
 
-    def __init__(self):
+    def __init__(self, move_coin=False):
         _configure()
         self.cid = None
         self.revoked = False
         self.exp = None
+        # Off by default: a real transfer is two round trips plus an accept,
+        # and the demo should not need them to prove the fences. On, the
+        # mandate stops being a record of a payout and becomes the payout.
+        self.move_coin = move_coin
+        if move_coin:
+            admin = discover_admin()
+            if not admin:
+                raise RuntimeError("cannot find the instrument admin; no holdings visible")
+            c8lab.ADMIN_PARTY = admin
+            os.environ["C8_ADMIN_PARTY"] = admin
+            self.admin = admin
 
     def open_mandate(self, cap=5.0, life_seconds=86400,
                      period_limit=None, period_seconds=None):
@@ -266,7 +305,38 @@ class DevNetLedger:
         if not ok:
             return "REFUSED", _rule(str(r))
         self.cid = _created(r, "KyaMandate") or self.cid
-        return "ACCEPTED", "cap and allow-list satisfied, committed on DevNet"
+        if not self.move_coin:
+            return "ACCEPTED", "cap and allow-list satisfied, committed on DevNet"
+
+        # The mandate authorised it. Now actually move the Amulet.
+        #
+        # The charge is already committed, so a failure here cannot be rolled
+        # back -- it is an authorised payout that did not settle. That is a
+        # real operational state and the receipt says so rather than implying
+        # money moved when it did not.
+        moved, detail = self._settle(amount, PARTY.get(payee, payee))
+        if moved:
+            return "ACCEPTED", "authorised by the mandate and settled on DevNet: " + detail
+        return "ACCEPTED", "AUTHORISED but NOT SETTLED: " + detail
+
+    def _settle(self, amount, receiver):
+        """Move Amulet for a charge the mandate has already authorised."""
+        ok, r = _retry(lambda: c8lab.transfer(PARTY["agent"], receiver,
+                                              "%.1f" % amount, sub=USER), tries=4)
+        if not ok:
+            return False, str(r)[:110]
+        kind = r.get("transferKind")
+        if kind == "offer" and r.get("instructionCid"):
+            # No TransferPreapproval, so it lands as an offer the receiver
+            # accepts. We hold act-as on our own parties, so we can.
+            ok2, r2 = _retry(lambda: c8lab.accept_transfer(
+                r["instructionCid"], receiver, sub=USER), tries=4)
+            if not ok2:
+                return False, "offer created but not accepted: " + str(r2)[:90]
+            return True, "%.1f Amulet transferred (offer accepted)" % amount
+        if kind == "direct":
+            return True, "%.1f Amulet transferred (direct)" % amount
+        return False, "unexpected transferKind: %s" % kind
 
     def revoke(self):
         _submit([{"ExerciseCommand": {

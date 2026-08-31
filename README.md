@@ -80,7 +80,7 @@ country and deciding whether to trust the person who produced it.
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
 | Receipt chain | 6 receipts, 2 accepted, 4 refused, chain verifies end to end |
 | Tamper evident | edit one receipt, every later seal breaks |
-| Real Canton Coin held | 5.0000 Amulet, unlocked, in `kya-agent-1` |
+| Real Canton Coin moved | 5.0 CC split by mandate-authorised transfers: agent 1.4, recipient 2.1, partner 1.5, **unverified 0.0**, total conserved |
 
 The expiry proof is the strongest single piece of evidence: **the same mandate,
 same payee, same amount — ACCEPTED at T, REFUSED at T+100s on a real clock.**
@@ -214,9 +214,14 @@ Honesty is scored, and overclaiming loses.
 - **The demo rail is labelled on every receipt**, inside the seal, as either
   `DevNet (real Canton, package …)` or `MOCKED (mirrors KyaMandate.daml)`. A
   judge can tell which produced the artefact in front of them without asking.
-- **The coin does not move.** `Charge` records the spend on-ledger; it does not
-  transfer Canton Coin. The 5 CC in `kya-agent-1` is untouched. Every receipt
-  says `Amulet (recorded, not transferred)`.
+- **The coin moves, on DevNet only.** `--devnet --move-coin` authorises the
+  payout on the mandate and then transfers real Amulet; receipts say
+  `Amulet (transferred on DevNet)` and name the settlement. Without that flag
+  the mandate records the authorisation and nothing moves, which the receipt
+  also says. DevNet Amulet is test currency and worth nothing anywhere else.
+- **Authorisation and settlement are two steps, and can disagree.** The charge
+  commits first. If the transfer then fails it cannot be rolled back, so the
+  receipt reads `AUTHORISED but NOT SETTLED` rather than implying money moved.
 - **`MockLedger` mirrors the Daml assertions in Python** so the demo survives a
   dead venue network. It is labelled MOCKED in code, in the receipt, and on the
   page.
