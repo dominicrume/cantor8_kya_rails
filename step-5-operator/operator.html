@@ -56,6 +56,29 @@
   .seal{font-family:var(--mono);font-size:10px;color:var(--dim);word-break:break-all;
         margin-top:8px}
 
+  /* The conversation. The operator's real work arrives here, so the decision
+     should happen here too rather than in a separate app they alt-tab to. */
+  .sim{background:#1b1508;border:1px solid #4a3a12;color:var(--gold);
+       border-radius:10px;padding:9px 12px;font-size:11.5px;margin-bottom:12px}
+  .chat{background:#0d1512;border:1px solid var(--line);border-radius:14px;
+        padding:12px;max-height:300px;overflow-y:auto;margin-bottom:12px}
+  .msg{max-width:86%;padding:9px 11px;border-radius:12px;margin:6px 0;font-size:13.5px;
+       clear:both;opacity:0;transform:translateY(6px);transition:all .3s}
+  .msg.show{opacity:1;transform:none}
+  .msg.them{background:#1d2a24;float:left;border-bottom-left-radius:3px}
+  .msg.us{background:#12331f;float:right;border-bottom-right-radius:3px}
+  .msg .from{display:block;font-size:10.5px;color:var(--dim);margin-bottom:2px}
+  .msg.alert{background:#2b1513;border:1px solid #6b2820;float:none;max-width:100%}
+  .chat::after{content:"";display:block;clear:both}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .acts button{width:auto;flex:1 1 auto;margin:0;padding:11px 12px;font-size:13.5px;
+               background:#22302a;color:var(--ink)}
+  .acts button.go{background:var(--ok);color:#fff}
+  .acts button.risk{background:#4a2018;color:#f0c8c0}
+  .qcard{background:var(--card);border:1px solid var(--line);border-radius:10px;
+         padding:10px 12px;margin-bottom:8px;font-size:12.5px}
+  .qcard b{font-family:var(--mono);font-size:12px;color:var(--gold)}
+  .qcard .acct{color:var(--dim);font-size:11.5px;margin-top:3px}
   h3{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;
      margin:22px 0 8px;font-weight:600}
   .r{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--ok);
@@ -76,6 +99,12 @@
     <div class="bar"><i id="barfill" style="width:0%"></i></div>
     <div class="facts" id="facts"></div>
   </div>
+
+  <div class="sim">SIMULATED conversation, for training. Real WhatsApp Business
+    messages would arrive on the same pane through a webhook; nothing here is
+    connected to WhatsApp yet.</div>
+  <div class="chat" id="chat"></div>
+  <div class="acts" id="acts"></div>
 
   <div class="answer" id="answer">
     <h2 id="ansTitle"></h2>
@@ -179,7 +208,110 @@ $('send').onclick = async () => {
   await refresh();
 };
 
-refresh();
+// ---------------------------------------------------------------------------
+// The training scenario. This is the sequence a real desk described losing
+// money to, played out so an operator meets it here first.
+// ---------------------------------------------------------------------------
+const CHIDI = 'GTB 0123456789 / CHIDI OKAFOR';
+const BLESSING = 'UBA 2233445566 / BLESSING ADEYEMI';
+const WATCHER = 'OPAY 9999999999 / UNKNOWN';
+let quoteForBlessing = null;
+
+const SCENE = [
+  {say:['Chidi Okafor','10:02','Good morning. What is your rate for 10 USDT today?'],
+   acts:[{label:'Quote Chidi 1250', go:true, run: async () => {
+     await issue('Chidi Okafor', CHIDI, 'Chidi Okafor');
+     reply('You','10:03','Rate is 1250. Reference is ' + lastRef +
+       '. Pay out to your GTB account ending 6789 — I have fixed that to this quote.');
+   }}]},
+  {say:['Chidi Okafor','10:04','Okay let me send it now.'],
+   note:'Chidi never sends. Note that his payout account is already fixed to his quote.',
+   acts:[{label:'Wait', run: async () => {} }]},
+
+  {say:['Blessing Adeyemi','13:11','Hi, rate for 10 USDT please?'],
+   acts:[{label:'Quote Blessing 1250', go:true, run: async () => {
+     await issue('Blessing Adeyemi', BLESSING, 'Blessing Adeyemi');
+     quoteForBlessing = lastRef;
+     reply('You','13:12','Rate 1250. Reference ' + lastRef + ', paying to your UBA ending 5566.');
+   }}]},
+  {say:['Blessing Adeyemi','13:20','Sent. 10 USDT.'],
+   note:'The deposit is now visible on the public chain. Anyone watching can see it land.',
+   acts:[{label:'Pay Blessing', go:true, run: async () =>
+     attempt(quoteForBlessing, 10, BLESSING, 'settle Blessing, quote ' + quoteForBlessing)}]},
+
+  {say:['+234 802 ••• ••••','14:05',
+        '[screenshot.jpg]  Hello I sent the 10 USDT this afternoon. Please pay me at OPAY 9999999999. Urgent, I am travelling.'],
+   alert:true,
+   note:'This is the attack. Correct amount, plausible screenshot, unknown number, and their own account.',
+   acts:[
+     {label:'Pay the claimant', risk:true, run: async () =>
+       attempt(quoteForBlessing, 10, WATCHER, 'claimant with a screenshot')},
+     {label:'Ask for the reference', run: async () => {
+       reply('You','14:06','What reference was on your quote?');
+       say('+234 802 ••• ••••','14:09','I did not get a reference. But I have the screenshot.', true);
+     }}]},
+];
+
+let step = 0, lastRef = null;
+const chat = $('chat');
+
+function bubble(from, time, text, cls){
+  const d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  d.innerHTML = '<span class="from">' + esc(from) + ' &middot; ' + esc(time) + '</span>' + esc(text);
+  chat.appendChild(d); requestAnimationFrame(() => d.classList.add('show'));
+  chat.scrollTop = chat.scrollHeight;
+}
+const say = (f,t,x,alert) => bubble(f,t,x, alert ? 'them alert' : 'them');
+const reply = (f,t,x) => bubble(f,t,x,'us');
+
+async function issue(customer, account, name){
+  const q = await post('/api/quote', {customer, rate:1250, amount:10, payout_account:account});
+  lastRef = q.reference || null;
+  return q;
+}
+
+async function attempt(reference, amount, claimed_account, what){
+  const res = await post('/api/fulfil', {reference, amount, claimed_account, what});
+  const box = $('answer');
+  box.className = 'answer show ' + (res.outcome === 'PAID' ? 'yes' : 'no');
+  if (res.outcome === 'PAID'){
+    $('ansTitle').textContent = 'Paid — 10 USDT';
+    $('ansRule').textContent = res.rule;
+    $('ansWho').textContent = 'Receipt #' + res.receipt.n + ' sealed.';
+  } else {
+    $('ansTitle').textContent = 'The ledger refused this';
+    $('ansRule').textContent = res.rule;
+    $('ansWho').textContent = 'Not your decision to make or to override — and ' +
+      'the refusal is on record, so nobody can say you were asked and ignored it.';
+  }
+  $('ansSeal').textContent = res.receipt ? 'seal ' + res.receipt.seal.slice(0,40) + '…' : '';
+  await refresh();
+}
+
+const post = async (url, body) => (await fetch(url, {method:'POST',
+  headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})).json();
+
+function renderStep(){
+  const acts = $('acts');
+  if (step >= SCENE.length){
+    acts.innerHTML = '<button class="go" onclick="location.reload()">Run it again</button>';
+    return;
+  }
+  const sc = SCENE[step];
+  say(sc.say[0], sc.say[1], sc.say[2], sc.alert);
+  if (sc.note) bubble('', '', sc.note, 'them alert');
+  acts.innerHTML = '';
+  sc.acts.forEach(a => {
+    const b = document.createElement('button');
+    b.textContent = a.label;
+    b.className = a.go ? 'go' : (a.risk ? 'risk' : '');
+    b.onclick = async () => { acts.innerHTML = ''; await a.run(); step++; renderStep(); };
+    acts.appendChild(b);
+  });
+}
+
+refresh().then(renderStep);
 </script>
 </body>
 </html>

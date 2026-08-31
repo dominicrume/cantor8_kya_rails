@@ -125,3 +125,94 @@ testWatcherCannotSeeTheQuote = script do
   seenByStranger <- query @Quote d.stranger
   assertMsg "the customer cannot see their own quote" (length seenByAsker == 1)
   assertMsg "a watcher can see the quote"             (null seenByStranger)
+
+-- ---------------------------------------------------------------------------
+-- PayoutBook: the fence for T9's residual risk -- an operator quoting to an
+-- account they control. Separation of duties, not more identity checks.
+-- ---------------------------------------------------------------------------
+
+data Desk2 = Desk2 with
+  principal : Party
+  operator  : Party
+  customer  : Party
+
+customerAccount : Text
+customerAccount = "GTB 0123456789 / A CUSTOMER"
+
+operatorsOwnAccount : Text
+operatorsOwnAccount = "OPAY 5555555555 / THE OPERATOR"
+
+book : Script (Desk2, ContractId PayoutBook)
+book = script do
+  principal <- allocateParty "Principal"
+  operator  <- allocateParty "Operator"
+  customer  <- allocateParty "Customer"
+  b <- submit principal do
+    createCmd PayoutBook with principal; operator; approved = [customerAccount]
+  let d = Desk2 with principal; operator; customer
+  pure (d, b)
+
+-- 9. The operator quotes freely to an approved account. This must stay cheap:
+--    a fence that makes ordinary work slow gets worked around.
+testOperatorQuotesFreelyToApprovedAccounts : Script ()
+testOperatorQuotesFreelyToApprovedAccounts = script do
+  (d, b) <- book
+  now <- getTime
+  _ <- submit d.operator do
+    exerciseCmd b IssueQuote with
+      customer = d.customer; reference = "KYA-1"; rate = 1250.0
+      expectedAmount = 10.0; payoutAccount = customerAccount
+      expiresAt = addRelTime now (hours 2)
+  pure ()
+
+-- 10. THE FENCE. The operator issues a perfectly well-formed quote naming
+--     their own account. Everything about it is valid except that the
+--     principal never approved the destination.
+testOperatorCannotQuoteToTheirOwnAccount : Script ()
+testOperatorCannotQuoteToTheirOwnAccount = script do
+  (d, b) <- book
+  now <- getTime
+  submitMustFail d.operator do
+    exerciseCmd b IssueQuote with
+      customer = d.customer; reference = "KYA-2"; rate = 1250.0
+      expectedAmount = 10.0; payoutAccount = operatorsOwnAccount
+      expiresAt = addRelTime now (hours 2)
+
+-- 11. And they cannot approve it for themselves. `controller principal` is
+--     the check; without it the fence above is theatre.
+testOperatorCannotApproveAnAccount : Script ()
+testOperatorCannotApproveAnAccount = script do
+  (d, b) <- book
+  submitMustFail d.operator do
+    exerciseCmd b ApproveAccount with account = operatorsOwnAccount
+
+-- 12. The principal approves a genuinely new customer, from wherever they are,
+--     and the operator is immediately free to quote to it. One action per new
+--     account, not per transaction.
+testPrincipalApprovesAndThenTheOperatorIsFree : Script ()
+testPrincipalApprovesAndThenTheOperatorIsFree = script do
+  (d, b) <- book
+  let newAccount = "ZENITH 2222222222 / NEW CUSTOMER"
+  b2 <- submit d.principal do
+    exerciseCmd b ApproveAccount with account = newAccount
+  now <- getTime
+  _ <- submit d.operator do
+    exerciseCmd b2 IssueQuote with
+      customer = d.customer; reference = "KYA-3"; rate = 1250.0
+      expectedAmount = 10.0; payoutAccount = newAccount
+      expiresAt = addRelTime now (hours 2)
+  pure ()
+
+-- 13. Withdrawing an account stops future quotes to it. A customer who turns
+--     out to be a problem is closed off by the principal alone.
+testWithdrawnAccountCannotBeQuotedAgain : Script ()
+testWithdrawnAccountCannotBeQuotedAgain = script do
+  (d, b) <- book
+  b2 <- submit d.principal do
+    exerciseCmd b WithdrawAccount with account = customerAccount
+  now <- getTime
+  submitMustFail d.operator do
+    exerciseCmd b2 IssueQuote with
+      customer = d.customer; reference = "KYA-4"; rate = 1250.0
+      expectedAmount = 10.0; payoutAccount = customerAccount
+      expiresAt = addRelTime now (hours 2)
