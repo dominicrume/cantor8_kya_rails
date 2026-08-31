@@ -20,6 +20,7 @@ TESTPKG = os.path.join(PKG, "test")
 MANDATE = os.path.join(PKG, "daml", "KyaMandate.daml")
 QUOTE = os.path.join(PKG, "daml", "KyaQuote.daml")
 CYCLE = os.path.join(PKG, "daml", "KyaCycle.daml")
+INBOUND = os.path.join(PKG, "daml", "KyaInbound.daml")
 
 # (source file, fence text, a test that MUST fail when that line is deleted)
 FENCES = [
@@ -40,6 +41,15 @@ FENCES = [
     (CYCLE, "requires a memo or tag",                  "testMemoRequiredNetworkRefusesAMissingMemo"),
     (CYCLE, "off-taker wallet is not approved",        "testCryptoCannotGoToAnUnapprovedOffTakerWallet"),
     (CYCLE, "short of the amount agreed",              "testShortNairaIsRefused"),
+    # KyaInbound: naira in, crypto out. The more dangerous direction, because
+    # a naira transfer can be reversed and a crypto send cannot.
+    (INBOUND, "not one of the desk's approved naira accounts", "testOperatorCannotNominateTheirOwnNairaAccount"),
+    (INBOUND, "cannot send that asset on that network",        "testCannotQuoteAnAssetTheDeskCannotSend"),
+    (INBOUND, "a bank reference is required",                  "testConfirmationNeedsABankReference"),
+    (INBOUND, "naira credited is short",                       "testShortNairaCreditIsRefused"),
+    (INBOUND, "naira has not been confirmed credited",         "testReleaseWithoutTheBankConfirmationIsRefused"),
+    (INBOUND, "receiving wallet does not match",               "testCustomerCannotChangeTheReceivingWalletAtRelease"),
+    (INBOUND, "sending on a different network",                "testCannotReleaseOnADifferentNetwork"),
 ]
 
 
@@ -68,9 +78,32 @@ def delete_line(path, containing):
     return True
 
 
+def guard_is_ambiguous(guard):
+    """Is this test name defined in more than one module?
+
+    Two modules once shared a test name, so deleting a fence in one module
+    left the OTHER module's test green and the harness reported the fence as
+    covered. A blind spot in the thing whose only job is finding blind spots.
+    """
+    found = []
+    testdir = os.path.join(TESTPKG, "daml")
+    for f in sorted(os.listdir(testdir)):
+        if f.endswith(".daml") and guard in open(os.path.join(testdir, f)).read():
+            found.append(f)
+    return found if len(found) > 1 else []
+
+
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
-    backups = {p: tempfile.mktemp(suffix=".daml") for p in (MANDATE, QUOTE, CYCLE)}
+    ambiguous = {g: mods for _, _, g in FENCES
+                 for mods in [guard_is_ambiguous(g)] if mods}
+    if ambiguous:
+        print("guard test names are ambiguous across modules; a mutation could")
+        print("be masked by a same-named test elsewhere:")
+        for g, mods in ambiguous.items():
+            print("  %s -> %s" % (g, ", ".join(mods)))
+        sys.exit(1)
+    backups = {p: tempfile.mktemp(suffix=".daml") for p in (MANDATE, QUOTE, CYCLE, INBOUND)}
     for p, b in backups.items():
         shutil.copy(p, b)
     failures = []
