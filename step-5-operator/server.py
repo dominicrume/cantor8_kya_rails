@@ -17,7 +17,9 @@ import json, os, sys, time, http.server, socketserver, urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "step-2-agent"))
+sys.path.insert(0, os.path.join(HERE, "..", "step-6-whatsapp"))
 from kya_chain import Chain, NonAsciiInReceipt
+from bot import Conversation, GREETING
 
 PORT = int(os.environ.get("KYA_PORT", "8420"))
 
@@ -203,6 +205,28 @@ class Rail:
         self.chain = Chain()
         self.desk = QuoteDesk()
         self.cycle = CycleDesk()
+        self.threads = {}          # wa_id -> Conversation
+        self.transcript = []       # every message in and out, for the operator
+        self.rate = 1250.0
+        self.band = (1000.0, 1500.0)
+
+    def thread(self, wa_id):
+        if wa_id not in self.threads:
+            self.threads[wa_id] = Conversation(
+                wa_id, self.cycle, lambda: list(self.desk.approved))
+        return self.threads[wa_id]
+
+    def on_message(self, wa_id, text):
+        """One inbound message. Returns what the bot says back.
+
+        The bot never chooses the rate: it is handed the band the principal
+        set, and reads from it. There is no path here that lets a message
+        change a number.
+        """
+        self.transcript.append({"wa_id": wa_id, "dir": "in", "text": text})
+        reply = self.thread(wa_id).handle(text, self.rate, self.band)
+        self.transcript.append({"wa_id": wa_id, "dir": "out", "text": reply})
+        return reply
         self.cap = 5.0
         self.period_limit = None
         self.opened = False
@@ -229,7 +253,9 @@ class Rail:
                 "networks": self.cycle.networks(),
                 "offtakers": self.cycle.offtakers(),
                 "deals": sorted(self.cycle.deals.values(),
-                                key=lambda d: d["reference"], reverse=True)}
+                                key=lambda d: d["reference"], reverse=True),
+                "rate": self.rate, "band": list(self.band),
+                "transcript": self.transcript[-40:]}
 
     def request(self, amount, payee, what):
         if not self.opened:
@@ -292,6 +318,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "depositAddress": d["depositAddress"], "memo": d["memo"],
                 "payoutAccount": d["payoutAccount"],
                 "receipt": receipt})
+        if self.path == "/bot":
+            self.path = "/bot.html"
         if self.path == "/c":
             self.path = "/customer.html"
         if self.path.startswith("/c/"):
@@ -375,6 +403,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except NonAsciiInReceipt as e:
                 res["error"] = str(e)
             return self._json(res)
+        if self.path == "/api/wa":
+            # One inbound message. The local simulator posts here, and so does
+            # the WhatsApp webhook adapter once credentials exist.
+            wa_id = body.get("from") or "sim"
+            return self._json({"reply": RAIL.on_message(wa_id, body.get("text", ""))})
+        if self.path == "/api/rate":
+            # Only the desk sets the rate, and only inside its own band.
+            r = float(body.get("rate", 0))
+            lo, hi = RAIL.band
+            if not (lo <= r <= hi):
+                return self._json({"error": "rate is outside the band %s-%s" % (lo, hi)})
+            RAIL.rate = r
+            return self._json({"rate": r})
         if self.path == "/api/approve":
             return self._json({"approved": RAIL.desk.approve(body.get("account", ""))})
         return self._json({"error": "unknown endpoint"}, 404)

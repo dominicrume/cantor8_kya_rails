@@ -44,6 +44,9 @@ jobs:
       - name: operator interface - the fences reach the screen
         run: python3 tests/operator_smoke.py
 
+      - name: the bot cannot be talked into a rate, an account or a shortcut
+        run: python3 tests/bot_smoke.py
+
       - name: no unescaped interpolation reaches the DOM
         run: python3 tests/xss_lint.py
 

@@ -11,8 +11,11 @@ import os, re, sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 PAGES = ["step-5-operator/operator.html", "step-5-operator/customer.html",
-         "step-3-verify/verifier.html"]
-SAFE = ("esc", "Number", "String", "money", "JSON", "encodeURIComponent")
+         "step-5-operator/bot.html", "step-3-verify/verifier.html"]
+# Functions that escape, or that cannot carry markup.
+# fmt() escapes first and then renders only *bold*, _italic_ and `code` from
+# the already-escaped text, so it is safe by construction.
+SAFE = ("esc", "fmt", "Number", "String", "money", "JSON", "encodeURIComponent")
 
 bad = []
 for rel in PAGES:
@@ -20,7 +23,11 @@ for rel in PAGES:
     for i, line in enumerate(src.splitlines(), 1):
         if "innerHTML" not in line:
             continue
-        for m in re.finditer(r"\+\s*([A-Za-z_][\w.\[\]]*)", line):
+        # Only what is actually assigned INTO innerHTML. A className on the
+        # same line is not a DOM injection, and a lint that says it is gets
+        # worked around rather than obeyed.
+        rhs = line[line.index("innerHTML"):]
+        for m in re.finditer(r"\+\s*([A-Za-z_][\w.\[\]]*)", rhs):
             v = m.group(1)
             if v.startswith(SAFE):
                 continue
