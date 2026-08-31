@@ -56,6 +56,8 @@ template PayoutBook
     principal : Party
     operator  : Party
     approved  : [Text]     -- payout accounts the principal has approved
+    rateFloor : Decimal    -- the band the operator may quote inside
+    rateCeiling : Decimal
   where
     signatory principal
     observer operator
@@ -72,6 +74,7 @@ template PayoutBook
       controller operator
       do
         assertMsg "payout account has not been approved by the principal" (payoutAccount `elem` approved)
+        assertMsg "rate is outside the band the principal set" (rate >= rateFloor && rate <= rateCeiling)
         create Quote with
           operator; customer; reference; rate; expectedAmount
           payoutAccount; expiresAt
@@ -85,6 +88,13 @@ template PayoutBook
         assertMsg "account is already approved" (account `notElem` approved)
         assertMsg "an account must have a name" (account /= "")
         create this with approved = account :: approved
+
+    choice SetRateBand : ContractId PayoutBook
+      with floor : Decimal, ceiling : Decimal
+      controller principal
+      do
+        assertMsg "a rate band must be positive and the right way round" (floor > 0.0 && ceiling >= floor)
+        create this with rateFloor = floor, rateCeiling = ceiling
 
     -- Remove an account that should no longer be paid. Principal only.
     choice WithdrawAccount : ContractId PayoutBook

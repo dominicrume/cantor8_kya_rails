@@ -1,0 +1,134 @@
+<title>Your deal &middot; KYA Rails</title>
+<style>
+  :root{--bg:#0f1613;--card:#18211d;--line:#28332e;--ink:#eaf0ec;--dim:#93a29a;
+        --ok:#2f9e5e;--gold:#c8b458;--warn:#c8853a;
+        --sans:-apple-system,'Segoe UI',Roboto,sans-serif;--mono:ui-monospace,Menlo,monospace}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;
+       padding:0 0 48px}
+  .wrap{max-width:440px;margin:0 auto;padding:0 16px}
+  header{padding:22px 0 10px}
+  header h1{font-size:19px}
+  header p{font-size:12.5px;color:var(--dim);margin-top:3px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+        padding:16px;margin-bottom:12px}
+  .state{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+         text-transform:uppercase;padding:4px 10px;border-radius:999px;margin-bottom:10px}
+  .s-QUOTED{background:#2b2113;color:#e0b463}
+  .s-DEPOSITED,.s-WITH_OFFTAKER{background:#132a2b;color:#63d0d8}
+  .s-FUNDED{background:#142b1c;color:#69d492}
+  .s-PAID{background:#122b1e;color:#8ee0ac}
+  .big{font-size:30px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .sub{font-size:13px;color:var(--dim);margin-top:2px}
+  label{display:block;font-size:11px;color:var(--dim);text-transform:uppercase;
+        letter-spacing:.07em;margin:14px 0 5px}
+  .val{font-family:var(--mono);font-size:13px;word-break:break-all;background:#0d1512;
+       border:1px solid var(--line);border-radius:9px;padding:11px 12px}
+  .copy{width:100%;border:0;border-radius:10px;padding:12px;font-size:14px;font-weight:600;
+        background:#22302a;color:var(--ink);margin-top:8px;cursor:pointer;font-family:inherit}
+  .copy.done{background:var(--ok);color:#fff}
+  .warn{background:#2b1a10;border:1px solid #6b4a1c;border-radius:10px;padding:12px;
+        font-size:12.5px;color:#e8c9a0;margin-top:12px}
+  .seal{font-family:var(--mono);font-size:10px;color:var(--dim);word-break:break-all;
+        margin-top:8px}
+  .steps{list-style:none;padding:0;margin-top:6px}
+  .steps li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:13px;
+            border-bottom:1px solid var(--line)}
+  .steps li:last-child{border-bottom:0}
+  .dot{width:18px;height:18px;border-radius:50%;flex:none;margin-top:1px;
+       background:#26362e;color:#6d7d75;font-size:11px;display:flex;align-items:center;
+       justify-content:center;font-weight:700}
+  .dot.on{background:var(--ok);color:#fff}
+  .foot{text-align:center;font-size:11px;color:var(--dim);padding-top:18px}
+  .foot a{color:var(--gold)}
+  .miss{text-align:center;padding:50px 0;color:var(--dim)}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Your deal</h1>
+    <p>Everything below was fixed when your rate was agreed. Nobody can change
+       it afterwards — not us, and not anyone messaging you.</p>
+  </header>
+  <div id="body"><div class="miss">Loading…</div></div>
+  <div class="foot">
+    Reference <span id="reffoot"></span> &middot;
+    <a href="#" id="verifyLink">verify the receipt yourself</a>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ref = new URLSearchParams(location.search).get('ref') || location.hash.slice(1);
+
+const STEPS = [
+  ['QUOTED',        'Rate agreed, address issued'],
+  ['DEPOSITED',     'Your deposit confirmed'],
+  ['WITH_OFFTAKER', 'Funding in progress'],
+  ['FUNDED',        'Funds ready'],
+  ['PAID',          'Paid to your account'],
+];
+const ORDER = STEPS.map(s => s[0]);
+
+function copyBtn(text, label){
+  return '<button class="copy" data-copy="' + esc(text) + '">' + label + '</button>';
+}
+
+function render(d){
+  const at = ORDER.indexOf(d.state);
+  const memo = d.memo
+    ? '<label>Memo / tag — required, or the deposit is lost</label>' +
+      '<div class="val">' + esc(d.memo) + '</div>' + copyBtn(d.memo, 'Copy memo')
+    : '';
+  const deposit = at === 0 ? (
+    '<label>Send exactly</label>' +
+    '<div class="big">' + esc(d.amount) + ' ' + esc(d.asset) + '</div>' +
+    '<div class="sub">on the ' + esc(d.network) + ' network only</div>' +
+    '<label>To this address</label>' +
+    '<div class="val">' + esc(d.depositAddress) + '</div>' +
+    copyBtn(d.depositAddress, 'Copy address') + memo +
+    '<div class="warn"><b>Check the network.</b> This address works on ' +
+    esc(d.network) + ' only. Sending on any other network loses the coin, and ' +
+    'nobody can recover it.</div>') : '';
+
+  $('body').innerHTML =
+    '<div class="card"><span class="state s-' + d.state + '">' +
+      esc(d.state.replace('_', ' ')) + '</span>' +
+      '<div class="big">' + Number(d.naira).toLocaleString() + ' NGN</div>' +
+      '<div class="sub">' + esc(d.amount) + ' ' + esc(d.asset) +
+        ' at ' + esc(d.rate) + '</div>' +
+      '<label>Paid to your account</label>' +
+      '<div class="val">' + esc(d.payoutAccount) + '</div>' +
+      '<div class="warn">This account was fixed when your rate was agreed. If ' +
+        'anyone asks you to change it, or claims to be us asking, it is not us.' +
+      '</div>' + deposit + '</div>' +
+    '<div class="card"><ul class="steps">' + STEPS.map(([k, label], i) =>
+      '<li><span class="dot' + (i <= at ? ' on' : '') + '">' +
+      (i <= at ? '&#10003;' : (i + 1)) + '</span><span>' + label + '</span></li>').join('') +
+      '</ul></div>' +
+    (d.receipt ? '<div class="card"><label>Your sealed receipt</label>' +
+      '<div class="sub">' + esc(d.receipt.rule) + '</div>' +
+      '<div class="seal">seal ' + esc(d.receipt.seal) + '</div>' +
+      '<div class="sub" style="margin-top:8px">Anyone can recompute this seal ' +
+      'offline and see the record has not been altered.</div></div>' : '');
+
+  $('reffoot').textContent = d.reference;
+  document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {
+    try { await navigator.clipboard.writeText(b.dataset.copy); }
+    catch (e) { /* clipboard blocked; the value is on screen either way */ }
+    const was = b.textContent; b.textContent = 'Copied'; b.classList.add('done');
+    setTimeout(() => { b.textContent = was; b.classList.remove('done'); }, 1400);
+  });
+}
+
+async function load(){
+  if (!ref){ $('body').innerHTML = '<div class="miss">No reference in this link.</div>'; return; }
+  const res = await fetch('/api/customer?ref=' + encodeURIComponent(ref));
+  if (!res.ok){ $('body').innerHTML = '<div class="miss">No deal found for ' + esc(ref) + '.</div>'; return; }
+  render(await res.json());
+}
+load();
+setInterval(load, 5000);   // the customer watches it progress without asking
+</script>

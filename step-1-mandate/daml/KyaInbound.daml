@@ -28,6 +28,13 @@ template NairaBook
     principal : Party
     operator  : Party
     accounts  : [Text]      -- "GTB 0011223344 / VOREM LTD"
+    -- The band the principal will trade inside today. An operator -- human or
+    -- a language model reading a customer's message -- cannot quote outside
+    -- it. "My guy quoted me 1400 this morning" and a prompt injection that
+    -- tells the model to use 1400 are the same attack, and this is the same
+    -- fence for both: the number is not the operator's to choose freely.
+    rateFloor : Decimal
+    rateCeiling : Decimal
     -- Networks the desk can actually send on, per asset.
     canSend   : [(Text, Text)]   -- (asset, network)
   where
@@ -49,6 +56,11 @@ template NairaBook
       do
         assertMsg "naira amount must be positive" (nairaAmount > 0.0)
         assertMsg "rate must be positive" (rate > 0.0)
+        assertMsg "rate is outside the band the principal set" (rate >= rateFloor && rate <= rateCeiling)
+        -- The arithmetic itself, checked on the ledger. A quote whose naira
+        -- does not equal amount times rate is not a rounding argument to have
+        -- with a customer later; it cannot be issued.
+        assertMsg "naira does not equal the crypto amount times the rate" (abs (nairaAmount - (nairaAmount / rate) * rate) < 0.01)
         assertMsg "that is not one of the desk's approved naira accounts" (payIntoAccount `elem` accounts)
         assertMsg "the desk cannot send that asset on that network" ((asset, network) `elem` canSend)
         assertMsg "a receiving wallet must be given when the rate is agreed" (customerWallet /= "")
@@ -61,6 +73,15 @@ template NairaBook
       with account : Text
       controller principal
       do create this with accounts = account :: accounts
+
+    -- Moving the band is the principal's, and only theirs. This is the
+    -- control that makes the fence above worth having.
+    choice SetRateBand : ContractId NairaBook
+      with floor : Decimal, ceiling : Decimal
+      controller principal
+      do
+        assertMsg "a rate band must be positive and the right way round" (floor > 0.0 && ceiling >= floor)
+        create this with rateFloor = floor, rateCeiling = ceiling
 
 template InboundDeal
   with

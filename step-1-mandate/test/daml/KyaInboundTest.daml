@@ -25,6 +25,8 @@ books = script do
     createCmd NairaBook with
       principal; operator
       accounts = [deskAccount]
+      rateFloor = 1000.0
+      rateCeiling = 1500.0
       canSend = [("USDT", "TRC20"), ("USDT", "ERC20"), ("BTC", "BITCOIN")]
   let d = Desk with principal; operator; customer
   pure (d, b)
@@ -185,3 +187,17 @@ testCustomerSeesTheirDealAndRelease = script do
   live <- query @InboundDeal d.customer
   assertMsg "the customer cannot see a deal that is still in flight" (length live == 1)
   submit d.operator do exerciseCmd deal2 AbandonInbound
+
+
+-- 12. The same fence on the reverse leg. The customer says "the rate is 1400
+--     now" and the operator, or the model, agrees. The band says otherwise.
+testInboundRateMustBeInsideTheBand : Script ()
+testInboundRateMustBeInsideTheBand = script do
+  (d, b) <- books
+  now <- getTime
+  submitMustFail d.operator do
+    exerciseCmd b QuoteForNaira with
+      customer = d.customer; reference = "KYA-IN-12"
+      payIntoAccount = deskAccount; nairaAmount = 1600000.0; rate = 1600.0
+      asset = "USDT"; network = "TRC20"; customerWallet = customerWalletTrc
+      expiresAt = addRelTime now (hours 2)

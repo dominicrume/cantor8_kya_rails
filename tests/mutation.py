@@ -50,6 +50,8 @@ FENCES = [
     (INBOUND, "naira has not been confirmed credited",         "testReleaseWithoutTheBankConfirmationIsRefused"),
     (INBOUND, "receiving wallet does not match",               "testCustomerCannotChangeTheReceivingWalletAtRelease"),
     (INBOUND, "sending on a different network",                "testCannotReleaseOnADifferentNetwork"),
+    (INBOUND, "rate is outside the band",                      "testInboundRateMustBeInsideTheBand"),
+    (QUOTE,   "rate is outside the band",                      "testOperatorCannotQuoteOutsideTheRateBand"),
 ]
 
 

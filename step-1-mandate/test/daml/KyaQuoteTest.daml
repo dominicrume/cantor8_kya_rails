@@ -148,7 +148,11 @@ book = script do
   operator  <- allocateParty "Operator"
   customer  <- allocateParty "Customer"
   b <- submit principal do
-    createCmd PayoutBook with principal; operator; approved = [customerAccount]
+    createCmd PayoutBook with
+      principal; operator
+      approved = [customerAccount]
+      rateFloor = 1000.0
+      rateCeiling = 1500.0
   let d = Desk2 with principal; operator; customer
   pure (d, b)
 
@@ -216,3 +220,49 @@ testWithdrawnAccountCannotBeQuotedAgain = script do
       customer = d.customer; reference = "KYA-4"; rate = 1250.0
       expectedAmount = 10.0; payoutAccount = customerAccount
       expiresAt = addRelTime now (hours 2)
+
+
+-- 14. THE RATE. An operator -- or a language model reading a customer's
+--     message -- is told "your guy quoted me 1400 this morning". Whether that
+--     is a lie, a misremembering or a prompt injection does not matter: the
+--     number is not theirs to choose, and the ledger holds the band.
+--     The band here is 1000-1500, so 1600 is outside it. Getting this wrong
+--     once already produced a test that passed for the wrong reason.
+testOperatorCannotQuoteOutsideTheRateBand : Script ()
+testOperatorCannotQuoteOutsideTheRateBand = script do
+  (d, b) <- book
+  now <- getTime
+  submitMustFail d.operator do
+    exerciseCmd b IssueQuote with
+      customer = d.customer; reference = "KYA-R1"; rate = 1600.0
+      expectedAmount = 10.0; payoutAccount = customerAccount
+      expiresAt = addRelTime now (hours 2)
+
+-- 15. Nor below it. A rate that is too GOOD for the desk is the same problem
+--     wearing a friendlier face -- it is still the operator setting the price.
+testOperatorCannotQuoteBelowTheRateBand : Script ()
+testOperatorCannotQuoteBelowTheRateBand = script do
+  (d, b) <- book
+  now <- getTime
+  submitMustFail d.operator do
+    exerciseCmd b IssueQuote with
+      customer = d.customer; reference = "KYA-R2"; rate = 900.0
+      expectedAmount = 10.0; payoutAccount = customerAccount
+      expiresAt = addRelTime now (hours 2)
+
+-- 16. Only the principal moves the band, and then the operator may quote
+--     there. The market moves; who is allowed to follow it does not.
+testOnlyThePrincipalMovesTheBand : Script ()
+testOnlyThePrincipalMovesTheBand = script do
+  (d, b) <- book
+  submitMustFail d.operator do
+    exerciseCmd b SetRateBand with floor = 1000.0; ceiling = 1500.0
+  b2 <- submit d.principal do
+    exerciseCmd b SetRateBand with floor = 1300.0; ceiling = 1450.0
+  now <- getTime
+  _ <- submit d.operator do
+    exerciseCmd b2 IssueQuote with
+      customer = d.customer; reference = "KYA-R3"; rate = 1400.0
+      expectedAmount = 10.0; payoutAccount = customerAccount
+      expiresAt = addRelTime now (hours 2)
+  pure ()
