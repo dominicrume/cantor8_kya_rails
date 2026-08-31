@@ -73,8 +73,8 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **27 / 27** `daml test` scripts |
-| Every fence mutation-tested | delete any one and a named test goes red — enforced in CI |
+| Attack suite green | **33 / 33** `daml test` scripts |
+| Every fence mutation-tested | all **11**: delete any one and a named test goes red — enforced in CI |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
 | Deployed on Cantor8 DevNet | `kya-rails-mandate` 1.0.0, package `df5a02e88a68…`, vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
@@ -108,7 +108,15 @@ python3 step-5-operator/server.py          # offline
 python3 step-5-operator/server.py --devnet --move-coin
 ```
 
-Then open `http://localhost:8420`.
+Then open `http://localhost:8420`. It opens on a **training scenario**: the
+exact sequence a working desk lost money to — a quote at 10:02 to someone who
+never sends, a real deposit at 13:20, and at 14:05 an unknown number with a
+screenshot asking to be paid to their own account. The "Pay the claimant"
+button is there, and red, and the ledger refuses it.
+
+The conversation pane is where real WhatsApp Business messages would arrive
+through a webhook. Nothing is connected to WhatsApp yet, and the page says so
+on the page rather than in a footnote.
 
 Two design decisions worth naming. The recipient is a **picker, not a text
 field**, so "send it to this account instead" is not typeable — a new account
