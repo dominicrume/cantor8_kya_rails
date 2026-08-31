@@ -306,7 +306,8 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [step-1-mandate/daml/KyaTest.daml](step-1-mandate/daml/KyaTest.daml) | every test is named after the attack it proves |
 | [step-2-agent/DEVNET-PARTIES.md](step-2-agent/DEVNET-PARTIES.md) | DevNet parties, rights, and the traps that cost us hours |
 | [SPEC.md](SPEC.md) | the receipt format, written to be implemented from the text alone |
-| [docs/threat-model.md](docs/threat-model.md) | eight threats, four of them undefended and said so |
+| [docs/threat-model.md](docs/threat-model.md) | fourteen threats, several undefended and said so |
+| [docs/privacy-matrix.md](docs/privacy-matrix.md) | who sees what, who is excluded — generated from the Daml, checked in CI |
 | [docs/upgrade-path.md](docs/upgrade-path.md) | how we failed Canton's upgrade check, and the rules that came out of it |
 | [docs/wallet-providers.md](docs/wallet-providers.md) | where the addresses would come from, and what to ask a provider |
 | [tests/vectors.json](tests/vectors.json) | 9 conformance vectors. Where the spec and a vector disagree, the vector wins. |
