@@ -50,6 +50,9 @@ jobs:
       - name: the bot cannot be talked into a rate, an account or a shortcut
         run: python3 tests/bot_smoke.py
 
+      - name: the privacy matrix matches the Daml
+        run: python3 tests/privacy_matrix.py --check
+
       - name: nothing unreachable after a return
         run: python3 tests/deadcode_lint.py
 

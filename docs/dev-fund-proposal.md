@@ -93,6 +93,28 @@ control, before the transaction can exist, with the counterparty able to see
 only their own record. Privacy plus atomic settlement across parties who do not
 trust each other is the combination Canton offers and very little else does.
 
+**The privacy matrix.** Who signs each contract, who observes it, and who is
+excluded — generated from the Daml rather than written by hand, with CI
+failing if the two drift apart:
+
+| Contract | Signatories | Observers | Excluded |
+| --- | --- | --- | --- |
+| `KyaMandate` | `owner`, `spender` | — | **everyone else** |
+| `ChargeRecord` | `owner`, `spender` | `payee` | **everyone else** |
+| `Quote` | `operator` | `customer` | **everyone else** |
+| `PayoutBook` | `principal` | `operator` | **everyone else** |
+| `DepositInstruction` | `operator` | `customer`, `depositFeed` | **everyone else** |
+| `InboundDeal` | `operator` | `customer`, `principal`, `bankFeed` | **everyone else** |
+| `Release` | `operator` | `customer` | **everyone else** |
+
+The exclusions are the design. A payee verifies what they were paid without
+seeing the cap, the float, or any other payee. A watcher cannot see that a
+quote exists — which is the structural difference from a public chain, where a
+monitorable deposit address is what makes a false claim cheap to fabricate. A
+feed observes one deal and can confirm one fact; narrow sight and narrow
+authority, deliberately matched. The full table is in
+[docs/privacy-matrix.md](../docs/privacy-matrix.md).
+
 **It is a building block, not an application.** `KyaMandate` is a template any
 Canton application can hold alongside whatever it already does. The receipt
 format is not Canton-specific at all — which is the point. A format adopted by
