@@ -7,6 +7,7 @@
 -- NOT in this file: no receipt logic. The ledger enforces; the chain observes.
 module KyaTest where
 
+import DA.Text (isInfixOf)
 import DA.Time (RelTime, addRelTime, hours)
 import Daml.Script
 import KyaMandate
@@ -168,3 +169,34 @@ testRefusedChargeLeavesNoRecord = script do
       amount = 10.0; payee = d.unverified; memo = "attacker's own destination"
   recs <- query @ChargeRecord d.owner
   assertMsg "a refused charge left a record on the ledger" (null recs)
+
+-- 11. THE TEST THAT TESTS THE TESTS.
+--
+--     testOverCapRefused above uses submitMustFail, which proves only that
+--     SOMETHING refused. Mutation testing found that this is not enough: delete
+--     the cap assertion and that test still passes, because `ensure spent <= cap`
+--     on the template catches the same condition. The cap is deliberately
+--     enforced twice and the money is safe either way -- but a green
+--     submitMustFail cannot tell you the assertion is still alive.
+--
+--     assertMsg throws AssertionFailed carrying its message; a failed `ensure`
+--     throws PreconditionFailed. Both arrive as UnhandledException, so casting
+--     tells them apart. Delete the assertion now and this test goes red.
+testOverCapRefusedByTheCapAssertion : Script ()
+testOverCapRefusedByTheCapAssertion = script do
+  (d, m0) <- desk
+  m1 <- submit d.agent do
+    exerciseCmd m0 Charge with amount = 40.0; payee = d.customer; memo = "leg 1"
+  m2 <- submit d.agent do
+    exerciseCmd m1 Charge with amount = 35.0; payee = d.partner; memo = "leg 2"
+  result <- trySubmit d.agent do
+    exerciseCmd m2 Charge with
+      amount = 60.0; payee = d.customer; memo = "would exceed the cap"
+  case result of
+    Left (FailureStatusError fs) ->
+      assertMsg ("refused, but not by the cap rule: " <> fs.message)
+                ("charge would exceed the cap" `isInfixOf` fs.message)
+    Left _ ->
+      assertMsg "refused by something other than an assertion in the choice body" False
+    Right _ ->
+      assertMsg "THE OVER-CAP CHARGE WAS ACCEPTED" False

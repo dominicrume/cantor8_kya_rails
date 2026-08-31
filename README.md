@@ -50,7 +50,7 @@ stopped*, which is the artefact an auditor actually asks for.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **10 / 10** `daml test` scripts |
+| Attack suite green | **11 / 11** `daml test` scripts, mutation-tested |
 | Fences enforced on-ledger | cap, allow-list, expiry, revoke — all in the `Charge` choice body |
 | Deployed on Cantor8 DevNet | package `6d13f9948206e73684461925d830261bff5a5d265191b5c764258c98f40dc241` |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
