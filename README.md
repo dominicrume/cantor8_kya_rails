@@ -74,6 +74,7 @@ country and deciding whether to trust the person who produced it.
 | Claim | Evidence |
 | --- | --- |
 | Attack suite green | **45 / 45** `daml test` scripts |
+| The cycle holds at every join | 15 checks over HTTP, in the order a desk works it |
 | Every fence mutation-tested | all **15**: delete any one and a named test goes red — enforced in CI |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
 | Deployed on Cantor8 DevNet | `kya-rails-mandate` 1.0.0, package `df5a02e88a68…`, vetted |

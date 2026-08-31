@@ -79,6 +79,26 @@
          padding:10px 12px;margin-bottom:8px;font-size:12.5px}
   .qcard b{font-family:var(--mono);font-size:12px;color:var(--gold)}
   .qcard .acct{color:var(--dim);font-size:11.5px;margin-top:3px}
+  /* Deals in flight. The operator's question is never "what happened", it is
+     "what do I do next", so each card answers that and nothing else. */
+  .deal{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:12px;margin-bottom:10px}
+  .deal .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .deal .ref{font-family:var(--mono);font-size:12px;color:var(--gold)}
+  .state{font-size:10px;font-weight:700;letter-spacing:.06em;padding:3px 8px;
+         border-radius:999px;text-transform:uppercase}
+  .s-QUOTED{background:#2b2113;color:#e0b463}
+  .s-DEPOSITED{background:#132a2b;color:#63d0d8}
+  .s-WITH_OFFTAKER{background:#2a1f33;color:#c39ae0}
+  .s-FUNDED{background:#142b1c;color:#69d492}
+  .s-PAID{background:#122b1e;color:#8ee0ac}
+  .deal .line{font-size:12.5px;margin-top:6px}
+  .deal .addr{font-family:var(--mono);font-size:10.5px;color:var(--dim);
+              word-break:break-all;margin-top:4px}
+  .deal .next{font-size:11.5px;color:var(--dim);margin-top:8px}
+  .deal .acts{display:flex;gap:6px;margin-top:8px}
+  .deal .acts button{margin:0;padding:9px 10px;font-size:12.5px;width:auto;flex:1}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   h3{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;
      margin:22px 0 8px;font-weight:600}
   .r{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--ok);
@@ -125,6 +145,27 @@
   <input id="what" type="text" placeholder="e.g. trade 1193, customer leg">
 
   <button id="send" disabled>Request payout</button>
+
+  <h3>Deals in flight</h3>
+  <div id="deals"><div class="empty">No deals open.</div></div>
+
+  <details style="margin-bottom:16px">
+    <summary style="font-size:12.5px;color:var(--dim);cursor:pointer;padding:6px 0">
+      Open a new deal</summary>
+    <div class="grid2">
+      <div><label for="dAsset">Asset &amp; network</label>
+        <select id="dAsset"></select></div>
+      <div><label for="dAmount">Amount</label>
+        <input id="dAmount" type="number" step="0.1" inputmode="decimal" placeholder="10"></div>
+    </div>
+    <label for="dMemo">Memo / tag <span id="memoNeed" style="color:var(--gold)"></span></label>
+    <input id="dMemo" type="text" placeholder="only where the network requires one">
+    <label for="dRate">Rate</label>
+    <input id="dRate" type="number" step="1" inputmode="decimal" placeholder="1250">
+    <label for="dPayout">Pay the customer to</label>
+    <select id="dPayout"></select>
+    <button id="openDeal" class="go" style="background:var(--ok);color:#fff">Open deal</button>
+  </details>
 
   <h3>Today's attempts</h3>
   <div id="list"><div class="empty">Nothing yet.</div></div>
@@ -310,6 +351,118 @@ function renderStep(){
     acts.appendChild(b);
   });
 }
+
+// --- deals -----------------------------------------------------------------
+const NEXT = {
+  QUOTED:        'Waiting for the customer to deposit.',
+  DEPOSITED:     'Deposit confirmed. Pay from your own naira, or route to an off-taker.',
+  WITH_OFFTAKER: 'Crypto sent. Waiting for naira. The customer cannot be paid until it lands.',
+  FUNDED:        'Naira received. Pay the customer to the account on the quote.',
+  PAID:          'Complete.',
+};
+
+function dealCard(d){
+  const el = document.createElement('div');
+  el.className = 'deal';
+  const memo = d.memo ? '<div class="addr">memo / tag: ' + esc(d.memo) + '</div>' : '';
+  el.innerHTML =
+    '<div class="top"><span class="ref">' + esc(d.reference) + '</span>' +
+    '<span class="state s-' + d.state + '">' + d.state.replace('_',' ') + '</span></div>' +
+    '<div class="line"><b>' + d.amount + ' ' + esc(d.asset) + '</b> on ' + esc(d.network) +
+    ' &middot; ' + esc(d.customer) + '</div>' +
+    '<div class="line">' + Number(d.naira).toLocaleString() + ' NGN at ' + d.rate + '</div>' +
+    '<div class="addr">deposit to ' + esc(d.depositAddress) + '</div>' + memo +
+    '<div class="addr">pay out to ' + esc(d.payoutAccount) + '</div>' +
+    '<div class="next">' + esc(NEXT[d.state] || '') + '</div>' +
+    '<div class="acts" id="acts-' + d.reference + '"></div>';
+  return el;
+}
+
+function dealActions(d){
+  const host = $('acts-' + d.reference);
+  if (!host) return;
+  const add = (label, cls, fn) => {
+    const b = document.createElement('button');
+    b.textContent = label; if (cls) b.className = cls;
+    b.onclick = async () => { await fn(); await refresh(); };
+    host.appendChild(b);
+  };
+  if (d.state === 'QUOTED')
+    add('Deposit confirmed', 'go', () => post('/api/deposit-confirmed', {reference:d.reference}));
+  if (d.state === 'DEPOSITED'){
+    add('Pay from own naira', 'go', () =>
+      payDeal(d, d.payoutAccount));
+    add('Route to off-taker', '', () =>
+      post('/api/offtaker', {reference:d.reference, offtaker:'Supplier A',
+        address:'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'}).then(showResult));
+  }
+  if (d.state === 'WITH_OFFTAKER')
+    add('Naira received in full', 'go', () =>
+      post('/api/naira', {reference:d.reference, received:d.naira}).then(showResult));
+  if (d.state === 'FUNDED')
+    add('Pay the customer', 'go', () => payDeal(d, d.payoutAccount));
+}
+
+async function payDeal(d, account){
+  const res = await post('/api/pay', {reference:d.reference, amount:d.amount,
+    claimed_account:account, what:'payout for ' + d.reference});
+  showResult(res);
+}
+
+function showResult(res){
+  const box = $('answer');
+  const good = ['PAID','SENT','RECEIVED'].includes(res.outcome);
+  box.className = 'answer show ' + (good ? 'yes' : 'no');
+  $('ansTitle').textContent = good
+    ? ({PAID:'Paid', SENT:'Sent to the off-taker', RECEIVED:'Naira received'})[res.outcome]
+    : 'The ledger refused this';
+  $('ansRule').textContent = res.rule || res.error || '';
+  $('ansWho').textContent = good ? '' :
+    'Not your decision to make or to override — and the refusal is on record.';
+  $('ansSeal').textContent = res.receipt ? 'seal ' + res.receipt.seal.slice(0,40) + '…' : '';
+}
+
+function renderDeals(s){
+  const host = $('deals');
+  if (!s.deals || !s.deals.length){
+    host.innerHTML = '<div class="empty">No deals open.</div>'; return;
+  }
+  host.innerHTML = '';
+  s.deals.forEach(d => host.appendChild(dealCard(d)));
+  s.deals.forEach(dealActions);
+}
+
+function fillDealForm(s){
+  if (!$('dAsset').options.length){
+    $('dAsset').innerHTML = s.networks.map(n =>
+      '<option value="' + n.asset + '|' + n.network + '" data-memo="' + n.memo_required + '">' +
+      n.asset + ' on ' + n.network + (n.memo_required ? ' (memo required)' : '') +
+      '</option>').join('');
+  }
+  $('dPayout').innerHTML = s.approved.map(a =>
+    '<option value="' + esc(a) + '">' + esc(a) + '</option>').join('');
+}
+
+$('dAsset').onchange = () => {
+  const o = $('dAsset').selectedOptions[0];
+  $('memoNeed').textContent = o && o.dataset.memo === 'true' ? '— required on this network' : '';
+};
+
+$('openDeal').onclick = async () => {
+  const [asset, network] = $('dAsset').value.split('|');
+  const res = await post('/api/deal', {
+    customer: 'WhatsApp customer', asset, network,
+    amount: parseFloat($('dAmount').value || '0'),
+    rate: parseFloat($('dRate').value || '0'),
+    payout_account: $('dPayout').value,
+    memo: $('dMemo').value || null});
+  if (res.error) showResult({outcome:'REFUSED', rule:res.error});
+  else { $('dAmount').value=''; $('dMemo').value=''; }
+  await refresh();
+};
+
+const _oldRender = render;
+render = function(s){ _oldRender(s); fillDealForm(s); renderDeals(s); };
 
 refresh().then(renderStep);
 </script>

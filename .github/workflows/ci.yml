@@ -44,6 +44,9 @@ jobs:
       - name: operator interface - the fences reach the screen
         run: python3 tests/operator_smoke.py
 
+      - name: the whole OTC cycle holds at every join
+        run: python3 tests/cycle_smoke.py
+
       - name: the agent runs offline, stdlib only
         run: |
           python3 step-2-agent/agent.py
