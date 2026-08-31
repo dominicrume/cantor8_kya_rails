@@ -158,16 +158,28 @@ receipt format itself is built on.
 
 Denominated in Canton Coin, released on milestone acceptance.
 
-| Milestone | Deliverable | Weeks | Share |
-| --- | --- | --- | --- |
-| M1 | Spec hardening + third implementation | 6 | 20% |
-| M2 | Mandate library, per-period limits, external audit | 8 | 30% |
-| M3 | Agent integration + reference deployment | 6 | 25% |
-| M4 | Adoption, v1.1, workshop material | 12 | 25% |
+**Total: 1,200,000 CC development, plus 250,000 CC for an independent Daml
+review at M2, quoted separately as a third-party cost.**
 
-*[Total amount to be set with the champion. M2 includes an external Daml review,
-which is a third-party cost rather than applicant time and should be quoted
-separately.]*
+| Milestone | Deliverable | Weeks | CC |
+| --- | --- | --- | --- |
+| M1 | Spec hardening + third implementation | 6 | 240,000 |
+| M2 | Mandate library, per-period limits | 8 | 360,000 |
+| M2a | Independent Daml review (third party) | — | 250,000 |
+| M3 | Agent integration + reference deployment | 6 | 300,000 |
+| M4 | Adoption, v1.1, workshop material | 12 | 300,000 |
+| | **Total** | **32** | **1,450,000** |
+
+Sized against comparable awards in this repository: an individual contributor
+delivering payment streams requested 900,000 CC development plus 200,000 CC for
+independent review; an individual delivering a settlement reference
+implementation requested 1,100,000 CC. This proposal covers 32 weeks — longer
+than either — while remaining well below the 2,260,000 CC requested for a team
+delivering language SDKs.
+
+The applicant would prefer fixed CC amounts rather than a fixed fiat value, and
+is open to monthly release within milestones if the Committee prefers that
+structure.
 
 Work to date has been unfunded. The applicant is not requesting retrospective
 payment for it; it is offered as evidence that the milestones above are
