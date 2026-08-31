@@ -1,0 +1,187 @@
+-- The attack suite for the reverse leg: naira in, crypto out.
+module KyaInboundTest where
+
+import DA.Time (addRelTime, hours)
+import Daml.Script
+import KyaInbound
+
+data Desk = Desk with
+  principal : Party
+  operator  : Party
+  customer  : Party
+
+deskAccount : Text
+deskAccount = "GTB 0011223344 / VOREM LTD"
+
+customerWalletTrc : Text
+customerWalletTrc = "TXk9pMh3aB2cD4eF6gH8jK1lM3nP5qR7sT"
+
+books : Script (Desk, ContractId NairaBook)
+books = script do
+  principal <- allocateParty "Principal"
+  operator  <- allocateParty "Operator"
+  customer  <- allocateParty "Customer"
+  b <- submit principal do
+    createCmd NairaBook with
+      principal; operator
+      accounts = [deskAccount]
+      canSend = [("USDT", "TRC20"), ("USDT", "ERC20"), ("BTC", "BITCOIN")]
+  let d = Desk with principal; operator; customer
+  pure (d, b)
+
+quoteIt : Desk -> ContractId NairaBook -> Script (ContractId InboundDeal)
+quoteIt d b = script do
+  now <- getTime
+  submit d.operator do
+    exerciseCmd b QuoteForNaira with
+      customer = d.customer; reference = "KYA-IN-1"
+      payIntoAccount = deskAccount; nairaAmount = 1250000.0; rate = 1250.0
+      asset = "USDT"; network = "TRC20"; customerWallet = customerWalletTrc
+      expiresAt = addRelTime now (hours 2)
+
+-- 1. The ordinary cycle: quote, principal confirms the naira landed, release.
+testInboundCycleCompletes : Script ()
+testInboundCycleCompletes = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  confirmed <- submit d.principal do
+    exerciseCmd deal ConfirmNairaCredited with
+      bankRef = "GTB/2026-08-31/8842197"; credited = 1250000.0
+  _ <- submit d.operator do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = customerWalletTrc; onNetwork = "TRC20"; amount = 1000.0
+  pure ()
+
+-- 2. THE FAKE ALERT. The operator has a screenshot and releases on it. There
+--    is no confirmation from the person who can see the account, so the
+--    release is refused. This is the loss that a phone screen cannot prevent
+--    by looking harder.
+testReleaseWithoutTheBankConfirmationIsRefused : Script ()
+testReleaseWithoutTheBankConfirmationIsRefused = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  submitMustFail d.operator do
+    exerciseCmd deal ReleaseCrypto with
+      toWallet = customerWalletTrc; onNetwork = "TRC20"; amount = 1000.0
+
+-- 3. And the operator cannot confirm it themselves. Without this,
+--    the fence above is a formality they can wave through.
+testOperatorCannotConfirmTheNaira : Script ()
+testOperatorCannotConfirmTheNaira = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  submitMustFail d.operator do
+    exerciseCmd deal ConfirmNairaCredited with
+      bankRef = "I saw the alert"; credited = 1250000.0
+
+-- 4. A confirmation must point at something checkable later. An empty bank
+--    reference is a screenshot with extra steps.
+testConfirmationNeedsABankReference : Script ()
+testConfirmationNeedsABankReference = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  submitMustFail d.principal do
+    exerciseCmd deal ConfirmNairaCredited with bankRef = ""; credited = 1250000.0
+
+-- 5. Part payment. The customer sends less than quoted and asks for the full
+--    amount of crypto anyway.
+testShortNairaCreditIsRefused : Script ()
+testShortNairaCreditIsRefused = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  submitMustFail d.principal do
+    exerciseCmd deal ConfirmNairaCredited with
+      bankRef = "GTB/2026-08-31/8842197"; credited = 1000000.0
+
+-- 6. THE REDIRECT, AIMED THE OTHER WAY. At release time the customer -- or
+--    someone with their phone -- gives a different wallet. The address was
+--    fixed when the rate was agreed.
+testCustomerCannotChangeTheReceivingWalletAtRelease : Script ()
+testCustomerCannotChangeTheReceivingWalletAtRelease = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  confirmed <- submit d.principal do
+    exerciseCmd deal ConfirmNairaCredited with
+      bankRef = "GTB/2026-08-31/8842197"; credited = 1250000.0
+  submitMustFail d.operator do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = "TSomeOtherWalletSentAtTheLastMinute"
+      onNetwork = "TRC20"; amount = 1000.0
+
+-- 7. WRONG NETWORK, OUTBOUND, AND IT IS THE DESK'S OWN COIN. Sending on a
+--    chain the address does not exist on loses the desk's money, not the
+--    customer's.
+testCannotReleaseOnADifferentNetwork : Script ()
+testCannotReleaseOnADifferentNetwork = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  confirmed <- submit d.principal do
+    exerciseCmd deal ConfirmNairaCredited with
+      bankRef = "GTB/2026-08-31/8842197"; credited = 1250000.0
+  submitMustFail d.operator do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = customerWalletTrc; onNetwork = "ERC20"; amount = 1000.0
+
+-- 8. Released once, or not at all.
+testCannotReleaseTwice : Script ()
+testCannotReleaseTwice = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  confirmed <- submit d.principal do
+    exerciseCmd deal ConfirmNairaCredited with
+      bankRef = "GTB/2026-08-31/8842197"; credited = 1250000.0
+  _ <- submit d.operator do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = customerWalletTrc; onNetwork = "TRC20"; amount = 1000.0
+  submitMustFail d.operator do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = customerWalletTrc; onNetwork = "TRC20"; amount = 1000.0
+
+-- 9. The operator cannot point customers at an account the principal never
+--    approved -- including their own.
+testOperatorCannotNominateTheirOwnNairaAccount : Script ()
+testOperatorCannotNominateTheirOwnNairaAccount = script do
+  (d, b) <- books
+  now <- getTime
+  submitMustFail d.operator do
+    exerciseCmd b QuoteForNaira with
+      customer = d.customer; reference = "KYA-IN-9"
+      payIntoAccount = "OPAY 5555555555 / THE OPERATOR"
+      nairaAmount = 1250000.0; rate = 1250.0
+      asset = "USDT"; network = "TRC20"; customerWallet = customerWalletTrc
+      expiresAt = addRelTime now (hours 2)
+
+-- 10. The desk cannot quote an asset it has no way to send.
+testCannotQuoteAnAssetTheDeskCannotSend : Script ()
+testCannotQuoteAnAssetTheDeskCannotSend = script do
+  (d, b) <- books
+  now <- getTime
+  submitMustFail d.operator do
+    exerciseCmd b QuoteForNaira with
+      customer = d.customer; reference = "KYA-IN-10"
+      payIntoAccount = deskAccount; nairaAmount = 1250000.0; rate = 1250.0
+      asset = "XRP"; network = "XRPL"; customerWallet = "rSomething"
+      expiresAt = addRelTime now (hours 2)
+
+-- 11. The customer can see their own deal and their own release, so both
+--     "which account do I pay" and "did you send it" have answers on the
+--     ledger rather than in a chat log.
+testCustomerSeesTheirDealAndRelease : Script ()
+testCustomerSeesTheirDealAndRelease = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  confirmed <- submit d.principal do
+    exerciseCmd deal ConfirmNairaCredited with
+      bankRef = "GTB/2026-08-31/8842197"; credited = 1250000.0
+  _ <- submit d.operator do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = customerWalletTrc; onNetwork = "TRC20"; amount = 1000.0
+  rels <- query @Release d.customer
+  assertMsg "the customer cannot see their own release" (length rels == 1)
+  -- The deal itself was consumed by ReleaseCrypto, so the customer sees the
+  -- Release rather than a live InboundDeal. Check a deal MID-flight instead,
+  -- which is when "which account do I pay" actually needs an answer.
+  deal2 <- quoteIt d b
+  live <- query @InboundDeal d.customer
+  assertMsg "the customer cannot see a deal that is still in flight" (length live == 1)
+  submit d.operator do exerciseCmd deal2 AbandonInbound

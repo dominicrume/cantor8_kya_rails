@@ -174,6 +174,44 @@ problem, not a technical one. The ledger gives you a timestamped record of
 exactly what was sent, where, and what was agreed — which is what a recovery
 action needs — and nothing more.
 
+## T12 — The fake bank alert (naira in, crypto out)
+
+The reverse leg, and the more dangerous direction for a reason that has
+nothing to do with cryptography: **a naira transfer can be reversed and a
+crypto send cannot.** The desk is exposed from the moment it releases.
+
+The customer sends a doctored transfer receipt. The operator, on a phone,
+looks at it and releases the crypto. The money never arrives. Looking harder
+does not help — a good forgery and a real screenshot are the same pixels.
+
+**Defence:** `ConfirmNairaCredited` is `controller principal`. The operator
+sees a screenshot; the principal sees the account, and only the person who
+can see the account may say money is in it. A bank reference is required, so
+the confirmation points at something checkable later rather than at somebody's
+recollection. `ReleaseCrypto` refuses without that confirmation.
+
+**Residual risk, and it is serious: a confirmed credit can still be reversed.**
+Fraudulently sourced funds get recalled days later, and by then the crypto is
+gone. Nothing here defends that. A hold period before release is the usual
+mitigation and is **not implemented**; it is a commercial decision about how
+long the desk is willing to make customers wait.
+
+**Automation note:** `controller principal` is honest but slow — the principal
+confirms every inbound by hand. A bank feed that writes the confirmation
+directly is the same fence without the bottleneck, and is the right next step.
+
+## T13 — The desk sends on the wrong network
+
+On the outbound leg the desk is the **sender**, so a wrong-network send is the
+desk's own loss rather than the customer's.
+
+**Defence:** the receiving wallet and its network are fixed when the rate is
+agreed, and `ReleaseCrypto` refuses a different network or a different wallet.
+The desk also cannot quote an asset it has no way to send.
+
+**Residual risk:** an address that is valid on two chains, quoted against the
+wrong one, is faithfully sent to the wrong one.
+
 ---
 
 ## What is not in scope
@@ -199,4 +237,7 @@ amount of Daml addresses it.
 | 9 | Stranger claims a deposit (T9) | **defended** — the account is fixed before the money exists |
 | 9 | Wrong network or missing memo (T10) | **defended** — the instruction cannot be issued |
 | 9 | Crypto to an unapproved off-taker wallet (T11) | **defended** |
+| 3 | Confirmed naira later reversed (T12 residual) | **not defended** — no hold period; a commercial decision |
+| 9 | Fake bank alert (T12) | **defended** — only the principal may confirm a credit |
+| 9 | Desk sends on the wrong network (T13) | **defended** |
 | 10 | Implementations diverge (T7) | **defended, three implementations in CI** |

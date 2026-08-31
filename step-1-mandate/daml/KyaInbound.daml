@@ -1,0 +1,133 @@
+-- KyaInbound: the reverse leg. The customer has naira and wants crypto.
+--
+-- The mirror of KyaCycle, and the more dangerous direction, for one reason
+-- that has nothing to do with cryptography: a naira transfer can be reversed
+-- and a crypto send cannot. The desk is exposed from the moment it releases.
+--
+-- Three losses live here.
+--
+--   The fake alert. The customer sends a doctored transfer receipt, the
+--   operator releases the crypto, and the money never arrives. An operator
+--   looking at a screenshot on a phone cannot tell. So the operator does not
+--   get to decide: ConfirmNairaCredited is controller principal, because the
+--   person who can see the bank account is the only person who can say money
+--   is in it.
+--
+--   The wrong network, outbound. Here the desk is the SENDER. Send ERC-20 to
+--   an address that only exists on TRC-20 and the coin is the desk's own loss.
+--
+--   The changed wallet. Same redirect fraud as KyaQuote, aimed the other way:
+--   the customer's receiving address is fixed when the rate is agreed, not
+--   supplied at release.
+module KyaInbound where
+
+-- The desk's own naira accounts, approved by the principal. An operator who
+-- can nominate the account customers pay into can nominate their own.
+template NairaBook
+  with
+    principal : Party
+    operator  : Party
+    accounts  : [Text]      -- "GTB 0011223344 / VOREM LTD"
+    -- Networks the desk can actually send on, per asset.
+    canSend   : [(Text, Text)]   -- (asset, network)
+  where
+    signatory principal
+    observer operator
+
+    nonconsuming choice QuoteForNaira : ContractId InboundDeal
+      with
+        customer       : Party
+        reference      : Text
+        payIntoAccount : Text     -- which of the desk's accounts to pay
+        nairaAmount    : Decimal
+        rate           : Decimal
+        asset          : Text     -- what the customer wants
+        network        : Text     -- and on which chain
+        customerWallet : Text     -- FIXED HERE, before any money moves
+        expiresAt      : Time
+      controller operator
+      do
+        assertMsg "naira amount must be positive" (nairaAmount > 0.0)
+        assertMsg "rate must be positive" (rate > 0.0)
+        assertMsg "that is not one of the desk's approved naira accounts" (payIntoAccount `elem` accounts)
+        assertMsg "the desk cannot send that asset on that network" ((asset, network) `elem` canSend)
+        assertMsg "a receiving wallet must be given when the rate is agreed" (customerWallet /= "")
+        create InboundDeal with
+          operator; principal; customer; reference; payIntoAccount
+          nairaAmount; rate; asset; network; customerWallet; expiresAt
+          nairaConfirmed = False; bankReference = ""
+
+    choice ApproveNairaAccount : ContractId NairaBook
+      with account : Text
+      controller principal
+      do create this with accounts = account :: accounts
+
+template InboundDeal
+  with
+    operator       : Party
+    principal      : Party
+    customer       : Party
+    reference      : Text
+    payIntoAccount : Text
+    nairaAmount    : Decimal
+    rate           : Decimal
+    asset          : Text
+    network        : Text
+    customerWallet : Text
+    expiresAt      : Time
+    nairaConfirmed : Bool
+    bankReference  : Text
+  where
+    signatory operator
+    observer customer, principal
+
+    -- The principal confirms, not the operator. The operator sees a
+    -- screenshot; the principal sees the account. A doctored receipt is
+    -- indistinguishable from a real one on a phone, and that is the whole
+    -- fraud. A bank reference is required so the confirmation points at
+    -- something that can be checked later.
+    choice ConfirmNairaCredited : ContractId InboundDeal
+      with bankRef : Text, credited : Decimal
+      controller principal
+      do
+        assertMsg "a bank reference is required; a screenshot is not a confirmation" (bankRef /= "")
+        assertMsg "naira credited is short of the amount quoted" (credited >= nairaAmount)
+        create this with nairaConfirmed = True, bankReference = bankRef
+
+    -- Releasing the crypto. Consuming: a deal releases once or not at all.
+    choice ReleaseCrypto : ContractId Release
+      with
+        toWallet  : Text
+        onNetwork : Text
+        amount    : Decimal
+      controller operator
+      do
+        now <- getTime
+        assertMsg "quote expired" (now < expiresAt)
+        assertMsg "naira has not been confirmed credited by the principal" nairaConfirmed
+        assertMsg "receiving wallet does not match the one fixed when the rate was agreed" (toWallet == customerWallet)
+        assertMsg "sending on a different network from the one quoted" (onNetwork == network)
+        assertMsg "amount must be positive" (amount > 0.0)
+        create Release with
+          operator; customer; reference; asset; network
+          toWallet; amount; bankReference; releasedAt = now
+
+    choice AbandonInbound : ()
+      controller operator
+      do pure ()
+
+-- What was released, against which confirmed naira credit.
+template Release
+  with
+    operator      : Party
+    customer      : Party
+    reference     : Text
+    asset         : Text
+    network       : Text
+    toWallet      : Text
+    amount        : Decimal
+    bankReference : Text
+    releasedAt    : Time
+  where
+    signatory operator
+    observer customer

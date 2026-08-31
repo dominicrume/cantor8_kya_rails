@@ -73,9 +73,9 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **45 / 45** `daml test` scripts |
+| Attack suite green | **57 / 57** `daml test` scripts, both directions of the cycle |
 | The cycle holds at every join | 15 checks over HTTP, in the order a desk works it |
-| Every fence mutation-tested | all **15**: delete any one and a named test goes red — enforced in CI |
+| Every fence mutation-tested | all **22**: delete any one and a named test goes red — enforced in CI |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
 | Deployed on Cantor8 DevNet | `kya-rails-mandate` 1.0.0, package `df5a02e88a68…`, vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
@@ -271,7 +271,8 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [scoreboard/THIRTEEN-CHECKS.md](scoreboard/THIRTEEN-CHECKS.md) | honest self-score |
 | [step-1-mandate/daml/KyaMandate.daml](step-1-mandate/daml/KyaMandate.daml) | the mandate. Cap, period, allow-list, expiry, revoke. |
 | [step-1-mandate/daml/KyaQuote.daml](step-1-mandate/daml/KyaQuote.daml) | the quote. Binds a payout account to the person who asked, **before the deposit exists**. |
-| [step-1-mandate/daml/KyaCycle.daml](step-1-mandate/daml/KyaCycle.daml) | the deposit instruction and the off-taker leg — the two places the desk loses its **own** money. |
+| [step-1-mandate/daml/KyaCycle.daml](step-1-mandate/daml/KyaCycle.daml) | crypto in, naira out: the deposit instruction and the off-taker leg. |
+| [step-1-mandate/daml/KyaInbound.daml](step-1-mandate/daml/KyaInbound.daml) | naira in, crypto out: the fake-alert fence and the outbound network. |
 | [step-1-mandate/daml/KyaTest.daml](step-1-mandate/daml/KyaTest.daml) | every test is named after the attack it proves |
 | [step-2-agent/DEVNET-PARTIES.md](step-2-agent/DEVNET-PARTIES.md) | DevNet parties, rights, and the traps that cost us hours |
 | [SPEC.md](SPEC.md) | the receipt format, written to be implemented from the text alone |
