@@ -47,8 +47,11 @@ class Wallet:
         self.chain = Chain()
         self.open = False
 
-    def open_mandate(self, cap, allowed, life_seconds):
-        self.ledger.open_mandate(cap=cap, life_seconds=life_seconds)
+    def open_mandate(self, cap, allowed, life_seconds,
+                     period_limit=None, period_seconds=None):
+        self.ledger.open_mandate(cap=cap, life_seconds=life_seconds,
+                                 period_limit=period_limit,
+                                 period_seconds=period_seconds)
         self.open = True
         return {"cap": cap, "allowed": allowed, "ledger": self.ledger.label}
 
@@ -86,7 +89,12 @@ TOOLS = [
                      "description": "roles that may be paid: customer, partner"},
          "life_seconds": {"type": "integer",
                           "description": "seconds until expiry; negative for an "
-                                         "already-expired mandate, to demonstrate the fence"}},
+                                         "already-expired mandate, to demonstrate the fence"},
+         "period_limit": {"type": "number",
+                          "description": "optional: most that may be spent inside any "
+                                         "one window, on top of the total cap"},
+         "period_seconds": {"type": "integer",
+                            "description": "optional: length of that window in seconds"}},
          "required": ["cap"]}},
 
     {"name": "charge",
@@ -117,10 +125,13 @@ TOOLS = [
 
 def call_tool(wallet, name, args):
     if name == "open_mandate":
+        pl = args.get("period_limit")
         return wallet.open_mandate(
             float(args.get("cap", 5.0)),
             args.get("allowed", ["customer", "partner"]),
-            int(args.get("life_seconds", 86400)))
+            int(args.get("life_seconds", 86400)),
+            None if pl is None else float(pl),
+            args.get("period_seconds"))
     if name == "charge":
         return wallet.charge(float(args["amount"]), args["payee"],
                              args.get("what", "unspecified"))

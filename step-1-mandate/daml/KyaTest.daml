@@ -14,7 +14,7 @@
 module KyaTest where
 
 import DA.Text (isInfixOf)
-import DA.Time (RelTime, addRelTime, hours)
+import DA.Time (RelTime, addRelTime, hours, minutes)
 import Daml.Script
 import KyaMandate
 
@@ -52,6 +52,8 @@ bookWithExpiry life = script do
       cap = 100.0
       expiresAt = addRelTime now life
       allowed = [recipient, settlement]
+      periodLimit = None
+      periodLength = None
   m <- submit operator do exerciseCmd prop Accept
 
   let b = Book with principal; operator; recipient; settlement; unverified
@@ -212,3 +214,141 @@ testOverCapRefusedByTheCapAssertion = script do
       assertMsg "refused by something other than an assertion in the choice body" False
     Right _ ->
       assertMsg "THE OVER-CAP CHARGE WAS ACCEPTED" False
+
+
+-- ---------------------------------------------------------------------------
+-- Per-period limits. The brief warned that this "looks simple and turns into
+-- date arithmetic", so these tests attack the arithmetic, not just the limit.
+-- ---------------------------------------------------------------------------
+
+-- A mandate with a daily-style window: cap 100 overall, but no more than 20
+-- inside any window of `len`.
+cappedPerPeriod : RelTime -> Script (Book, ContractId KyaMandate)
+cappedPerPeriod len = script do
+  principal  <- allocateParty "Principal"
+  operator   <- allocateParty "Operator"
+  recipient  <- allocateParty "VerifiedRecipient"
+  settlement <- allocateParty "SettlementPartner"
+  unverified <- allocateParty "UnverifiedAccount"
+  now <- getTime
+  prop <- submit principal do
+    createCmd KyaMandateProposal with
+      owner = principal
+      spender = operator
+      cap = 100.0
+      expiresAt = addRelTime now (hours 24)
+      allowed = [recipient, settlement]
+      periodLimit = Some 20.0
+      periodLength = Some len
+  m <- submit operator do exerciseCmd prop Accept
+  let bk = Book with principal; operator; recipient; settlement; unverified
+  pure (bk, m)
+
+-- Spend one full period limit, then step past the window, `i` times over.
+-- Top level because Daml does not permit recursive local bindings.
+drainWindows : Party -> Party -> ContractId KyaMandate -> Int
+            -> Script (ContractId KyaMandate)
+drainWindows operator recipient m i =
+  if i == 0 then pure m
+  else do
+    m' <- submit operator do
+      exerciseCmd m Charge with
+        amount = 20.0; payee = recipient; memo = "window payout"
+    passTime (minutes 2)
+    drainWindows operator recipient m' (i - 1)
+
+-- 12. Two payouts inside one window that together breach the period limit.
+--     Both are far below the total cap of 100, so only the period fence can
+--     refuse this.
+testPeriodLimitRefusedWithinWindow : Script ()
+testPeriodLimitRefusedWithinWindow = script do
+  (b, m0) <- cappedPerPeriod (hours 24)
+  m1 <- submit b.operator do
+    exerciseCmd m0 Charge with amount = 15.0; payee = b.recipient; memo = "payout 1"
+  submitMustFail b.operator do
+    exerciseCmd m1 Charge with amount = 10.0; payee = b.recipient; memo = "same window"
+
+-- 13. The same two payouts, separated by more than the window, both succeed.
+--     This is the test that proves the window actually reopens -- a period
+--     limit that never resets is just a smaller cap wearing a disguise.
+testPeriodResetsAfterTheWindow : Script ()
+testPeriodResetsAfterTheWindow = script do
+  -- A one-minute window, so the clock can pass it without also passing the
+  -- mandate's 24h expiry. Advancing past BOTH would prove nothing: the expiry
+  -- fence would refuse the second payout and the test would look like a
+  -- working period reset. That mistake is why this comment exists.
+  (b, m0) <- cappedPerPeriod (minutes 1)
+  m1 <- submit b.operator do
+    exerciseCmd m0 Charge with amount = 15.0; payee = b.recipient; memo = "payout 1"
+  passTime (minutes 2)
+  _ <- submit b.operator do
+    exerciseCmd m1 Charge with amount = 15.0; payee = b.recipient; memo = "next window"
+  pure ()
+
+-- 14. Waiting out a window does NOT unlock the total cap. An operator who
+--     could reset the total by waiting would have an unbounded mandate given
+--     enough patience, which is the failure mode a naive reset introduces.
+testPeriodResetDoesNotResetTheTotalCap : Script ()
+testPeriodResetDoesNotResetTheTotalCap = script do
+  (b, m0) <- cappedPerPeriod (minutes 1)
+  -- Five windows of 20 each reaches the total cap of 100 exactly.
+  mFinal <- drainWindows b.operator b.recipient m0 5
+  -- The period window is open again, but the total cap is spent.
+  submitMustFail b.operator do
+    exerciseCmd mFinal Charge with
+      amount = 1.0; payee = b.recipient; memo = "patience should not buy more"
+
+-- 15. The period fence and the cap fence are independent: a charge inside the
+--     period limit but over the total cap is still refused.
+testPeriodLimitDoesNotWeakenTheCap : Script ()
+testPeriodLimitDoesNotWeakenTheCap = script do
+  (b, m0) <- cappedPerPeriod (minutes 1)
+  mFinal <- drainWindows b.operator b.recipient m0 4   -- 80 of 100, window fresh
+  -- 20 is inside the period limit but 80 + 20 = 100 is exactly the cap, so
+  -- this succeeds; 21 would breach the cap while staying inside the period.
+  submitMustFail b.operator do
+    exerciseCmd mFinal Charge with
+      amount = 21.0; payee = b.recipient; memo = "inside the window, over the cap"
+
+-- 16. A mandate with no period configured behaves exactly as before. The
+--     Optional fields must not change the meaning of an existing mandate.
+testNoPeriodConfiguredIsUnchanged : Script ()
+testNoPeriodConfiguredIsUnchanged = script do
+  (b, m0) <- book
+  m1 <- submit b.operator do
+    exerciseCmd m0 Charge with amount = 40.0; payee = b.recipient; memo = "payout 1"
+  _ <- submit b.operator do
+    exerciseCmd m1 Charge with amount = 35.0; payee = b.settlement; memo = "payout 2"
+  pure ()
+
+-- 17. A zero payout. `amount > 0.0` is the only fence that catches this:
+--     spent + 0 leaves both `spent >= 0.0` and `spent <= cap` satisfied, so
+--     the ensure invariant does not mask the assertion here. Chosen for that
+--     reason -- a negative amount would be caught by ensure too and would
+--     prove nothing about the assertion.
+testAmountMustBePositive : Script ()
+testAmountMustBePositive = script do
+  (b, m0) <- book
+  submitMustFail b.operator do
+    exerciseCmd m0 Charge with
+      amount = 0.0; payee = b.recipient; memo = "a payout of nothing"
+
+-- 18. Adjust cannot set a cap below what has already been spent -- that would
+--     leave a mandate whose own invariant is false.
+--
+--     `ensure spent <= cap` catches this as well, so submitMustFail alone
+--     could not tell the two apart. Asserting on the message is what makes
+--     this test specific to the Adjust rule.
+testAdjustBelowSpentRefused : Script ()
+testAdjustBelowSpentRefused = script do
+  (b, m0) <- book
+  m1 <- submit b.operator do
+    exerciseCmd m0 Charge with amount = 40.0; payee = b.recipient; memo = "payout 1"
+  result <- trySubmit (actAs [b.principal, b.operator]) do
+    exerciseCmd m1 Adjust with newCap = 10.0
+  case result of
+    Left (FailureStatusError fs) ->
+      assertMsg ("refused, but not by the Adjust rule: " <> fs.message)
+                ("new cap below what is already spent" `isInfixOf` fs.message)
+    Left _ -> assertMsg "refused by something other than an assertion" False
+    Right _ -> assertMsg "CAP WAS LOWERED BELOW WHAT IS ALREADY SPENT" False

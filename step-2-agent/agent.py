@@ -14,7 +14,7 @@ and the principal can stop it at any moment from anywhere.
 Amounts are sized to what kya-agent-1 actually holds on DevNet (5 CC), so the
 same script runs offline and against the real ledger without a rewrite. Party
 names match KyaTest.daml exactly: one story, one set of names."""
-import sys, os
+import sys, os, time
 sys.path.insert(0, os.path.dirname(__file__))
 from kya_chain import Chain
 
@@ -37,9 +37,12 @@ class MockLedger:
     def name(self, role):
         return NAMES[role]
 
-    def open_mandate(self, cap=5.0, life_seconds=86400):
+    def open_mandate(self, cap=5.0, life_seconds=86400,
+                     period_limit=None, period_seconds=None):
         self.m = {"cap": cap, "spent": 0.0, "allowed": list(ALLOWED),
-                  "expired": life_seconds < 0, "revoked": False}
+                  "expired": life_seconds < 0, "revoked": False,
+                  "period_limit": period_limit, "period_seconds": period_seconds,
+                  "period_spent": 0.0, "period_start": time.time()}
         return None, "mock"
 
     def charge(self, amount, payee):
@@ -49,7 +52,17 @@ class MockLedger:
         if amount <= 0:   return "REFUSED", "amount must be positive"
         if m["spent"] + amount > m["cap"]: return "REFUSED", "charge would exceed the cap"
         if payee not in m["allowed"]:      return "REFUSED", "payee is not on the allow-list"
+        # Rolling window, same shape as the Daml: the first charge after the
+        # window elapses opens a new one. No division, no modulo, no loop.
+        fresh = (m["period_seconds"] is not None
+                 and time.time() >= m["period_start"] + m["period_seconds"])
+        used = 0.0 if fresh else m["period_spent"]
+        if m["period_limit"] is not None and used + amount > m["period_limit"]:
+            return "REFUSED", "charge would exceed the period limit"
         m["spent"] += amount
+        m["period_spent"] = used + amount
+        if fresh:
+            m["period_start"] = time.time()
         return "ACCEPTED", "cap %.1f, spent %.1f, payee on allow-list" % (m["cap"], m["spent"])
 
     def revoke(self):

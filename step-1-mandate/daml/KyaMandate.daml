@@ -3,6 +3,8 @@
 -- The cap is enforced HERE. A cap checked in Python is a suggestion.
 module KyaMandate where
 
+import DA.Time (RelTime, addRelTime)
+
 -- One contract per accepted charge, so the audit trail lives on the ledger and
 -- not only in our receipt chain. Signed by the same two parties as the mandate;
 -- the payee observes, so they can read what was paid to them without being able
@@ -27,6 +29,23 @@ template KyaMandate
     spent     : Decimal
     expiresAt : Time
     allowed   : [Party]      -- counterparties the agent may pay
+
+    -- Per-period limit, on top of the total cap. Optional: None means the
+    -- total cap is the only quantity fence, which is how every mandate
+    -- created before this field existed behaves.
+    --
+    -- The date arithmetic is the part that goes wrong, so it is stated
+    -- plainly: the window is ROLLING, not calendar-aligned. The first charge
+    -- after a window elapses starts a new window at that moment. There is no
+    -- division, no modulo, and no unbounded loop advancing a start time --
+    -- all three are how per-period limits acquire bugs. The cost is that
+    -- windows drift relative to the clock; for a spend limit that is the
+    -- correct trade, because the guarantee people actually want is "no more
+    -- than X in any period this long", which drift does not weaken.
+    periodLimit  : Optional Decimal
+    periodLength : Optional RelTime
+    periodSpent  : Decimal   -- spent inside the current window
+    periodStart  : Time      -- when the current window opened
   where
     -- Defence in depth: `spent <= cap` here duplicates the cap assertion in
     -- Charge. Either one alone refuses an over-cap charge. That is deliberate,
@@ -34,6 +53,8 @@ template KyaMandate
     -- works -- mutation testing found exactly that gap. See
     -- testOverCapRefusedByTheCapAssertion, which asserts on the rule that fired.
     ensure cap > 0.0 && spent >= 0.0 && spent <= cap
+        && periodSpent >= 0.0
+        && optional True (\l -> l > 0.0) periodLimit
 
     signatory owner, spender
 
@@ -49,9 +70,26 @@ template KyaMandate
         assertMsg "amount must be positive" (amount > 0.0)
         assertMsg "charge would exceed the cap" (spent + amount <= cap)
         assertMsg "payee is not on the allow-list" (payee `elem` allowed)
+
+        -- Has the current window elapsed? If so this charge opens a new one.
+        let fresh = case periodLength of
+              None -> False
+              Some len -> now >= addRelTime periodStart len
+        let usedThisPeriod = if fresh then 0.0 else periodSpent
+        -- One line, like every other fence. A fence spread across a `case`
+        -- cannot be mutation-tested by deleting a line -- the module stops
+        -- compiling and every test vanishes, which reads as "not covered"
+        -- when it is really "not testable". Shape follows testability.
+        let withinPeriod =
+              optional True (\limit -> usedThisPeriod + amount <= limit) periodLimit
+        assertMsg "charge would exceed the period limit" withinPeriod
+
         create ChargeRecord with
           owner; spender; payee; amount; memo; chargedAt = now
-        create this with spent = spent + amount
+        create this with
+          spent = spent + amount
+          periodSpent = usedThisPeriod + amount
+          periodStart = if fresh then now else periodStart
 
     choice Revoke : ()
       controller owner
@@ -71,13 +109,21 @@ template KyaMandateProposal
     cap       : Decimal
     expiresAt : Time
     allowed   : [Party]
+    periodLimit  : Optional Decimal
+    periodLength : Optional RelTime
   where
     signatory owner
     observer spender
 
     choice Accept : ContractId KyaMandate
       controller spender
-      do create KyaMandate with owner; spender; cap; spent = 0.0; expiresAt; allowed
+      do
+        now <- getTime
+        create KyaMandate with
+          owner; spender; cap; spent = 0.0; expiresAt; allowed
+          periodLimit; periodLength
+          periodSpent = 0.0
+          periodStart = now
 
     choice Reject : ()
       controller spender

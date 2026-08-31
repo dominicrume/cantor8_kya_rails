@@ -33,6 +33,15 @@ REQUESTS = [
     (9, "tools/call", {"name": "charge", "arguments": {
         "amount": 0.5, "payee": "customer", "what": "one last one"}}),
     (10, "tools/call", {"name": "get_statement", "arguments": {}}),
+    # A fresh mandate with a per-period limit well below the total cap, so
+    # only the period fence can refuse the second payout.
+    (11, "tools/call", {"name": "open_mandate", "arguments": {
+        "cap": 100.0, "period_limit": 20.0, "period_seconds": 86400}}),
+    (12, "tools/call", {"name": "charge", "arguments": {
+        "amount": 15.0, "payee": "customer", "what": "first payout in the window"}}),
+    (13, "tools/call", {"name": "charge", "arguments": {
+        "amount": 10.0, "payee": "customer",
+        "what": "still far below the cap of 100, but the window is nearly used"}}),
 ]
 
 lines = []
@@ -86,6 +95,12 @@ check(st["chain_verifies"] is True, "receipt chain verifies end to end")
 check(st["refused"] == 3, "all three refusals were sealed as receipts (got %s)" % st["refused"])
 check(all(r.get("ledger") for r in st["receipts"]),
       "every receipt names the ledger that produced it")
+
+within = payload(12)
+check(within["outcome"] == "ACCEPTED", "first payout inside the window is accepted")
+over = payload(13)
+check(over["outcome"] == "REFUSED" and "period" in over["rule"],
+      "second payout REFUSED by the period limit, not the cap (rule: %s)" % over["rule"])
 
 print()
 if fails:
