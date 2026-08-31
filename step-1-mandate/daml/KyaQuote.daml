@@ -1,0 +1,85 @@
+-- KyaQuote: bind a deposit to the person who asked for it, before the money exists.
+--
+-- The mandate in KyaMandate stops an operator paying an account the principal
+-- never authorised. It does not stop this, which is the loss that actually
+-- happens on a desk:
+--
+--   10:00  A asks for a rate. Gets one. Says "send me the account." Never sends.
+--   13:00  B asks for a rate. Gets one. B deposits.
+--   14:00  A stranger -- anyone, because the deposit address is public and
+--          monitorable -- messages the operator with a screenshot claiming the
+--          deposit is theirs, and supplies their own payout account.
+--          The operator pays them.
+--   later  B comes back. The desk pays a second time. That is the loss.
+--
+-- Nothing in that sequence requires the operator to be careless. A screenshot
+-- is not evidence of sending, and by the time anyone can tell, both payouts
+-- have gone.
+--
+-- The fix is a matter of WHEN, not of how much identity you demand:
+-- the payout account is fixed when the quote is issued, before any money
+-- exists. A claimant arriving after the deposit cannot change it, and cannot
+-- produce a quote they never requested. That removes the fraud without
+-- demanding the KYC that drives real customers away.
+module KyaQuote where
+
+-- What the desk paid out, and against which quote. Consuming Fulfil means one
+-- of these exists per quote at most -- the double payout is not a rule that
+-- can be forgotten, it is an archived contract that cannot be exercised twice.
+template Settlement
+  with
+    operator      : Party
+    customer      : Party
+    reference     : Text
+    payoutAccount : Text
+    paidAmount    : Decimal
+    depositRef    : Text
+    settledAt     : Time
+  where
+    signatory operator
+    observer customer
+
+template Quote
+  with
+    operator       : Party
+    customer       : Party    -- the party who asked; not a stranger who claims later
+    reference      : Text     -- unique, issued with the quote, known only to them
+    rate           : Decimal
+    expectedAmount : Decimal
+    -- Named HERE, at quote time, before any deposit exists. There is
+    -- deliberately no choice anywhere in this template that changes it.
+    payoutAccount  : Text
+    expiresAt      : Time
+  where
+    ensure rate > 0.0 && expectedAmount > 0.0
+        && reference /= "" && payoutAccount /= ""
+
+    signatory operator
+    observer customer
+
+    -- Pay out against this quote. Consuming: a quote settles once or not at all.
+    choice Fulfil : ContractId Settlement
+      with
+        depositRef : Text     -- the on-chain deposit the operator matched
+        amount     : Decimal
+        claimedAccount : Text -- what the claimant says to pay; must match the quote
+      controller operator
+      do
+        now <- getTime
+        assertMsg "quote expired" (now < expiresAt)
+        -- One line, deliberately: a fence split across two cannot be
+        -- mutation-tested, because deleting the first leaves the module
+        -- uncompilable and every test vanishes instead of one going red.
+        assertMsg "deposit does not carry this quote's reference" (depositRef == reference)
+        assertMsg "amount does not match the quote" (amount == expectedAmount)
+        -- The whole defence, in one line. The account was fixed before the
+        -- money existed; a claimant who turns up afterwards cannot move it.
+        assertMsg "payout account does not match the account named in the quote" (claimedAccount == payoutAccount)
+        create Settlement with
+          operator; customer; reference; payoutAccount
+          paidAmount = amount; depositRef; settledAt = now
+
+    -- The customer never sent. Close it so the reference cannot be reused.
+    choice Abandon : ()
+      controller operator
+      do pure ()

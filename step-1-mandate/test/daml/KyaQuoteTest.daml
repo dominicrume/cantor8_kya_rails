@@ -1,0 +1,127 @@
+-- The attack suite for KyaQuote. Every script is the loss it prevents.
+--
+-- These are not hypotheticals. They are the sequence a working desk described:
+-- a quote given at 10:00 to someone who never sent, a deposit at 13:00 from
+-- someone else, and a stranger at 14:00 with a screenshot and their own account.
+module KyaQuoteTest where
+
+import DA.Time (addRelTime, hours)
+import Daml.Script
+import KyaQuote
+
+data Desk = Desk with
+  operator : Party
+  asker    : Party   -- the person who requested this quote
+  stranger : Party   -- watching the chain; sends nothing, claims everything
+
+setup : Script (Desk, ContractId Quote)
+setup = script do
+  operator <- allocateParty "Operator"
+  asker    <- allocateParty "Customer"
+  stranger <- allocateParty "Watcher"
+  now <- getTime
+  q <- submit operator do
+    createCmd Quote with
+      operator; customer = asker
+      reference = "KYA-7Q31"          -- issued with the quote, to the asker only
+      rate = 1250.0
+      expectedAmount = 10.0
+      payoutAccount = "GTB 0123456789 / A CUSTOMER"   -- fixed before any money
+      expiresAt = addRelTime now (hours 2)
+  let d = Desk with operator; asker; stranger
+  pure (d, q)
+
+-- 1. The ordinary case. The person who asked, sent, and is paid to the account
+--    they named when they asked.
+testQuoteFulfilledToTheAccountNamedUpFront : Script ()
+testQuoteFulfilledToTheAccountNamedUpFront = script do
+  (d, q) <- setup
+  _ <- submit d.operator do
+    exerciseCmd q Fulfil with
+      depositRef = "KYA-7Q31"; amount = 10.0
+      claimedAccount = "GTB 0123456789 / A CUSTOMER"
+  pure ()
+
+-- 2. THE ONE THAT COST REAL MONEY.
+--    A stranger watched the deposit land and asked to be paid to their own
+--    account. Everything else about the claim is correct -- right reference,
+--    right amount -- and it is still refused, because the account was fixed
+--    before the deposit existed and no choice here can move it.
+testClaimantCannotRedirectToTheirOwnAccount : Script ()
+testClaimantCannotRedirectToTheirOwnAccount = script do
+  (d, q) <- setup
+  submitMustFail d.operator do
+    exerciseCmd q Fulfil with
+      depositRef = "KYA-7Q31"; amount = 10.0
+      claimedAccount = "OPAY 9999999999 / THE WATCHER"
+
+-- 3. THE SECOND HALF OF THAT LOSS: paying twice.
+--    Fulfil is consuming, so the quote is gone after the first payout. The
+--    real customer arriving later cannot trigger a second payment against the
+--    same deposit. This is not a rule anyone has to remember at 2am.
+testTheSameQuoteCannotPayTwice : Script ()
+testTheSameQuoteCannotPayTwice = script do
+  (d, q) <- setup
+  _ <- submit d.operator do
+    exerciseCmd q Fulfil with
+      depositRef = "KYA-7Q31"; amount = 10.0
+      claimedAccount = "GTB 0123456789 / A CUSTOMER"
+  submitMustFail d.operator do
+    exerciseCmd q Fulfil with
+      depositRef = "KYA-7Q31"; amount = 10.0
+      claimedAccount = "GTB 0123456789 / A CUSTOMER"
+
+-- 4. A watcher can see the deposit, but not the reference issued with the
+--    quote. A claim carrying the wrong reference is refused even when the
+--    account and amount are right.
+testDepositWithoutTheQuoteReferenceIsRefused : Script ()
+testDepositWithoutTheQuoteReferenceIsRefused = script do
+  (d, q) <- setup
+  submitMustFail d.operator do
+    exerciseCmd q Fulfil with
+      depositRef = "KYA-0000"; amount = 10.0
+      claimedAccount = "GTB 0123456789 / A CUSTOMER"
+
+-- 5. Part-paying a quote, or over-paying it, is not a judgement call the
+--    operator makes under pressure from someone waiting.
+testAmountMustMatchTheQuote : Script ()
+testAmountMustMatchTheQuote = script do
+  (d, q) <- setup
+  submitMustFail d.operator do
+    exerciseCmd q Fulfil with
+      depositRef = "KYA-7Q31"; amount = 9.5
+      claimedAccount = "GTB 0123456789 / A CUSTOMER"
+
+-- 6. A rate quoted at 10:00 is not a rate at 16:00. The quote expires whether
+--    or not anyone remembers to withdraw it.
+testStaleQuoteCannotBeFulfilled : Script ()
+testStaleQuoteCannotBeFulfilled = script do
+  (d, q) <- setup
+  passTime (hours 3)
+  submitMustFail d.operator do
+    exerciseCmd q Fulfil with
+      depositRef = "KYA-7Q31"; amount = 10.0
+      claimedAccount = "GTB 0123456789 / A CUSTOMER"
+
+-- 7. The asker who never sent. Abandoning closes the quote so its reference
+--    cannot be presented later by anyone, including them.
+testAbandonedQuoteCannotBeFulfilled : Script ()
+testAbandonedQuoteCannotBeFulfilled = script do
+  (d, q) <- setup
+  submit d.operator do exerciseCmd q Abandon
+  submitMustFail d.operator do
+    exerciseCmd q Fulfil with
+      depositRef = "KYA-7Q31"; amount = 10.0
+      claimedAccount = "GTB 0123456789 / A CUSTOMER"
+
+-- 8. The customer can read their own quote and settlement. The watcher cannot
+--    read the quote at all -- on Canton the deposit's counterpart is not a
+--    public address anyone can monitor, which is the structural difference
+--    from the chain this fraud was run against.
+testWatcherCannotSeeTheQuote : Script ()
+testWatcherCannotSeeTheQuote = script do
+  (d, _) <- setup
+  seenByAsker    <- query @Quote d.asker
+  seenByStranger <- query @Quote d.stranger
+  assertMsg "the customer cannot see their own quote" (length seenByAsker == 1)
+  assertMsg "a watcher can see the quote"             (null seenByStranger)

@@ -17,16 +17,22 @@ import os, re, shutil, subprocess, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 PKG = os.path.join(HERE, "..", "step-1-mandate")
 TESTPKG = os.path.join(PKG, "test")
-SRC = os.path.join(PKG, "daml", "KyaMandate.daml")
+MANDATE = os.path.join(PKG, "daml", "KyaMandate.daml")
+QUOTE = os.path.join(PKG, "daml", "KyaQuote.daml")
 
-# fence -> a test that MUST fail when that line is deleted.
+# (source file, fence text, a test that MUST fail when that line is deleted)
 FENCES = [
-    ("mandate expired",                     "testAfterExpiryRefused"),
-    ("amount must be positive",             "testAmountMustBePositive"),
-    ("charge would exceed the cap",         "testOverCapRefusedByTheCapAssertion"),
-    ("payee is not on the allow-list",      "testPayoutRedirectionRefused"),
-    ("charge would exceed the period limit", "testPeriodLimitRefusedWithinWindow"),
-    ("new cap below what is already spent", "testAdjustBelowSpentRefused"),
+    (MANDATE, "mandate expired",                      "testAfterExpiryRefused"),
+    (MANDATE, "amount must be positive",              "testAmountMustBePositive"),
+    (MANDATE, "charge would exceed the cap",          "testOverCapRefusedByTheCapAssertion"),
+    (MANDATE, "payee is not on the allow-list",       "testPayoutRedirectionRefused"),
+    (MANDATE, "charge would exceed the period limit", "testPeriodLimitRefusedWithinWindow"),
+    (MANDATE, "new cap below what is already spent",  "testAdjustBelowSpentRefused"),
+    # KyaQuote: the fences that stop the loss the desk actually took.
+    (QUOTE, "quote expired",                          "testStaleQuoteCannotBeFulfilled"),
+    (QUOTE, "deposit does not carry this quote",      "testDepositWithoutTheQuoteReferenceIsRefused"),
+    (QUOTE, "amount does not match the quote",        "testAmountMustMatchTheQuote"),
+    (QUOTE, "payout account does not match",          "testClaimantCannotRedirectToTheirOwnAccount"),
 ]
 
 
@@ -46,30 +52,32 @@ def run_suite():
     return p.stdout + p.stderr
 
 
-def delete_line(containing):
-    src = open(SRC).read()
+def delete_line(path, containing):
+    src = open(path).read()
     kept = [l for l in src.splitlines() if containing not in l]
     if len(kept) == len(src.splitlines()):
         return False
-    open(SRC, "w").write("\n".join(kept) + "\n")
+    open(path, "w").write("\n".join(kept) + "\n")
     return True
 
 
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
-    backup = tempfile.mktemp(suffix=".daml")
-    shutil.copy(SRC, backup)
+    backups = {p: tempfile.mktemp(suffix=".daml") for p in (MANDATE, QUOTE)}
+    for p, b in backups.items():
+        shutil.copy(p, b)
     failures = []
     try:
         baseline = run_suite()
         n = len(re.findall(r"^daml/KyaTest.*: ok", baseline, re.M))
         print("baseline: %d scripts green\n" % n)
 
-        for fence, guard in FENCES:
+        for path, fence, guard in FENCES:
             if only and only not in fence:
                 continue
-            shutil.copy(backup, SRC)
-            if not delete_line(fence):
+            for p, b in backups.items():
+                shutil.copy(b, p)
+            if not delete_line(path, fence):
                 print("  SKIP  %-38s (assertion not found)" % fence[:38])
                 failures.append("%s: assertion text not present" % fence)
                 continue
@@ -84,8 +92,9 @@ def main():
             else:
                 print("  ok    %-38s -> %s goes red" % (fence[:38], guard))
     finally:
-        shutil.copy(backup, SRC)
-        os.unlink(backup)
+        for p, b in backups.items():
+            shutil.copy(b, p)
+            os.unlink(b)
 
     print()
     if failures:
