@@ -188,7 +188,7 @@ function render(s){
   const facts = ['You may pay ' + s.recipients.length + ' authorised accounts'];
   if (s.period_limit) facts.push('Max ' + money(s.period_limit) + ' per window');
   facts.push('Principal can stop this at any moment');
-  $('facts').innerHTML = facts.map(f => '<span class="chip">' + f + '</span>').join('');
+  $('facts').innerHTML = facts.map(f => '<span class="chip">' + esc(f) + '</span>').join('');
 
   if (!$('payee').options.length){
     $('payee').innerHTML = s.recipients
