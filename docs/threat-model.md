@@ -98,6 +98,43 @@ stops.
 **Not defended:** if Canton commits something it should not have, this system
 records it faithfully. It inherits the ledger's correctness.
 
+## T9 — A stranger claims someone else's deposit
+
+The loss that actually happens on a desk, and the one the mandate alone does
+not prevent.
+
+A quote is given at 10:00 to someone who never sends. At 13:00 somebody else
+deposits. At 14:00 a third party — who has been watching the deposit address,
+because on a public chain anyone can — messages the operator with a screenshot
+claiming the deposit is theirs, and supplies their own payout account. The
+operator pays. Later the real depositor arrives and is paid too. **The desk
+pays twice and neither payment was unauthorised.**
+
+Nothing in that sequence requires a careless operator. A screenshot is not
+evidence of sending, and by the time anyone can tell, both payouts have gone.
+
+**Defence:** `KyaQuote` binds the payout account to the quote **at the moment
+the quote is issued, before any deposit exists**. A claimant arriving after
+the money cannot change it, and cannot produce a reference they never
+received. `Fulfil` is consuming, so a quote settles once or not at all — the
+double payout is not a rule an operator has to remember at 2am, it is an
+archived contract that cannot be exercised twice.
+
+**Why this needs almost no KYC.** The question stops being *who is this
+person*, which is expensive and drives real customers away, and becomes *is
+this the same person who asked* — which the quote already answers.
+
+**Canton's part in it:** on a public chain the deposit is monitorable by
+anyone, which is what makes the claim cheap to fabricate. A Canton
+counterpart is visible only to the parties to it;
+`testWatcherCannotSeeTheQuote` holds that.
+
+**Residual risk:** the operator can still fulfil against the wrong quote by
+hand if two are open with similar amounts, and an operator who is themselves
+the fraudster can issue a quote naming their own account. The second is T4
+wearing different clothes — it needs the principal's controls over who may
+issue quotes, which is not built.
+
 ---
 
 ## What is not in scope
@@ -115,7 +152,9 @@ amount of Daml addresses it.
 | 2 | Chain not bound to origin (T5) | known, documented in SPEC.md section 8, unimplemented |
 | 3 | Refusals can be omitted (T6) | partially detectable; tail truncation is not |
 | 4 | Adding a counterparty (T1 residual) | the real privileged operation; deserves its own control |
-| 5 | Operator persuaded (T1) | **defended** |
-| 6 | Float drained (T2) | **defended, bounded** |
-| 7 | Spending after revoke (T3) | **defended** |
-| 8 | Implementations diverge (T7) | **defended, three implementations in CI** |
+| 5 | Operator issues a quote to themselves (T9 residual) | not defended; needs controls on quote issuance |
+| 6 | Operator persuaded (T1) | **defended** |
+| 7 | Float drained (T2) | **defended, bounded** |
+| 8 | Spending after revoke (T3) | **defended** |
+| 9 | Stranger claims a deposit (T9) | **defended** — the account is fixed before the money exists |
+| 10 | Implementations diverge (T7) | **defended, three implementations in CI** |

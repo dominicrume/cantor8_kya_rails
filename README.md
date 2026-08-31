@@ -73,7 +73,7 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **18 / 18** `daml test` scripts |
+| Attack suite green | **27 / 27** `daml test` scripts |
 | Every fence mutation-tested | delete any one and a named test goes red — enforced in CI |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
 | Deployed on Cantor8 DevNet | `kya-rails-mandate` 1.0.0, package `df5a02e88a68…`, vetted |
@@ -260,7 +260,8 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [CONTEXT.md](CONTEXT.md) | routing: which stage owns which question |
 | [SHORTCUTS.md](SHORTCUTS.md) | debts taken, consciously, with repayment plans |
 | [scoreboard/THIRTEEN-CHECKS.md](scoreboard/THIRTEEN-CHECKS.md) | honest self-score |
-| [step-1-mandate/daml/KyaMandate.daml](step-1-mandate/daml/KyaMandate.daml) | the contract. The fences are here. |
+| [step-1-mandate/daml/KyaMandate.daml](step-1-mandate/daml/KyaMandate.daml) | the mandate. Cap, period, allow-list, expiry, revoke. |
+| [step-1-mandate/daml/KyaQuote.daml](step-1-mandate/daml/KyaQuote.daml) | the quote. Binds a payout account to the person who asked, **before the deposit exists**. |
 | [step-1-mandate/daml/KyaTest.daml](step-1-mandate/daml/KyaTest.daml) | every test is named after the attack it proves |
 | [step-2-agent/DEVNET-PARTIES.md](step-2-agent/DEVNET-PARTIES.md) | DevNet parties, rights, and the traps that cost us hours |
 | [SPEC.md](SPEC.md) | the receipt format, written to be implemented from the text alone |
