@@ -163,14 +163,23 @@ async function badFrom(rs){ let prev='GENESIS';
     if(r.prev!==prev || await sha256(stableStringify(body)+prev)!==r.seal) return r.n; prev=r.seal; }
   return 0; }
 
+// receipts.js may come from anyone -- that is the point of the verifier -- so
+// every field out of it is escaped before it reaches the DOM. A forged chain
+// carrying markup in a seal or a rule is exactly the file this page exists to
+// be pointed at.
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
 function receiptCard(r, broken){
   const d=document.createElement('div');
   d.className='r '+(r.outcome==='REFUSED'?'refused ':'')+(broken?'broken':'');
   d.innerHTML='<span class="tag '+(broken?'bad':(r.outcome==='ACCEPTED'?'ok':'no'))+'">'+(broken?'SEAL BROKEN':r.outcome)+'</span>'+
-    '<b>#'+r.n+' '+r.what+'</b><br>'+money(r)+' &rarr; '+r.payee+' &middot; '+r.at+
-    '<br><span class="rule">rule: '+r.rule+'</span>'+
-    '<div class="prov">'+(r.instrument||'')+' &middot; ledger: '+(r.ledger||'unlabelled')+'</div>'+
-    '<div class="seal">seal '+r.seal.slice(0,44)+'&hellip;</div>';
+    '<b>#'+esc(r.n)+' '+esc(r.what)+'</b><br>'+esc(money(r))+' &rarr; '+esc(r.payee)+
+    ' &middot; '+esc(r.at)+
+    '<br><span class="rule">rule: '+esc(r.rule)+'</span>'+
+    '<div class="prov">'+esc(r.instrument||'')+' &middot; ledger: '+
+      esc(r.ledger||'unlabelled')+'</div>'+
+    '<div class="seal">seal '+esc(String(r.seal).slice(0,44))+'&hellip;</div>';
   return d;
 }
 async function renderAll(){
@@ -268,7 +277,7 @@ async function verifyAnimated(){
       } else {
         cards[i].classList.add('checked');
         t.className='tag '+(r.outcome==='ACCEPTED'?'ok':'no'); t.textContent=r.outcome;
-        cards[i].querySelector('.seal').innerHTML='\u2713 recomputed here, matches \u00b7 '+r.seal.slice(0,30)+'\u2026';
+        cards[i].querySelector('.seal').innerHTML='\u2713 recomputed here, matches \u00b7 '+esc(String(r.seal).slice(0,30))+'\u2026';
       }
       prev=r.seal;
       await new Promise(res=>setTimeout(res,140));

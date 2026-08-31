@@ -221,6 +221,25 @@ The desk also cannot quote an asset it has no way to send.
 **Residual risk:** an address that is valid on two chains, quoted against the
 wrong one, is faithfully sent to the wrong one.
 
+## T14 — A forged receipts file attacks the person verifying it
+
+The verifier's whole purpose is that a stranger hands you a chain and you
+check it. That means `receipts.js` is untrusted input by design, and a chain
+carrying markup in a field — `"payee": "<img src=x onerror=...>"` — runs in
+the browser of the person doing the checking. The tool for catching liars
+becomes the delivery mechanism.
+
+Found by running the project's own code auditor over the repository, which
+flagged 23 `innerHTML` uses; two of them interpolated unescaped values.
+
+**Defence:** every field out of a receipt is escaped before it reaches the
+DOM, and `tests/xss_lint.py` fails CI on any unescaped interpolation in any
+of the three pages. Verified with a deliberately forged `receipts.js`: the
+markup renders as text.
+
+**Residual risk:** the same discipline is needed on any page added later. The
+lint covers the three that exist; a fourth would need adding to its list.
+
 ---
 
 ## What is not in scope

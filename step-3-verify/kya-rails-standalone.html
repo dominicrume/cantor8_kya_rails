@@ -131,91 +131,91 @@ const RECEIPTS = [
     "n": 1,
     "what": "Payout to a verified recipient",
     "amount": "2.0",
-    "payee": "VerifiedRecipient",
+    "payee": "VerifiedRecipient (kya-customer-1)",
     "currency": "CC",
-    "instrument": "Amulet (MOCKED, no coin moves)",
-    "rule": "cap 5.0, spent 2.0, payee on allow-list",
+    "instrument": "Amulet (transferred on DevNet)",
+    "rule": "authorised by the mandate and settled on DevNet: 2.0 Amulet transferred (offer accepted)",
     "outcome": "ACCEPTED",
     "approved_by": "mandate signed by Principal + Operator",
-    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-31T15:05:05Z",
+    "ledger": "DevNet (real Canton, package df5a02e88a68)",
+    "at": "2026-08-31T15:18:02Z",
     "prev": "GENESIS",
-    "seal": "f7e5c8e3c157643d2dfcf4972e60c7626e166ef1a25a6bf721b277d747438f25"
+    "seal": "ab2064e1c9c7598d26748bb3fd753fecae922a30a553ec51bfe3b594c414c7de"
   },
   {
     "n": 2,
     "what": "Settle with the liquidity partner",
     "amount": "1.5",
-    "payee": "SettlementPartner",
+    "payee": "SettlementPartner (kya-partner-1)",
     "currency": "CC",
-    "instrument": "Amulet (MOCKED, no coin moves)",
-    "rule": "cap 5.0, spent 3.5, payee on allow-list",
+    "instrument": "Amulet (transferred on DevNet)",
+    "rule": "authorised by the mandate and settled on DevNet: 1.5 Amulet transferred (offer accepted)",
     "outcome": "ACCEPTED",
     "approved_by": "mandate signed by Principal + Operator",
-    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-31T15:05:05Z",
-    "prev": "f7e5c8e3c157643d2dfcf4972e60c7626e166ef1a25a6bf721b277d747438f25",
-    "seal": "f88e30f6030dbf012818ee14193a3aeb5125800cf75e53a8fad0671c1b511e74"
+    "ledger": "DevNet (real Canton, package df5a02e88a68)",
+    "at": "2026-08-31T15:18:15Z",
+    "prev": "ab2064e1c9c7598d26748bb3fd753fecae922a30a553ec51bfe3b594c414c7de",
+    "seal": "5feb104a7998ed2c5398d09818e5aa93e70cd00f13d940b94407c7f4c6aab643"
   },
   {
     "n": 3,
     "what": "ATTACK: operator exceeds the float",
     "amount": "3.0",
-    "payee": "VerifiedRecipient",
+    "payee": "VerifiedRecipient (kya-customer-1)",
     "currency": "CC",
-    "instrument": "Amulet (MOCKED, no coin moves)",
+    "instrument": "Amulet (transferred on DevNet)",
     "rule": "charge would exceed the cap",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by Principal + Operator",
-    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-31T15:05:05Z",
-    "prev": "f88e30f6030dbf012818ee14193a3aeb5125800cf75e53a8fad0671c1b511e74",
-    "seal": "680e04463aff98691cf65d66d6aea0d21ce7c65a16b27fb4d049e9e1773f8c38"
+    "ledger": "DevNet (real Canton, package df5a02e88a68)",
+    "at": "2026-08-31T15:18:15Z",
+    "prev": "5feb104a7998ed2c5398d09818e5aa93e70cd00f13d940b94407c7f4c6aab643",
+    "seal": "522111277e7f48679c37cc8b900e8aad2ac5f243e7c3f5082e73572b5cc834a7"
   },
   {
     "n": 4,
     "what": "ATTACK: change of account, send here",
     "amount": "1.0",
-    "payee": "UnverifiedAccount",
+    "payee": "UnverifiedAccount (kya-unverified-1)",
     "currency": "CC",
-    "instrument": "Amulet (MOCKED, no coin moves)",
+    "instrument": "Amulet (transferred on DevNet)",
     "rule": "payee is not on the allow-list",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by Principal + Operator",
-    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-31T15:05:05Z",
-    "prev": "680e04463aff98691cf65d66d6aea0d21ce7c65a16b27fb4d049e9e1773f8c38",
-    "seal": "6eb240eb694fc3a1554a14ca4320ad2a1b8918456c75b8bd59ea8bfa142b0435"
+    "ledger": "DevNet (real Canton, package df5a02e88a68)",
+    "at": "2026-08-31T15:18:16Z",
+    "prev": "522111277e7f48679c37cc8b900e8aad2ac5f243e7c3f5082e73572b5cc834a7",
+    "seal": "33006136cab11ffa8599c2146d1c0713525f537fec067dbf30e9b414bfd12eaa"
   },
   {
     "n": 5,
     "what": "ATTACK: payout after the mandate expired",
     "amount": "1.0",
-    "payee": "VerifiedRecipient",
+    "payee": "VerifiedRecipient (kya-customer-1)",
     "currency": "CC",
-    "instrument": "Amulet (MOCKED, no coin moves)",
+    "instrument": "Amulet (transferred on DevNet)",
     "rule": "mandate expired",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by Principal + Operator, clock past expiresAt",
-    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-31T15:05:05Z",
-    "prev": "6eb240eb694fc3a1554a14ca4320ad2a1b8918456c75b8bd59ea8bfa142b0435",
-    "seal": "1d411e7e6270a514084abadbc300ae03a81b0fbe1b0ae0922e1a35f0ca353e49"
+    "ledger": "DevNet (real Canton, package df5a02e88a68)",
+    "at": "2026-08-31T15:18:54Z",
+    "prev": "33006136cab11ffa8599c2146d1c0713525f537fec067dbf30e9b414bfd12eaa",
+    "seal": "ec1f3e4e355df7f2744704277091521a46b1f56ef0d049e3816e1d7d5e6e33a5"
   },
   {
     "n": 6,
     "what": "ATTACK: payout after the principal revoked",
     "amount": "0.5",
-    "payee": "VerifiedRecipient",
+    "payee": "VerifiedRecipient (kya-customer-1)",
     "currency": "CC",
-    "instrument": "Amulet (MOCKED, no coin moves)",
+    "instrument": "Amulet (transferred on DevNet)",
     "rule": "Revoke: mandate no longer active on the ledger",
     "outcome": "REFUSED",
     "approved_by": "principal exercised Revoke",
-    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-31T15:05:05Z",
-    "prev": "1d411e7e6270a514084abadbc300ae03a81b0fbe1b0ae0922e1a35f0ca353e49",
-    "seal": "105166b8fb7c73fa99af400b9334a719f35215258de14a3088535d95f94408ab"
+    "ledger": "DevNet (real Canton, package df5a02e88a68)",
+    "at": "2026-08-31T15:19:36Z",
+    "prev": "ec1f3e4e355df7f2744704277091521a46b1f56ef0d049e3816e1d7d5e6e33a5",
+    "seal": "def6b14297a9a15c3f42e4d38be5ad4e9600a7567f5e2661c9237b6751e0531f"
   }
 ];
 </script>
@@ -256,14 +256,23 @@ async function badFrom(rs){ let prev='GENESIS';
     if(r.prev!==prev || await sha256(stableStringify(body)+prev)!==r.seal) return r.n; prev=r.seal; }
   return 0; }
 
+// receipts.js may come from anyone -- that is the point of the verifier -- so
+// every field out of it is escaped before it reaches the DOM. A forged chain
+// carrying markup in a seal or a rule is exactly the file this page exists to
+// be pointed at.
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
 function receiptCard(r, broken){
   const d=document.createElement('div');
   d.className='r '+(r.outcome==='REFUSED'?'refused ':'')+(broken?'broken':'');
   d.innerHTML='<span class="tag '+(broken?'bad':(r.outcome==='ACCEPTED'?'ok':'no'))+'">'+(broken?'SEAL BROKEN':r.outcome)+'</span>'+
-    '<b>#'+r.n+' '+r.what+'</b><br>'+money(r)+' &rarr; '+r.payee+' &middot; '+r.at+
-    '<br><span class="rule">rule: '+r.rule+'</span>'+
-    '<div class="prov">'+(r.instrument||'')+' &middot; ledger: '+(r.ledger||'unlabelled')+'</div>'+
-    '<div class="seal">seal '+r.seal.slice(0,44)+'&hellip;</div>';
+    '<b>#'+esc(r.n)+' '+esc(r.what)+'</b><br>'+esc(money(r))+' &rarr; '+esc(r.payee)+
+    ' &middot; '+esc(r.at)+
+    '<br><span class="rule">rule: '+esc(r.rule)+'</span>'+
+    '<div class="prov">'+esc(r.instrument||'')+' &middot; ledger: '+
+      esc(r.ledger||'unlabelled')+'</div>'+
+    '<div class="seal">seal '+esc(String(r.seal).slice(0,44))+'&hellip;</div>';
   return d;
 }
 async function renderAll(){
@@ -361,7 +370,7 @@ async function verifyAnimated(){
       } else {
         cards[i].classList.add('checked');
         t.className='tag '+(r.outcome==='ACCEPTED'?'ok':'no'); t.textContent=r.outcome;
-        cards[i].querySelector('.seal').innerHTML='\u2713 recomputed here, matches \u00b7 '+r.seal.slice(0,30)+'\u2026';
+        cards[i].querySelector('.seal').innerHTML='\u2713 recomputed here, matches \u00b7 '+esc(String(r.seal).slice(0,30))+'\u2026';
       }
       prev=r.seal;
       await new Promise(res=>setTimeout(res,140));
