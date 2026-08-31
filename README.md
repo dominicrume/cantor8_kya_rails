@@ -242,6 +242,11 @@ Honesty is scored, and overclaiming loses.
 - **The demo rail is labelled on every receipt**, inside the seal, as either
   `DevNet (real Canton, package …)` or `MOCKED (mirrors KyaMandate.daml)`. A
   judge can tell which produced the artefact in front of them without asking.
+- **Every address in this repository is a placeholder.** They are well-formed
+  examples with no keys behind them. No wallet provider is connected, so
+  nothing here can receive or send real value on any chain except Canton
+  DevNet. See [docs/wallet-providers.md](docs/wallet-providers.md) for what
+  connecting one actually requires.
 - **The coin moves, on DevNet only.** `--devnet --move-coin` authorises the
   payout on the mandate and then transfers real Amulet; receipts say
   `Amulet (transferred on DevNet)` and name the settlement. Without that flag
@@ -278,6 +283,7 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [SPEC.md](SPEC.md) | the receipt format, written to be implemented from the text alone |
 | [docs/threat-model.md](docs/threat-model.md) | eight threats, four of them undefended and said so |
 | [docs/upgrade-path.md](docs/upgrade-path.md) | how we failed Canton's upgrade check, and the rules that came out of it |
+| [docs/wallet-providers.md](docs/wallet-providers.md) | where the addresses would come from, and what to ask a provider |
 | [tests/vectors.json](tests/vectors.json) | 9 conformance vectors. Where the spec and a vector disagree, the vector wins. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | start here — the most useful contribution is a third implementation |
 

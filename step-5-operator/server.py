@@ -294,6 +294,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 "receipt": receipt})
         if self.path == "/c":
             self.path = "/customer.html"
+        if self.path.startswith("/c/"):
+            # /c/KYA-7001 -- the shape that survives being pasted into WhatsApp
+            ref = self.path[3:].split("?")[0]
+            body = ('<meta http-equiv="refresh" content="0;url=/customer.html?ref='
+                    + urllib.parse.quote(ref) + '">').encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         return super().do_GET()
 
     def do_POST(self):
