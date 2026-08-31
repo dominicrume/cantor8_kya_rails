@@ -1,0 +1,81 @@
+<title>Desk bot &middot; simulator</title>
+<style>
+  :root{--bg:#0b141a;--head:#1f2c33;--in:#202c33;--out:#005c4b;--ink:#e9edef;
+        --dim:#8696a0;--gold:#c8b458;--sans:-apple-system,'Segoe UI',Roboto,sans-serif}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);height:100vh;
+       display:flex;flex-direction:column}
+  header{background:var(--head);padding:12px 16px;display:flex;align-items:center;gap:12px}
+  .av{width:38px;height:38px;border-radius:50%;background:#2a3942;display:flex;
+      align-items:center;justify-content:center;font-size:17px}
+  header b{font-size:15px;display:block} header small{font-size:11.5px;color:var(--dim)}
+  .sim{background:#2b2113;color:var(--gold);font-size:11.5px;padding:7px 16px;text-align:center}
+  .chat{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:3px}
+  .m{max-width:82%;padding:7px 10px;border-radius:8px;font-size:14.2px;line-height:1.42;
+     white-space:pre-wrap;word-break:break-word}
+  .m.them{background:var(--in);align-self:flex-start;border-top-left-radius:2px}
+  .m.me{background:var(--out);align-self:flex-end;border-top-right-radius:2px}
+  .m code{background:#0b141a;padding:2px 5px;border-radius:4px;font-size:12.5px;
+          font-family:ui-monospace,Menlo,monospace;word-break:break-all}
+  .bar{background:var(--head);padding:10px;display:flex;gap:8px}
+  .bar input{flex:1;background:#2a3942;border:0;border-radius:20px;padding:11px 15px;
+             color:var(--ink);font-size:15px;font-family:inherit}
+  .bar input:focus{outline:2px solid var(--gold)}
+  .bar button{border:0;border-radius:50%;width:44px;height:44px;background:var(--out);
+              color:#fff;font-size:17px;cursor:pointer}
+  .quick{display:flex;gap:6px;padding:0 10px 8px;flex-wrap:wrap;background:var(--head)}
+  .quick button{border:0;border-radius:14px;padding:6px 11px;background:#2a3942;
+                color:var(--dim);font-size:12px;cursor:pointer;font-family:inherit}
+</style>
+
+<header>
+  <div class="av">🤖</div>
+  <div><b>VOREM desk</b><small id="who">customer 234 801 234 5678</small></div>
+</header>
+<div class="sim">SIMULATOR — this is the bot's own logic, not connected to WhatsApp.
+  The same handler serves the webhook once credentials exist.</div>
+<div class="chat" id="chat"></div>
+<div class="quick" id="quick"></div>
+<div class="bar">
+  <input id="t" placeholder="Type a message" autocomplete="off">
+  <button id="send">➤</button>
+</div>
+
+<script>
+const chat = document.getElementById('chat'), input = document.getElementById('t');
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// The bot's replies use *bold* and `code`; render only those two, on escaped text.
+function fmt(t){
+  return esc(t).replace(/`([^`]+)`/g, '<code>$1</code>')
+               .replace(/\*([^*]+)\*/g, '<b>$1</b>')
+               .replace(/_([^_]+)_/g, '<i>$1</i>');
+}
+function add(text, who){
+  const d = document.createElement('div');
+  d.className = 'm ' + who; d.innerHTML = fmt(text);
+  chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+}
+
+const QUICK = ['hi', 'sell', 'USDT', 'TRC20', '10', '1', 'help', 'cancel'];
+document.getElementById('quick').innerHTML =
+  QUICK.map(q => '<button data-q="' + esc(q) + '">' + esc(q) + '</button>').join('');
+document.getElementById('quick').onclick = e => {
+  if (e.target.dataset.q) send(e.target.dataset.q);
+};
+
+async function send(text){
+  text = (text || input.value).trim();
+  if (!text) return;
+  add(text, 'me'); input.value = '';
+  const r = await fetch('/api/wa', {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({from:'2348012345678', text})});
+  const d = await r.json();
+  add(d.reply, 'them');
+}
+document.getElementById('send').onclick = () => send();
+input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+send('hi');
+</script>

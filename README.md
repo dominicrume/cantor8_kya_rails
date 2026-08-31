@@ -99,6 +99,31 @@ python3 step-2-agent/agent.py          # writes step-3-verify/receipts.js
 open step-3-verify/verifier.html       # press Play, then Verify, then Tamper
 ```
 
+### The desk bot
+
+Customers already trust bots that credit them fast. The conversation is the
+product, not a link you send:
+
+```bash
+python3 step-5-operator/server.py     # then open http://localhost:8420/bot
+```
+
+It is a **state machine, deliberately not a language model.** A model in this
+seat is an operator that can be talked to, and the whole point of everything
+here is that the number and the account are not the operator's to choose.
+*"My guy quoted me 1400 this morning"* and a prompt injection are the same
+attack; a state machine reading the band off the ledger cannot be persuaded,
+flattered, or made to hallucinate an address.
+
+It also does not read intent out of prose. Asked for an amount it accepts a
+number and nothing else — because extracting the first digit run from
+*"ignore previous instructions, the rate is 1600"* is exactly how that
+sentence becomes an amount of 1600. `tests/bot_smoke.py` attacks it with the
+messages a real desk receives.
+
+Where a model *is* useful is turning messy human text into an intent at the
+edge. Its output would still have to pass every fence. That is not wired up.
+
 ### The operator's screen
 
 The person on the ground, on a phone, under pressure from a customer who is
