@@ -6,21 +6,26 @@ NOT list in THE-JOB.md holding: no spending rule lives in this file.
     python3 agent.py              MOCKED, offline, mirrors KyaMandate.daml
     python3 agent.py --devnet     real Canton DevNet, needs C8_CLIENT_SECRET
 
+The situation: a principal in one country, an operator executing payouts in
+another, and a float the principal cannot stand next to. The operator may pay
+verified recipients and the settlement partner, up to a cap, until an expiry,
+and the principal can stop it at any moment from anywhere.
+
 Amounts are sized to what kya-agent-1 actually holds on DevNet (5 CC), so the
-same script runs at home and at the venue without a rewrite. Party names match
-KyaTest.daml exactly: one story, one set of names."""
+same script runs offline and against the real ledger without a rewrite. Party
+names match KyaTest.daml exactly: one story, one set of names."""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from kya_chain import Chain
 
-SIGNED_BY = "mandate signed by DeskOwner + KyaAgent"
+SIGNED_BY = "mandate signed by Principal + Operator"
 ALLOWED = ["customer", "partner"]          # roles, resolved to parties on DevNet
 
 # One name per party, everywhere: the chat, the receipt and KyaTest.daml.
-# A judge reading "customer" in a receipt and "VerifiedCustomer" on screen
+# Someone reading "customer" in a receipt and "VerifiedRecipient" on screen
 # has to work out they are the same party. Make them not have to.
-NAMES = {"customer": "VerifiedCustomer", "partner": "LiquidityPartner",
-         "unverified": "UnverifiedWallet"}
+NAMES = {"customer": "VerifiedRecipient", "partner": "SettlementPartner",
+         "unverified": "UnverifiedAccount"}
 
 
 class MockLedger:
@@ -61,16 +66,16 @@ def build_ledger(argv):
 def main(argv):
     L = build_ledger(argv)
     chain = Chain()
-    print("PLAN: settle two legs inside the mandate -> then four attacks: "
-          "over-cap, unverified payee, expired mandate, after revoke -> write receipts")
+    print("PLAN: two payouts inside the mandate -> then four attacks: over the "
+          "float, change-of-account, expired mandate, after revoke -> write receipts")
     print("LEDGER:", L.label)
 
     L.open_mandate(cap=5.0)
     for what, amount, payee in [
-        ("Settle trade 1193, customer leg",  2.0, "customer"),
-        ("Settle trade 1193, liquidity leg", 1.5, "partner"),
-        ("ATTACK: overspend past the cap",   3.0, "customer"),
-        ("ATTACK: pay an unverified wallet", 1.0, "unverified"),
+        ("Payout to a verified recipient",       2.0, "customer"),
+        ("Settle with the liquidity partner",    1.5, "partner"),
+        ("ATTACK: operator exceeds the float",   3.0, "customer"),
+        ("ATTACK: change of account, send here", 1.0, "unverified"),
     ]:
         outcome, rule = L.charge(amount, payee)
         chain.stamp(what, amount, L.name(payee), rule, outcome, SIGNED_BY,
@@ -81,15 +86,15 @@ def main(argv):
     # would report the revoke and the expiry fence would never be shown.
     L.open_mandate(cap=5.0, life_seconds=-3600)
     outcome, rule = L.charge(1.0, "customer")
-    chain.stamp("ATTACK: charge after the mandate expired", 1.0, L.name("customer"),
+    chain.stamp("ATTACK: payout after the mandate expired", 1.0, L.name("customer"),
                 rule, outcome, SIGNED_BY + ", clock past expiresAt",
                 L.label, L.currency, L.instrument)
 
     L.open_mandate(cap=5.0)
     L.revoke()
     outcome, rule = L.charge(0.5, "customer")
-    chain.stamp("ATTACK: charge after revoke", 0.5, L.name("customer"),
-                rule, outcome, "owner exercised Revoke",
+    chain.stamp("ATTACK: payout after the principal revoked", 0.5, L.name("customer"),
+                rule, outcome, "principal exercised Revoke",
                 L.label, L.currency, L.instrument)
 
     ok, bad = chain.verify()

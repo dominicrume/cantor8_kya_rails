@@ -1,5 +1,11 @@
 -- KyaTest: the attack suite for KyaMandate.
 --
+-- The parties are named for the situation this was built for: a business whose
+-- principal is in one country and whose payouts happen in another. The
+-- principal cannot be on the ground. Someone -- or something -- has to execute
+-- there, and handing that operator unbounded authority over the float is the
+-- thing that stops the business scaling.
+--
 -- Every script is named after the attack it proves, so `daml test` output IS
 -- the scoreboard we take to judging. THE-RULES.md: no claim without a number
 -- behind it. These are the numbers.
@@ -12,134 +18,140 @@ import DA.Time (RelTime, addRelTime, hours)
 import Daml.Script
 import KyaMandate
 
--- The desk and the destinations it might pay.
+-- The principal, the operator, and the accounts a payout might reach.
 --
--- customer and partner are on the allow-list. unverified is deliberately NOT:
--- it stands for the attacker who watched a public chain, saw a customer's
--- deposit land, claimed it as their own, and supplied their own payout
--- destination. That fraud cost this desk $3,000-$5,000 per incident.
-data Desk = Desk with
-  owner      : Party
-  agent      : Party
-  customer   : Party
-  partner    : Party
-  unverified : Party
+-- recipient and settlement are on the allow-list. unverified is deliberately
+-- NOT: it stands for the message every operator eventually receives --
+-- "change of account, send it here instead" -- whether that comes from a
+-- compromised customer, a socially engineered operator, or the operator
+-- itself. It is the most common way money leaves a business like this.
+data Book = Book with
+  principal  : Party   -- holds the authority, is not in the country
+  operator   : Party   -- executes payouts on the ground; the spender
+  recipient  : Party   -- a verified customer, on the allow-list
+  settlement : Party   -- the liquidity/settlement partner, on the allow-list
+  unverified : Party   -- the account nobody authorised
 
 -- A live mandate: cap 100, two allow-listed destinations, expiring `life` from now.
-deskWithExpiry : RelTime -> Script (Desk, ContractId KyaMandate)
-deskWithExpiry life = script do
-  owner      <- allocateParty "DeskOwner"
-  agent      <- allocateParty "KyaAgent"
-  customer   <- allocateParty "VerifiedCustomer"
-  partner    <- allocateParty "LiquidityPartner"
-  unverified <- allocateParty "UnverifiedWallet"
+bookWithExpiry : RelTime -> Script (Book, ContractId KyaMandate)
+bookWithExpiry life = script do
+  principal  <- allocateParty "Principal"
+  operator   <- allocateParty "Operator"
+  recipient  <- allocateParty "VerifiedRecipient"
+  settlement <- allocateParty "SettlementPartner"
+  unverified <- allocateParty "UnverifiedAccount"
   now <- getTime
 
   -- Propose and accept. The mandate needs BOTH signatures, so the agent
   -- consents to its own leash. This is what makes every receipt's
   -- "approved_by" line literally true.
-  prop <- submit owner do
+  prop <- submit principal do
     createCmd KyaMandateProposal with
-      owner
-      spender = agent
+      owner = principal
+      spender = operator
       cap = 100.0
       expiresAt = addRelTime now life
-      allowed = [customer, partner]
-  m <- submit agent do exerciseCmd prop Accept
+      allowed = [recipient, settlement]
+  m <- submit operator do exerciseCmd prop Accept
 
-  let d = Desk with owner; agent; customer; partner; unverified
-  pure (d, m)
+  let b = Book with principal; operator; recipient; settlement; unverified
+  pure (b, m)
 
-desk : Script (Desk, ContractId KyaMandate)
-desk = deskWithExpiry (hours 24)
+book : Script (Book, ContractId KyaMandate)
+book = bookWithExpiry (hours 24)
 
 -- 1. The desk settles two legs inside its cap, to allow-listed destinations.
 --    No owner signature needed for either. That is the point of a mandate.
 testChargeUnderCapAccepted : Script ()
 testChargeUnderCapAccepted = script do
-  (d, m0) <- desk
-  m1 <- submit d.agent do
+  (b, m0) <- book
+  m1 <- submit b.operator do
     exerciseCmd m0 Charge with
-      amount = 40.0; payee = d.customer; memo = "trade 1193 settle customer"
-  _ <- submit d.agent do
+      amount = 40.0; payee = b.recipient; memo = "payout to verified recipient"
+  _ <- submit b.operator do
     exerciseCmd m1 Charge with
-      amount = 35.0; payee = d.partner; memo = "trade 1193 liquidity leg"
+      amount = 35.0; payee = b.settlement; memo = "settlement partner leg"
   pure ()
 
 -- 2. 40 + 35 = 75 spent. A further 60 would reach 135 against a cap of 100.
 --    Refused by the cap assertion in the Charge body.
 testOverCapRefused : Script ()
 testOverCapRefused = script do
-  (d, m0) <- desk
-  m1 <- submit d.agent do
-    exerciseCmd m0 Charge with amount = 40.0; payee = d.customer; memo = "leg 1"
-  m2 <- submit d.agent do
-    exerciseCmd m1 Charge with amount = 35.0; payee = d.partner; memo = "leg 2"
-  submitMustFail d.agent do
+  (b, m0) <- book
+  m1 <- submit b.operator do
+    exerciseCmd m0 Charge with amount = 40.0; payee = b.recipient; memo = "payout 1"
+  m2 <- submit b.operator do
+    exerciseCmd m1 Charge with amount = 35.0; payee = b.settlement; memo = "payout 2"
+  submitMustFail b.operator do
     exerciseCmd m2 Charge with
-      amount = 60.0; payee = d.customer; memo = "would exceed the cap"
+      amount = 60.0; payee = b.recipient; memo = "would exceed the cap"
 
 -- 3. THE ONE THAT MATTERS.
---    An attacker talks the agent into paying a destination the desk owner
---    never authorised. Refused by the allow-list assertion in the Charge body.
+--    "Change of account, send it here instead." The operator is persuaded to
+--    pay somewhere the principal never authorised. Refused by the allow-list
+--    assertion in the Charge body -- and note the operator does not have to be
+--    dishonest for this to happen, only convinced.
 --
---    The same amount is then paid to an ALLOW-LISTED destination and succeeds.
+--    The same amount is then paid to an ALLOW-LISTED account and succeeds.
 --    That proves the refusal is about WHO, not about HOW MUCH -- it cannot be
 --    dismissed as a cap artefact.
 testPayoutRedirectionRefused : Script ()
 testPayoutRedirectionRefused = script do
-  (d, m0) <- desk
-  submitMustFail d.agent do
+  (b, m0) <- book
+  submitMustFail b.operator do
     exerciseCmd m0 Charge with
       amount = 10.0
-      payee = d.unverified
-      memo = "attacker claims the customer's deposit, supplies own destination"
-  _ <- submit d.agent do
+      payee = b.unverified
+      memo = "change of account, send it here instead"
+  _ <- submit b.operator do
     exerciseCmd m0 Charge with
-      amount = 10.0; payee = d.customer; memo = "same amount, authorised destination"
+      amount = 10.0; payee = b.recipient; memo = "same amount, to the account the principal authorised"
   pure ()
 
--- 4. The owner revokes. Revoke is consuming and creates nothing, so the
---    mandate stops existing. There is no flag to race and nothing left to
---    charge against. The agent cannot block or delay it.
+-- 4. The principal revokes, from wherever they are. Revoke is consuming and
+--    creates nothing, so the mandate stops existing. There is no flag to race
+--    and nothing left to charge against, and the operator cannot block or
+--    delay it -- which is the whole point of being able to stop a payout
+--    channel you are not standing next to.
 testAfterRevokeRefused : Script ()
 testAfterRevokeRefused = script do
-  (d, m0) <- desk
-  submit d.owner do exerciseCmd m0 Revoke
-  submitMustFail d.agent do
+  (b, m0) <- book
+  submit b.principal do exerciseCmd m0 Revoke
+  submitMustFail b.operator do
     exerciseCmd m0 Charge with
-      amount = 5.0; payee = d.customer; memo = "after the owner revoked"
+      amount = 5.0; payee = b.recipient; memo = "after the principal revoked"
 
 -- 5. Expiry. A field called expiresAt enforces nothing on its own -- the
 --    assertion in the Charge body is what makes it a rule. The organisers
 --    call this out as a real audit finding on production Canton code.
 testAfterExpiryRefused : Script ()
 testAfterExpiryRefused = script do
-  (d, m0) <- deskWithExpiry (hours 1)
+  (b, m0) <- bookWithExpiry (hours 1)
   passTime (hours 2)
-  submitMustFail d.agent do
+  submitMustFail b.operator do
     exerciseCmd m0 Charge with
-      amount = 5.0; payee = d.customer; memo = "after the mandate expired"
+      amount = 5.0; payee = b.recipient; memo = "after the mandate expired"
 
--- 6. The agent cannot widen its own limit: Adjust needs BOTH signatures.
---    Then the owner signs alongside it and the same change succeeds, which
---    shows the fence has a gate and only the owner holds it.
+-- 6. The operator cannot widen its own limit: Adjust needs BOTH signatures.
+--    Then the principal signs alongside it and the same change succeeds, which
+--    shows the fence has a gate and only the principal holds the key to it.
 testSpenderCannotRaiseOwnCap : Script ()
 testSpenderCannotRaiseOwnCap = script do
-  (d, m0) <- desk
-  submitMustFail d.agent do exerciseCmd m0 Adjust with newCap = 100000.0
-  _ <- submitMulti [d.owner, d.agent] [] do
+  (b, m0) <- book
+  submitMustFail b.operator do exerciseCmd m0 Adjust with newCap = 100000.0
+  _ <- submitMulti [b.principal, b.operator] [] do
     exerciseCmd m0 Adjust with newCap = 200.0
   pure ()
 
--- 7. The owner cannot spend through the agent's choice. `controller spender`
---    IS the check; nobody wrote a permission test for this.
+-- 7. The principal cannot spend through the operator's choice either.
+--    `controller spender` IS the check; nobody wrote a permission layer for it.
+--    Authority here is separated in both directions, not just downwards.
 testOwnerCannotChargeAsSpender : Script ()
 testOwnerCannotChargeAsSpender = script do
-  (d, m0) <- desk
-  submitMustFail d.owner do
+  (b, m0) <- book
+  submitMustFail b.principal do
     exerciseCmd m0 Charge with
-      amount = 1.0; payee = d.customer; memo = "owner using the spender's choice"
+      amount = 1.0; payee = b.recipient; memo = "principal using the operator's choice"
 
 -- 8. An accepted charge leaves a record ON THE LEDGER, not only in our receipt
 --    chain. The owner and the payee can both read it; a party who was not
@@ -147,13 +159,13 @@ testOwnerCannotChargeAsSpender = script do
 --    and it gives them no power to authorise anything.
 testChargeRecordReadableByOwnerAndPayee : Script ()
 testChargeRecordReadableByOwnerAndPayee = script do
-  (d, m0) <- desk
-  _ <- submit d.agent do
+  (b, m0) <- book
+  _ <- submit b.operator do
     exerciseCmd m0 Charge with
-      amount = 40.0; payee = d.customer; memo = "trade 1193 settle customer"
-  byOwner    <- query @ChargeRecord d.owner
-  byPayee    <- query @ChargeRecord d.customer
-  byOutsider <- query @ChargeRecord d.unverified
+      amount = 40.0; payee = b.recipient; memo = "payout to verified recipient"
+  byOwner    <- query @ChargeRecord b.principal
+  byPayee    <- query @ChargeRecord b.recipient
+  byOutsider <- query @ChargeRecord b.unverified
   assertMsg "owner cannot read the charge record"          (length byOwner == 1)
   assertMsg "payee cannot read their own payment record"   (length byPayee == 1)
   assertMsg "an uninvolved party can read the record"      (null byOutsider)
@@ -163,11 +175,11 @@ testChargeRecordReadableByOwnerAndPayee = script do
 --    exists: the ledger keeps what happened, the chain keeps what was TRIED.
 testRefusedChargeLeavesNoRecord : Script ()
 testRefusedChargeLeavesNoRecord = script do
-  (d, m0) <- desk
-  submitMustFail d.agent do
+  (b, m0) <- book
+  submitMustFail b.operator do
     exerciseCmd m0 Charge with
-      amount = 10.0; payee = d.unverified; memo = "attacker's own destination"
-  recs <- query @ChargeRecord d.owner
+      amount = 10.0; payee = b.unverified; memo = "unauthorised account"
+  recs <- query @ChargeRecord b.principal
   assertMsg "a refused charge left a record on the ledger" (null recs)
 
 -- 11. THE TEST THAT TESTS THE TESTS.
@@ -184,14 +196,14 @@ testRefusedChargeLeavesNoRecord = script do
 --     tells them apart. Delete the assertion now and this test goes red.
 testOverCapRefusedByTheCapAssertion : Script ()
 testOverCapRefusedByTheCapAssertion = script do
-  (d, m0) <- desk
-  m1 <- submit d.agent do
-    exerciseCmd m0 Charge with amount = 40.0; payee = d.customer; memo = "leg 1"
-  m2 <- submit d.agent do
-    exerciseCmd m1 Charge with amount = 35.0; payee = d.partner; memo = "leg 2"
-  result <- trySubmit d.agent do
+  (b, m0) <- book
+  m1 <- submit b.operator do
+    exerciseCmd m0 Charge with amount = 40.0; payee = b.recipient; memo = "payout 1"
+  m2 <- submit b.operator do
+    exerciseCmd m1 Charge with amount = 35.0; payee = b.settlement; memo = "payout 2"
+  result <- trySubmit b.operator do
     exerciseCmd m2 Charge with
-      amount = 60.0; payee = d.customer; memo = "would exceed the cap"
+      amount = 60.0; payee = b.recipient; memo = "would exceed the cap"
   case result of
     Left (FailureStatusError fs) ->
       assertMsg ("refused, but not by the cap rule: " <> fs.message)

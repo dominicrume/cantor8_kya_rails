@@ -1,7 +1,14 @@
 # Architecture
-User story: a market woman gives an AI agent a note: spend at most 100 CC,
-only with these two suppliers, until Sunday. The agent trades. Every action,
-allowed or refused, becomes a sealed receipt anyone can check.
+User story: the principal of a payout business is in one country; the payouts
+happen in another. They cannot be on the ground, and they cannot hand an
+operator unbounded authority over the float -- that is the thing that stops a
+business like this scaling.
+
+So the operator gets a written mandate instead of a key: pay at most this much,
+only these counterparties, until this date, revocable from anywhere at any
+moment. Every payout the operator attempts, allowed or refused, becomes a sealed
+receipt the principal can verify from another country without taking anyone's
+word for it.
 
 Origin: 2016 to 2021 I ran an OTC desk on WhatsApp. Clients gave instructions in chat, I executed by hand, and the only proof either side had was a screenshot. The chat was never the problem. The missing pieces were an enforceable limit and a receipt nobody could edit. This is those two pieces.
 

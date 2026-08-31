@@ -20,29 +20,51 @@ Built with the KYA Method: Promise it. Attack it. Inspect it. Prove it.
 
 ## The problem
 
-A trading desk gives an AI agent authority to settle trades. An attacker talks
-the agent into paying a wallet the desk never authorised. That is **payout
-redirection**, and it costs desks **$3,000–$5,000 per incident**.
+A business whose principal is in one country and whose payouts happen in
+another has one structural problem: **someone has to execute on the ground, and
+that someone cannot be given unbounded authority over the float.**
 
-Every mitigation people reach for first — a limit in the agent's prompt, a check
-in the application code, a policy document — is the agent policing itself. Edit
-the file, or talk the agent past its own check, and the money is gone.
+Hire an operator and you are trusting a person with your money in a place you
+are not. Automate the operator and you are trusting a process with your money
+in a place you are not. Either way the authority is the same shape: a key, or a
+login, or a signing right. And every one of those has exactly one answer: yes.
+
+The failure is not usually theft. It is this message, which every operator
+eventually receives:
+
+> "Change of account — send it to this one instead."
+
+It arrives from a compromised customer, or a socially engineered operator, or
+occasionally the operator itself. The operator does not have to be dishonest
+for the money to leave; they only have to be convinced. In agent terms this is
+prompt injection, and it is the same attack with a different name.
+
+Every mitigation people reach for first — a limit in the prompt, a check in the
+backend, a policy document, an instruction in the operating manual — is **the
+operator policing itself**. Edit the file, or talk the operator past its own
+check, and the float is gone.
 
 ## The approach
 
-The mandate is a Daml contract on Canton: a **cap**, a **counterparty
-allow-list**, an **expiry**, and a **revoke**. All four are asserted inside the
+The operator gets a mandate instead of a key. It is a Daml contract on Canton:
+a **cap**, a **counterparty allow-list**, an **expiry**, and a **revoke the
+principal can exercise from anywhere**. All four are asserted inside the
 `Charge` choice body, so Canton validates them *before the transaction can
 exist*. There is nothing to roll back and nothing to detect afterwards, because
-the spend never happens.
+the payout never happens.
 
-Both parties sign it (`signatory owner, spender`), so the agent consents to its
-own leash and then cannot take it off. We tested exactly that: the agent tried to
-raise its own cap and the ledger answered *"missing authorization from owner"*.
+Now "change of account, send it here instead" is not a judgement call the
+operator has to get right under pressure. It is a request the ledger refuses.
+
+Both parties sign it (`signatory owner, spender`), so the operator consents to
+its own limits and then cannot remove them. We tested exactly that: the operator
+tried to raise its own cap and the ledger refused it for missing principal
+authorisation.
 
 **Every attempt is sealed into a receipt chain — including the ones the ledger
 refused.** Most systems log what succeeded. This one proves what was *tried and
-stopped*, which is the artefact an auditor actually asks for.
+stopped* — which is what you need when you are reading a statement from another
+country and deciding whether to trust the person who produced it.
 
 ---
 
