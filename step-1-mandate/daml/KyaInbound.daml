@@ -35,6 +35,14 @@ template NairaBook
     -- fence for both: the number is not the operator's to choose freely.
     rateFloor : Decimal
     rateCeiling : Decimal
+    -- A bank feed may confirm credits in the principal's place. It is a
+    -- narrow authority on purpose: confirm a credit that matches, and nothing
+    -- else. It cannot release crypto, approve an account, or move the band.
+    --
+    -- Without it, ConfirmNairaCredited is controller principal and every
+    -- inbound waits for a human who can see the bank account -- which is
+    -- correct, and does not scale past one person.
+    bankFeed : Optional Party
     -- Networks the desk can actually send on, per asset.
     canSend   : [(Text, Text)]   -- (asset, network)
   where
@@ -67,7 +75,14 @@ template NairaBook
         create InboundDeal with
           operator; principal; customer; reference; payIntoAccount
           nairaAmount; rate; asset; network; customerWallet; expiresAt
-          nairaConfirmed = False; bankReference = ""
+          nairaConfirmed = False; bankReference = ""; bankFeed
+
+    -- Naming the feed is the principal's alone. An operator who could appoint
+    -- the thing that confirms their own deals has no fence at all.
+    choice SetBankFeed : ContractId NairaBook
+      with feed : Optional Party
+      controller principal
+      do create this with bankFeed = feed
 
     choice ApproveNairaAccount : ContractId NairaBook
       with account : Text
@@ -98,9 +113,14 @@ template InboundDeal
     expiresAt      : Time
     nairaConfirmed : Bool
     bankReference  : Text
+    bankFeed       : Optional Party
   where
     signatory operator
-    observer customer, principal
+    -- The feed observes, or it cannot exercise anything: a party that cannot
+    -- see a contract cannot act on it. Observing is all it gets -- it reads
+    -- this deal, and confirms a credit against it, and that is the whole of
+    -- its authority.
+    observer customer, principal, optional [] (\p -> [p]) bankFeed
 
     -- The principal confirms, not the operator. The operator sees a
     -- screenshot; the principal sees the account. A doctored receipt is
@@ -111,6 +131,19 @@ template InboundDeal
       with bankRef : Text, credited : Decimal
       controller principal
       do
+        assertMsg "a bank reference is required; a screenshot is not a confirmation" (bankRef /= "")
+        assertMsg "naira credited is short of the amount quoted" (credited >= nairaAmount)
+        create this with nairaConfirmed = True, bankReference = bankRef
+
+    -- The same confirmation, written by the feed instead of a person. The
+    -- fence is unchanged -- a reference is required and short credits are
+    -- refused -- only who may write it has widened, and only to a party the
+    -- principal named.
+    choice ConfirmNairaCreditedByFeed : ContractId InboundDeal
+      with bankRef : Text, credited : Decimal
+      controller optional principal identity bankFeed
+      do
+        assertMsg "no bank feed is configured for this desk" (bankFeed /= None)
         assertMsg "a bank reference is required; a screenshot is not a confirmation" (bankRef /= "")
         assertMsg "naira credited is short of the amount quoted" (credited >= nairaAmount)
         create this with nairaConfirmed = True, bankReference = bankRef

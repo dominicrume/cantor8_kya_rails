@@ -27,6 +27,7 @@ books = script do
       accounts = [deskAccount]
       rateFloor = 1000.0
       rateCeiling = 1500.0
+      bankFeed = None
       canSend = [("USDT", "TRC20"), ("USDT", "ERC20"), ("BTC", "BITCOIN")]
   let d = Desk with principal; operator; customer
   pure (d, b)
@@ -201,3 +202,87 @@ testInboundRateMustBeInsideTheBand = script do
       payIntoAccount = deskAccount; nairaAmount = 1600000.0; rate = 1600.0
       asset = "USDT"; network = "TRC20"; customerWallet = customerWalletTrc
       expiresAt = addRelTime now (hours 2)
+
+
+-- ---------------------------------------------------------------------------
+-- The bank feed. controller principal is correct and does not scale past one
+-- person, so a feed may write the confirmation instead -- with exactly the
+-- same fence, and nothing else.
+-- ---------------------------------------------------------------------------
+
+withFeed : Script (Desk, Party, ContractId NairaBook)
+withFeed = script do
+  (d, b) <- books
+  feed <- allocateParty "BankFeed"
+  b2 <- submit d.principal do exerciseCmd b SetBankFeed with feed = Some feed
+  pure (d, feed, b2)
+
+quoteWith : Desk -> ContractId NairaBook -> Script (ContractId InboundDeal)
+quoteWith d b = quoteIt d b
+
+-- 13. The feed confirms a credit that matches, and the operator can then
+--     release. No human waited.
+testBankFeedCanConfirmACredit : Script ()
+testBankFeedCanConfirmACredit = script do
+  (d, feed, b) <- withFeed
+  deal <- quoteWith d b
+  confirmed <- submit feed do
+    exerciseCmd deal ConfirmNairaCreditedByFeed with
+      bankRef = "GTB/2026-08-31/8842197"; credited = 1250000.0
+  _ <- submit d.operator do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = customerWalletTrc; onNetwork = "TRC20"; amount = 1000.0
+  pure ()
+
+-- 14. The fence is unchanged for the feed. A short credit is refused whoever
+--     writes it -- otherwise automating the confirmation would have quietly
+--     removed the check it was meant to carry.
+testBankFeedCannotConfirmAShortCredit : Script ()
+testBankFeedCannotConfirmAShortCredit = script do
+  (d, feed, b) <- withFeed
+  deal <- quoteWith d b
+  submitMustFail feed do
+    exerciseCmd deal ConfirmNairaCreditedByFeed with
+      bankRef = "GTB/2026-08-31/8842197"; credited = 1000000.0
+
+-- 15. And a reference is still required. A feed that can write an empty
+--     reference is a screenshot with a cron job.
+testBankFeedStillNeedsABankReference : Script ()
+testBankFeedStillNeedsABankReference = script do
+  (d, feed, b) <- withFeed
+  deal <- quoteWith d b
+  submitMustFail feed do
+    exerciseCmd deal ConfirmNairaCreditedByFeed with bankRef = ""; credited = 1250000.0
+
+-- 16. THE NARROWNESS. The feed confirms money arriving and nothing else. It
+--     cannot release the crypto, which is the whole reason it is safe to
+--     automate the confirmation at all.
+testBankFeedCannotReleaseCrypto : Script ()
+testBankFeedCannotReleaseCrypto = script do
+  (d, feed, b) <- withFeed
+  deal <- quoteWith d b
+  confirmed <- submit feed do
+    exerciseCmd deal ConfirmNairaCreditedByFeed with
+      bankRef = "GTB/2026-08-31/8842197"; credited = 1250000.0
+  submitMustFail feed do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = customerWalletTrc; onNetwork = "TRC20"; amount = 1000.0
+
+-- 17. With no feed configured the choice is unusable, including by the
+--     principal. Automation that is switched off is switched off.
+testFeedChoiceIsUnusableWithoutAFeed : Script ()
+testFeedChoiceIsUnusableWithoutAFeed = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  submitMustFail d.principal do
+    exerciseCmd deal ConfirmNairaCreditedByFeed with
+      bankRef = "GTB/2026-08-31/8842197"; credited = 1250000.0
+
+-- 18. The operator cannot appoint the feed. An operator who could name the
+--     thing that confirms their own deals has no fence at all.
+testOperatorCannotAppointTheBankFeed : Script ()
+testOperatorCannotAppointTheBankFeed = script do
+  (d, b) <- books
+  feed <- allocateParty "SomethingTheOperatorControls"
+  submitMustFail d.operator do
+    exerciseCmd b SetBankFeed with feed = Some feed
