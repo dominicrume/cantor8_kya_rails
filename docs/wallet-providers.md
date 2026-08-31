@@ -58,9 +58,13 @@ bank account, one API.
 - **Quidax Developer API** — buy, sell, hold and accept, with webhooks for
   deposits, withdrawals and fills. A Nigerian exchange, so read the
   third-party-deposit clause carefully.
-- **XPayr** — non-custodial payment infrastructure with webhooks and
-  reconciliation logs. Non-custodial changes the risk shape entirely: no
-  counterparty solvency exposure, and the key management is yours.
+- **XPayr** — worth understanding precisely, because it is **not a Breet
+  alternative**. It describes itself as non-custodial infrastructure *for
+  checkout and confirmation, not a custodial merchant wallet*: EVM, TRON and
+  Solana, 0.5% per transaction plus gas, and **no naira settlement at all**.
+  You bring your own wallet and your own off-ramp. What it gives you is the
+  confirmation signal — which makes it a **deposit feed**, the crypto-side
+  twin of a bank feed, rather than a way to receive and settle.
 - **Coinremitter** — narrower, USDT TRC20 focused, invoices and withdrawals.
 
 **Institutional custody.** The shape that matches KYA Rails most closely,
@@ -68,6 +72,12 @@ because a policy engine and a mandate say the same thing at two layers.
 Expect institutional onboarding, due diligence and pricing built for firms
 larger than a starting desk. Worth a conversation once volume justifies it,
 not before.
+
+**And the trade-off that actually matters.** Decentralising the crypto leg
+does not decentralise the business. The naira sits in bank accounts, banks
+freeze accounts far more readily than crypto processors do, and non-custodial
+protects the half of the flow that is not the bottleneck. Choose custody on
+key-management capability, not on ideology.
 
 **A note on the trade-off.** The Nigeria-facing providers above are fast to
 integrate and remove the custody burden. What they do not remove is

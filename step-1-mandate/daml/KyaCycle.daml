@@ -26,6 +26,12 @@ template DepositBook
     operator  : Party
     -- (asset, network, address, memoRequired)
     addresses : [(Text, Text, Text, Bool)]
+    -- A chain watcher that may confirm a deposit landed, in the operator's
+    -- place. The twin of the bank feed on the naira side, and for the same
+    -- reason: an operator confirming a deposit is an operator reading a block
+    -- explorer on a phone under pressure, which is a judgement call, which is
+    -- the class of failure this whole system exists to remove.
+    depositFeed : Optional Party
   where
     signatory principal
     observer operator
@@ -53,6 +59,14 @@ template DepositBook
         assertMsg "this network requires a memo or tag and none was given" (not needsMemo || not (isNone memo))
         create DepositInstruction with
           operator; customer; quoteRef; asset; network; address; memo
+          depositFeed; confirmed = False; txReference = ""
+
+    -- Naming the watcher is the principal's alone. An operator who appoints
+    -- the thing that confirms their own deposits has no fence.
+    choice SetDepositFeed : ContractId DepositBook
+      with feed : Optional Party
+      controller principal
+      do create this with depositFeed = feed
 
     choice ApproveDepositAddress : ContractId DepositBook
       with asset : Text, network : Text, address : Text, memoRequired : Bool
@@ -72,9 +86,25 @@ template DepositInstruction
     network  : Text
     address  : Text
     memo     : Optional Text
+    depositFeed : Optional Party
+    confirmed   : Bool
+    txReference : Text
   where
     signatory operator
-    observer customer
+    -- The watcher observes, or it cannot act: a party that cannot see a
+    -- contract cannot exercise a choice on it.
+    observer customer, optional [] (\p -> [p]) depositFeed
+
+    -- The watcher confirms the deposit landed. Narrow on purpose: it says
+    -- money arrived on chain, and nothing else. It cannot pay anyone.
+    choice ConfirmDepositSeen : ContractId DepositInstruction
+      with txRef : Text, seenAmount : Decimal
+      controller optional operator identity depositFeed
+      do
+        assertMsg "no deposit feed is configured for this desk" (depositFeed /= None)
+        assertMsg "a transaction reference is required; a screenshot is not a confirmation" (txRef /= "")
+        assertMsg "deposit amount must be positive" (seenAmount > 0.0)
+        create this with confirmed = True, txReference = txRef
 
 -- Off-taker wallets the principal has approved, per asset and network.
 template OffTakerBook

@@ -23,6 +23,7 @@ books = script do
   d <- submit principal do
     createCmd DepositBook with
       principal; operator
+      depositFeed = None
       addresses = [ ("USDT", "TRC20", trc, False)
                   , ("USDT", "ERC20", erc, False)
                   , ("XRP",  "XRPL",  "rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh", True) ]
@@ -149,3 +150,58 @@ testCustomerCanSeeTheInstructionTheyWereGiven = script do
       asset = "USDT"; network = "TRC20"; memo = None
   seen <- query @DepositInstruction k.customer
   assertMsg "the customer cannot see their own deposit instruction" (length seen == 1)
+
+
+-- ---------------------------------------------------------------------------
+-- The deposit feed: the twin of the bank feed, on the crypto side. An operator
+-- confirming a deposit is an operator reading a block explorer on a phone.
+-- ---------------------------------------------------------------------------
+
+withDepositFeed : Script (Desk, Party, ContractId DepositBook)
+withDepositFeed = script do
+  (k, d, _) <- books
+  feed <- allocateParty "ChainWatcher"
+  d2 <- submit k.principal do exerciseCmd d SetDepositFeed with feed = Some feed
+  pure (k, feed, d2)
+
+instructionFor : Desk -> ContractId DepositBook -> Script (ContractId DepositInstruction)
+instructionFor k d = submit k.operator do
+  exerciseCmd d IssueDepositInstruction with
+    customer = k.customer; quoteRef = "KYA-F1"
+    asset = "USDT"; network = "TRC20"; memo = None
+
+-- 9. The watcher confirms a deposit it saw on chain.
+testDepositFeedCanConfirmADeposit : Script ()
+testDepositFeedCanConfirmADeposit = script do
+  (k, feed, d) <- withDepositFeed
+  inst <- instructionFor k d
+  _ <- submit feed do
+    exerciseCmd inst ConfirmDepositSeen with
+      txRef = "0x9f2c...a41"; seenAmount = 10.0
+  pure ()
+
+-- 10. A transaction reference is required. A watcher that can confirm without
+--     one is an operator's eyeball with a cron job attached.
+testDepositFeedNeedsATransactionReference : Script ()
+testDepositFeedNeedsATransactionReference = script do
+  (k, feed, d) <- withDepositFeed
+  inst <- instructionFor k d
+  submitMustFail feed do
+    exerciseCmd inst ConfirmDepositSeen with txRef = ""; seenAmount = 10.0
+
+-- 11. With no feed configured the choice is unusable, including by the
+--     operator who would otherwise be its controller.
+testDepositFeedChoiceUnusableWithoutAFeed : Script ()
+testDepositFeedChoiceUnusableWithoutAFeed = script do
+  (k, d, _) <- books
+  inst <- instructionFor k d
+  submitMustFail k.operator do
+    exerciseCmd inst ConfirmDepositSeen with txRef = "0x9f2c...a41"; seenAmount = 10.0
+
+-- 12. The operator cannot appoint the watcher.
+testOperatorCannotAppointTheDepositFeed : Script ()
+testOperatorCannotAppointTheDepositFeed = script do
+  (k, d, _) <- books
+  feed <- allocateParty "SomethingTheOperatorControls"
+  submitMustFail k.operator do
+    exerciseCmd d SetDepositFeed with feed = Some feed
