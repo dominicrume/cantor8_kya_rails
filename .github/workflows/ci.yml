@@ -41,6 +41,9 @@ jobs:
       - name: MCP server - a model cannot overspend its mandate
         run: python3 tests/mcp_smoke.py
 
+      - name: operator interface - the fences reach the screen
+        run: python3 tests/operator_smoke.py
+
       - name: the agent runs offline, stdlib only
         run: |
           python3 step-2-agent/agent.py

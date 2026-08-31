@@ -98,6 +98,25 @@ python3 step-2-agent/agent.py          # writes step-3-verify/receipts.js
 open step-3-verify/verifier.html       # press Play, then Verify, then Tamper
 ```
 
+### The operator's screen
+
+The person on the ground, on a phone, under pressure from a customer who is
+waiting:
+
+```bash
+python3 step-5-operator/server.py          # offline
+python3 step-5-operator/server.py --devnet --move-coin
+```
+
+Then open `http://localhost:8420`.
+
+Two design decisions worth naming. The recipient is a **picker, not a text
+field**, so "send it to this account instead" is not typeable — a new account
+has to be added by the principal. And a refusal is worded as *the ledger
+refused this*, not *your request failed*: an operator who reads a refusal as
+their own failure works around it, and an operator who reads it as the system
+deciding is protected by it.
+
 ### Give the wallet to a language model
 
 The point of the mandate is that it holds even when the agent is persuaded.
