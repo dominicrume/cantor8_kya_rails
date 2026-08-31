@@ -118,6 +118,22 @@ cases.append({
     "receipts": resealed, "verdict": "FAIL", "fail_at": 3,
 })
 
+# 7b. Escapes. A third implementation written from the spec alone had to infer
+#     these from RFC 8259 because section 4 did not state them. It guessed
+#     right; the next one might not. This vector removes the guess.
+b7 = body(n=1, what='He said "change of account" then left',
+          amount="1.0", currency="CC", instrument="Amulet",
+          payee="Alice\tBob", rule="path C:\\ops\\float",
+          outcome="ACCEPTED", approved_by="owner+agent", ledger="TESTVECTOR",
+          at="2026-01-01T00:00:00Z", prev="GENESIS")
+cases.append({
+    "name": "escapes-quote-backslash-tab",
+    "kind": "seal",
+    "why": "quote, backslash and tab must escape identically in every language",
+    "body": b7, "prev": "GENESIS",
+    "canonical": canonical(b7), "seal": seal(b7, "GENESIS"),
+})
+
 # 8. Non-ASCII MUST be refused at sealing time, naming the field.
 cases.append({
     "name": "reject-non-ascii-currency-symbol",

@@ -9,7 +9,8 @@ Two parts, and the second one is not about Canton:
 1. **[SPEC.md](SPEC.md)** — an open format for tamper-evident receipts of agent
    actions, **including the actions that were refused**. Stdlib-only, no
    signatures, no network to verify. Two independent implementations and
-   [9 conformance vectors](tests/vectors.json).
+   [10 conformance vectors](tests/vectors.json). Three independent
+   implementations agree.
 2. **A reference application** — the spend-limited wallet D1 asks for, with the
    limits enforced in a Daml choice body.
 
@@ -149,6 +150,7 @@ The checks, all three of which run in CI:
 ```bash
 python3 tests/conformance.py     # seal format, Python
 node    tests/conformance.js     # seal format, JavaScript
+cd impl/go && go run .           # seal format, Go
 cd step-1-mandate && daml test   # the on-ledger fences, 10 scripts
 ```
 

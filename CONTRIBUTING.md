@@ -26,8 +26,14 @@ All three run in CI on every pull request.
 
 ## Good first contributions
 
-- **A third implementation** — Go, Rust, TypeScript, Java. Put it in
+- **A fourth implementation** — Rust, TypeScript, Java, C#. Put it in
   `impl/<language>/` with a runner that consumes `tests/vectors.json`.
+  [`impl/go/`](impl/go/) is the worked example: written from SPEC.md alone,
+  and it earned its place by finding a real gap — the spec did not state the
+  JSON escapes for quote, backslash and control characters, so the author had
+  to infer them from RFC 8259. Section 4 says them now, and
+  `escapes-quote-backslash-tab` is the vector that removes the guess. That is
+  what a new implementation is for.
 - **A vector we do not have.** Empty strings, very long fields, a chain of one
   thousand receipts, a `prev` that points at the wrong earlier seal. If you can
   think of a case where two honest implementations might diverge, that case
