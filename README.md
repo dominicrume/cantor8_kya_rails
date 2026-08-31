@@ -73,8 +73,9 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **11 / 11** `daml test` scripts, mutation-tested |
-| Fences enforced on-ledger | cap, allow-list, expiry, revoke — all in the `Charge` choice body |
+| Attack suite green | **18 / 18** `daml test` scripts |
+| Every fence mutation-tested | delete any one and a named test goes red — enforced in CI |
+| Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
 | Deployed on Cantor8 DevNet | package `6d13f9948206e73684461925d830261bff5a5d265191b5c764258c98f40dc241` |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
 | Receipt chain | 6 receipts, 2 accepted, 4 refused, chain verifies end to end |
@@ -151,6 +152,7 @@ The checks, all three of which run in CI:
 python3 tests/conformance.py     # seal format, Python
 node    tests/conformance.js     # seal format, JavaScript
 cd impl/go && go run .           # seal format, Go
+python3 tests/mutation.py        # delete each fence, prove a test goes red
 cd step-1-mandate && daml test   # the on-ledger fences, 10 scripts
 ```
 

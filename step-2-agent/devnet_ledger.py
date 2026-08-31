@@ -192,7 +192,8 @@ class DevNetLedger:
         self.revoked = False
         self.exp = None
 
-    def open_mandate(self, cap=5.0, life_seconds=86400):
+    def open_mandate(self, cap=5.0, life_seconds=86400,
+                     period_limit=None, period_seconds=None):
         """Owner proposes, agent accepts. Both signatures, as the template demands.
 
         A negative life_seconds creates a mandate whose expiry has already
@@ -209,7 +210,10 @@ class DevNetLedger:
                 "owner": PARTY["owner"], "spender": PARTY["agent"],
                 "cap": "%.1f" % float(cap),
                 "expiresAt": exp,
-                "allowed": [PARTY["customer"], PARTY["partner"]]}}}],
+                "allowed": [PARTY["customer"], PARTY["partner"]],
+                "periodLimit": None if period_limit is None else "%.1f" % float(period_limit),
+                "periodLength": None if period_seconds is None
+                                else {"microseconds": str(int(period_seconds) * 1000000)}}}}],
             act_as=PARTY["owner"])
         if not ok:
             raise RuntimeError("could not propose the mandate: " + str(r)[:160])

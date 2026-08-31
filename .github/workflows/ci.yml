@@ -72,3 +72,22 @@ jobs:
       - name: every test is named after the attack it proves
         working-directory: step-1-mandate
         run: daml test
+
+  mutation:
+    # The only job that tests the tests. Deletes each fence in the Daml in turn
+    # and requires a named test to go red. A green suite that survives a
+    # deleted fence is decoration, and this is how we find that out.
+    name: mutation testing (every fence)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: install Daml SDK
+        run: |
+          curl -sSL https://get.daml.com | sh -s 3.4.10
+          echo "$HOME/.daml/bin" >> "$GITHUB_PATH"
+      - name: deleting any fence must turn a test red
+        run: python3 tests/mutation.py

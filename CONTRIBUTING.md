@@ -40,9 +40,11 @@ All three run in CI on every pull request.
   belongs in the file.
 - **An MCP server** so a language model can hold a mandate directly. The
   interesting part is that the model *feels* the refusal.
-- **Per-period limits in the Daml** — spend no more than X per day, on top of
-  the total cap. Note the warning in the challenge brief: this turns into date
-  arithmetic quickly, so bring tests.
+- **A calendar-aligned period option.** The current window is rolling: the
+  first charge after a window elapses opens a new one. Some businesses want
+  "per calendar day" instead. That is genuinely harder — timezones, and a
+  start time that must advance without an unbounded loop — and it needs the
+  same mutation coverage as every other fence.
 
 ## House rules
 
