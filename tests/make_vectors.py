@@ -63,6 +63,13 @@ cases.append({
 })
 
 # 5. A real chain, produced by the reference Chain class.
+#
+#    NOTE: these party names are frozen. They do not match the demo's current
+#    story, and that is correct -- the vector CONTENT is arbitrary, but its
+#    BYTES are the contract. Renaming a payee here changes every seal below it,
+#    which per SPEC.md section 9 is a new major version of the format and
+#    breaks every implementation that already conforms to 1.0. Change these
+#    only when you intend exactly that.
 ch = Chain()
 ch.stamp("Settle customer leg", 2.0, "VerifiedCustomer", "cap 5.0, spent 2.0",
          "ACCEPTED", "owner+agent", "TESTVECTOR")

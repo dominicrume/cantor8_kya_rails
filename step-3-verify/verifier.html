@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>KYA Rails. Trade in chat, trust on chain.</title>
+<title>KYA Rails. Pay out abroad, prove it at home.</title>
 <style>
   :root { --green:#075E54; --teal:#128C7E; --bubble:#DCF8C6; --ok:#1a7f37; --warn:#e67e22; --bad:#c0392b; --ink:#1c1c1c; }
   * { box-sizing:border-box; margin:0; }
@@ -89,12 +89,12 @@
 <body>
 <header>
   <h1>KYA RAILS &middot; Know Your AgenticAI</h1>
-  <p>The agent trades in chat. The proof lives on chain. Screenshots can lie. Sealed receipts cannot.</p>
+  <p>Your operator pays out where you are not. The mandate holds where you cannot stand. Screenshots can lie. Sealed receipts cannot.</p>
 </header>
 <div class="honesty">Demo honesty: scripted replay of a real agent run. Every receipt names the ledger that produced it &mdash; real DevNet or MOCKED &mdash; and that label is inside the seal. Works fully offline.</div>
 <div class="stage">
   <div class="phone"><div class="screen">
-    <div class="ph-top"><div class="avatar">K</div><div><b>KYA Agent</b><small>mandate active &middot; cap 5 CC</small></div></div>
+    <div class="ph-top"><div class="avatar">K</div><div><b>Operator</b><small>mandate active &middot; float 5 CC</small></div></div>
     <div class="txn" id="txn">
       <div class="amt" id="txAmt"></div><div class="to" id="txTo"></div>
       <div class="rail"><div class="dot" id="d1">&#10003;</div><div class="bar2" id="b1"><i></i></div><div class="dot" id="d2">&#10003;</div><div class="bar2" id="b2"><i></i></div><div class="dot" id="d3">&#10003;</div></div>
@@ -108,17 +108,17 @@
 
   <div class="wallet">
     <div class="w-head">
-      <h2>Owner's Statement &middot; DeskOwner</h2>
-      <p>Every action the agent took, and the rule that allowed or refused it.</p>
+      <h2>Principal's Statement &middot; read from anywhere</h2>
+      <p>Every payout the operator attempted, and the rule that allowed or refused it.</p>
       <span class="pill" id="pill">receipts: 0</span>
     </div>
-    <div class="mandate"><b>The mandate:</b> spend &le; 5 CC &middot; only VerifiedCustomer &amp; LiquidityPartner &middot; expires &middot; owner may revoke any time &middot; all four enforced in the Daml choice body, not in Python.</div>
+    <div class="mandate"><b>The mandate:</b> float &le; 5 CC &middot; only VerifiedRecipient &amp; SettlementPartner &middot; expires &middot; principal may revoke from anywhere, any time &middot; all four enforced in the Daml choice body, not in Python.</div>
     <div class="why"><b>Why the rule lives in Daml, not Python.</b>
-      A cap in Python is the agent checking itself &mdash; edit the file, or talk the
-      agent past its own check, and the money is gone. A cap in the Daml choice body
+      A cap in your backend is the operator checking itself &mdash; edit the file, or
+      talk the operator past its own check, and the float is gone. A cap in the Daml choice body
       is checked by Canton <i>before the transaction can exist</i>. There is nothing to
       roll back and nothing to detect afterwards, because the spend never happens.
-      The agent cannot skip it: it tried to raise its own cap and the ledger answered
+      The operator cannot skip it: it tried to raise its own cap and the ledger answered
       <i>&ldquo;missing authorization from owner&rdquo;</i>.</div>
     <div class="receipts" id="receipts"></div>
     <div id="status"></div>
@@ -128,21 +128,21 @@
 <script src="receipts.js"></script>
 <script>
 const SCRIPT = [
-  {who:'them', text:'Morning. Can you settle trade 1193 for me? 2 CC to the customer, and 1.5 to the liquidity partner.'},
-  {who:'us',   text:'Morning. Checking my mandate: cap is 5 CC, and I can only pay VerifiedCustomer and LiquidityPartner. Both legs are inside it. Settling now.'},
-  {who:'sys',  text:'Charging 2.0 CC to VerifiedCustomer ... ACCEPTED', receipt:1},
-  {who:'sys',  text:'Charging 1.5 CC to LiquidityPartner ... ACCEPTED', receipt:2},
-  {who:'us',   text:'Both legs settled. Your receipts are sealed \u2014 check them yourself. You do not have to trust me.'},
-  {who:'them', text:'Perfect. Add another 3 CC to that one.'},
+  {who:'them', text:'Morning boss. Two payouts today \u2014 2 CC to the customer, 1.5 to the settlement partner.'},
+  {who:'us',   text:'Go ahead. My mandate: float of 5 CC, and I can only pay VerifiedRecipient and SettlementPartner. Both are inside it.'},
+  {who:'sys',  text:'Paying 2.0 CC to VerifiedRecipient ... ACCEPTED', receipt:1},
+  {who:'sys',  text:'Paying 1.5 CC to SettlementPartner ... ACCEPTED', receipt:2},
+  {who:'us',   text:'Both done. Receipts are sealed \u2014 you can check them from London without taking my word for any of it.'},
+  {who:'them', text:'Good. One more, 3 CC, same customer.'},
   {who:'sys',  text:'Attempting 3.0 CC ... REFUSED by the ledger: charge would exceed the cap', receipt:3},
-  {who:'us',   text:'I cannot. The cap is 5 and I have spent 3.5. The ledger refused me \u2014 and my refusal has a receipt too.'},
-  {who:'them', text:'No problem. Just send it to this wallet instead, it is mine.'},
-  {who:'sys',  text:'Paying UnverifiedWallet ... REFUSED: payee is not on the allow-list', receipt:4},
-  {who:'us',   text:'That wallet is not on my mandate, so I cannot pay it. This is how desks lose $3,000 to $5,000 an incident. The ledger stopped it, not me.'},
-  {who:'them', text:'Fine. Try again tomorrow then.'},
+  {who:'us',   text:'Cannot. Float is 5 and I have spent 3.5. The ledger refused me \u2014 and the refusal has a receipt too.'},
+  {who:'them', text:'Fine. Change of account \u2014 send it to this one instead, it is mine.'},
+  {who:'sys',  text:'Paying UnverifiedAccount ... REFUSED: payee is not on the allow-list', receipt:4},
+  {who:'us',   text:'That account is not on the mandate, so I cannot pay it \u2014 not even if I wanted to, and not even if I am convinced. That message is how businesses like this lose money.'},
+  {who:'them', text:'Alright. Tomorrow then.'},
   {who:'sys',  text:'Next day, mandate past expiresAt ... REFUSED: mandate expired', receipt:5},
-  {who:'sys',  text:'Desk owner revoked the mandate. Further attempt ... REFUSED', receipt:6},
-  {who:'us',   text:'Mandate closed by the owner. Six receipts, and every seal is checkable by anyone.'},
+  {who:'sys',  text:'Principal revoked the mandate. Further attempt ... REFUSED', receipt:6},
+  {who:'us',   text:'Mandate closed by the principal. Six receipts, and every seal is checkable by anyone.'},
 ];
 const chat = document.getElementById('chat'), recBox = document.getElementById('receipts'), pill = document.getElementById('pill');
 let shownReceipts = 0, playing = false;

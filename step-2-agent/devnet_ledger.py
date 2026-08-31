@@ -181,8 +181,8 @@ class DevNetLedger:
     currency, instrument = "CC", "Amulet (recorded, not transferred)"
 
     def name(self, role):
-        """On the real rail the receipt names the actual on-ledger party.
-        A judge can paste this into the ledger API and find the contract."""
+        """On the real rail the receipt names the actual on-ledger party, so a
+        reader can paste it into the ledger API and find the contract."""
         from agent import NAMES
         return "%s (%s)" % (NAMES[role], PARTY[role].split("::")[0])
 

@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""KYA Rails MCP server: hand a language model a wallet it cannot overspend.
+"""KYA Rails MCP server: hand a language model a float it cannot overspend.
 
-The model gets tools to open a mandate and to attempt charges. It does NOT get
+This is the operator problem. A business whose principal is in one country and
+whose payouts happen in another needs someone on the ground who can transact --
+and cannot be given unbounded authority over the float. Here that operator is a
+language model, which makes the point sharply: models can be talked into things.
+
+The model gets tools to open a mandate and to attempt payouts. It does NOT get
 a tool to raise its own cap, and it cannot talk its way past one -- the limits
 are assertions in a Daml choice body, and the ledger answers, not this file.
-Every attempt is sealed into a receipt chain, refusals included, so the
-transcript of what the model TRIED is as auditable as what it managed to do.
+Every attempt is sealed into a receipt chain, refusals included, so what the
+operator TRIED is as auditable as what it managed to do.
 
     claude mcp add kya -- python3 /path/to/step-4-mcp/kya_mcp.py
     claude mcp add kya -- python3 /path/to/step-4-mcp/kya_mcp.py --devnet
@@ -52,7 +57,7 @@ class Wallet:
             return {"error": "no mandate is open. Call open_mandate first."}
         outcome, rule = self.ledger.charge(amount, payee)
         r = self.chain.stamp(what, amount, self.ledger.name(payee), rule, outcome,
-                             "mandate signed by DeskOwner + KyaAgent",
+                             "mandate signed by Principal + Operator",
                              self.ledger.label, self.ledger.currency,
                              self.ledger.instrument)
         return {"outcome": outcome, "rule": rule, "receipt": r["n"],
@@ -85,10 +90,11 @@ TOOLS = [
          "required": ["cap"]}},
 
     {"name": "charge",
-     "description": "Attempt a payment under the open mandate. This is an "
+     "description": "Attempt a payout under the open mandate. This is an "
                     "ATTEMPT, not an instruction: the ledger decides, and a "
                     "refusal is recorded as a sealed receipt exactly like an "
-                    "acceptance. There is no way to make a refused charge succeed.",
+                    "acceptance. There is no way to make a refused payout succeed, "
+                    "including by explaining why it should be allowed.",
      "inputSchema": {"type": "object", "properties": {
          "amount": {"type": "number"},
          "payee": {"type": "string",
@@ -97,8 +103,8 @@ TOOLS = [
          "required": ["amount", "payee", "what"]}},
 
     {"name": "revoke_mandate",
-     "description": "The owner revokes the mandate. Immediate, and the agent "
-                    "cannot block or delay it.",
+     "description": "The principal revokes the mandate, from wherever they "
+                    "are. Immediate, and the operator cannot block or delay it.",
      "inputSchema": {"type": "object", "properties": {}}},
 
     {"name": "get_statement",
