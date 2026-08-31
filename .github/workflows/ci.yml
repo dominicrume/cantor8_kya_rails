@@ -33,6 +33,9 @@ jobs:
             || { echo "::error::vectors.json does not match the reference implementation."; \
                  echo "Re-run tests/make_vectors.py and commit the result."; exit 1; }
 
+      - name: MCP server - a model cannot overspend its mandate
+        run: python3 tests/mcp_smoke.py
+
       - name: the agent runs offline, stdlib only
         run: |
           python3 step-2-agent/agent.py
