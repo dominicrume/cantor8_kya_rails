@@ -28,6 +28,11 @@ template KyaMandate
     expiresAt : Time
     allowed   : [Party]      -- counterparties the agent may pay
   where
+    -- Defence in depth: `spent <= cap` here duplicates the cap assertion in
+    -- Charge. Either one alone refuses an over-cap charge. That is deliberate,
+    -- but it means a submitMustFail test cannot tell you the assertion still
+    -- works -- mutation testing found exactly that gap. See
+    -- testOverCapRefusedByTheCapAssertion, which asserts on the rule that fired.
     ensure cap > 0.0 && spent >= 0.0 && spent <= cap
 
     signatory owner, spender
