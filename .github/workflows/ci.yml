@@ -44,6 +44,9 @@ jobs:
       - name: operator interface - the fences reach the screen
         run: python3 tests/operator_smoke.py
 
+      - name: the Breet webhook confirms only what matches a held deal
+        run: python3 tests/breet_smoke.py
+
       - name: the bot cannot be talked into a rate, an account or a shortcut
         run: python3 tests/bot_smoke.py
 

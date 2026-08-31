@@ -136,3 +136,33 @@ The honest position, and it belongs in any demo:
 
 That sentence costs nothing to say and is worth more than a claim that does
 not survive one question.
+
+
+## The Breet adapter, and one thing to raise with them
+
+[`step-7-providers/breet.py`](../step-7-providers/breet.py) turns their
+deposit webhook into a `ConfirmDepositSeen`. It is mostly refusals, because an
+endpoint that confirms deposits is an endpoint that causes payouts.
+
+**A note on their authentication.** Breet sends an `x-webhook-secret` header
+to be compared against the secret in your dashboard. That is a **bearer
+credential, not a signature**: anyone who obtains it can forge a confirmation,
+and unlike an HMAC it is not bound to the request body, so it cannot tell you
+the payload was not altered in transit. It is what the provider offers, so it
+is what we check — with a constant-time comparison, alongside their IP
+allowlist, and never as the only thing between a message and a payout.
+
+The adapter therefore matches **every field against a deal we already hold**
+before confirming anything: the address must be one we issued, the asset and
+amount must match the quote, the event must be `trade.completed`, and
+`isWrongAssetDeposit` refuses outright. A forged webhook with a stolen secret
+still cannot invent a deal.
+
+**Worth asking Breet for:** a **unique deposit address per trade**. Two open
+deals sharing an address is ambiguous by construction, and the adapter refuses
+rather than guessing which one the money belongs to — which is correct, and
+also a customer waiting. A per-deal address removes the ambiguity at the
+wallet layer instead of relying on the quote reference alone.
+
+**And an HMAC signature.** Worth raising as a product request; a shared secret
+is the weakest of the common schemes.
