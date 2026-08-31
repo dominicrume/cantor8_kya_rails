@@ -1,0 +1,66 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  conformance:
+    # The important one. If Python and JavaScript ever disagree about a seal,
+    # the receipt chain is broken across languages and the format is worthless.
+    # This job is what makes a pull request from a stranger safe to merge.
+    name: seal conformance (Python + JavaScript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Python implementation
+        run: python3 tests/conformance.py
+
+      - name: JavaScript implementation
+        run: node tests/conformance.js
+
+      - name: vectors are reproducible from the reference implementation
+        run: |
+          cp tests/vectors.json /tmp/vectors.committed.json
+          python3 tests/make_vectors.py
+          diff -u /tmp/vectors.committed.json tests/vectors.json \
+            || { echo "::error::vectors.json does not match the reference implementation."; \
+                 echo "Re-run tests/make_vectors.py and commit the result."; exit 1; }
+
+      - name: the agent runs offline, stdlib only
+        run: |
+          python3 step-2-agent/agent.py
+          python3 - <<'PY'
+          import json
+          raw = open("step-3-verify/receipts.js").read()
+          rs = json.loads(raw[raw.index("["):raw.rindex("]") + 1])
+          assert len(rs) == 6, "expected 6 receipts, got %d" % len(rs)
+          assert sum(r["outcome"] == "REFUSED" for r in rs) == 4, "expected 4 refusals"
+          assert all(r.get("ledger") for r in rs), "every receipt must name its ledger"
+          bad = [r["n"] for r in rs if any(not str(v).isascii() for v in r.values())]
+          assert not bad, "non-ASCII in sealed receipts: %s" % bad
+          print("offline run: 6 receipts, 4 refusals, all labelled, all ASCII")
+          PY
+
+  daml:
+    # The fences themselves. Slower, and it needs the SDK, so it runs beside
+    # conformance rather than gating it.
+    name: daml attack suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: install Daml SDK
+        run: |
+          curl -sSL https://get.daml.com | sh -s 3.4.10
+          echo "$HOME/.daml/bin" >> "$GITHUB_PATH"
+      - name: every test is named after the attack it proves
+        working-directory: step-1-mandate
+        run: daml test

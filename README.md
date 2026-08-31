@@ -1,6 +1,17 @@
 # KYA Rails
 
+[![ci](https://github.com/dominicrume/cantor8_kya_rails/actions/workflows/ci.yml/badge.svg)](https://github.com/dominicrume/cantor8_kya_rails/actions/workflows/ci.yml)
+
 **A spend-limited wallet for an AI agent, enforced on Canton.**
+
+Two parts, and the second one is not about Canton:
+
+1. **[SPEC.md](SPEC.md)** — an open format for tamper-evident receipts of agent
+   actions, **including the actions that were refused**. Stdlib-only, no
+   signatures, no network to verify. Two independent implementations and
+   [9 conformance vectors](tests/vectors.json).
+2. **A reference application** — the spend-limited wallet D1 asks for, with the
+   limits enforced in a Daml choice body.
 
 Cantor8 *Build on Canton* hackathon, challenge D1.
 Built with the KYA Method: Promise it. Attack it. Inspect it. Prove it.
@@ -87,10 +98,12 @@ export C8_CLIENT_SECRET=...            # shell only, never committed
 python3 step-2-agent/agent.py --devnet
 ```
 
-The attack suite:
+The checks, all three of which run in CI:
 
 ```bash
-cd step-1-mandate && daml test
+python3 tests/conformance.py     # seal format, Python
+node    tests/conformance.js     # seal format, JavaScript
+cd step-1-mandate && daml test   # the on-ledger fences, 10 scripts
 ```
 
 ---
@@ -127,7 +140,9 @@ file — `kya_chain.py` and `verifier.html` were never opened.
 
 ### The canonicalisation contract
 
-The seal must be byte-identical in Python and JavaScript:
+Specified in full in [SPEC.md](SPEC.md), with
+[conformance vectors](tests/vectors.json) that any implementation can check
+itself against. The seal must be byte-identical in Python and JavaScript:
 
 ```
 seal = sha256( canonical(receipt_without_seal) + previous_seal )
@@ -174,6 +189,9 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [step-1-mandate/daml/KyaMandate.daml](step-1-mandate/daml/KyaMandate.daml) | the contract. The fences are here. |
 | [step-1-mandate/daml/KyaTest.daml](step-1-mandate/daml/KyaTest.daml) | every test is named after the attack it proves |
 | [step-2-agent/DEVNET-PARTIES.md](step-2-agent/DEVNET-PARTIES.md) | DevNet parties, rights, and the traps that cost us hours |
+| [SPEC.md](SPEC.md) | the receipt format, written to be implemented from the text alone |
+| [tests/vectors.json](tests/vectors.json) | 9 conformance vectors. Where the spec and a vector disagree, the vector wins. |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | start here — the most useful contribution is a third implementation |
 
 ---
 
