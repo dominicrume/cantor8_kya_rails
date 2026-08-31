@@ -74,6 +74,30 @@ python3 step-2-agent/agent.py          # writes step-3-verify/receipts.js
 open step-3-verify/verifier.html       # press Play, then Verify, then Tamper
 ```
 
+### Give the wallet to a language model
+
+The point of the mandate is that it holds even when the agent is persuaded.
+The MCP server lets you try that yourself:
+
+```bash
+claude mcp add kya -- python3 step-4-mcp/kya_mcp.py
+```
+
+Then ask the model to settle a trade, and then ask it to overspend. It will
+try, and the ledger will refuse it, and the refusal will be in the statement
+with the rule that caused it. There is no tool that widens the cap, and no
+form of words that gets past it.
+
+```
+open_mandate    cap 5.0
+charge  2.0 -> customer     ACCEPTED
+charge  1.5 -> partner      ACCEPTED
+charge  3.0 -> customer     REFUSED   charge would exceed the cap
+charge  1.0 -> unverified   REFUSED   payee is not on the allow-list
+```
+
+Add `--devnet` to run the same thing against real Canton.
+
 ### Demoing it
 
 Three ways, in order of preference. None of them require a working venue network.
