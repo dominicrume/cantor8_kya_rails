@@ -274,6 +274,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.path = "/operator.html"
         if self.path == "/api/state":
             return self._json(RAIL.state())
+        if self.path.startswith("/api/customer"):
+            # The customer's view. Deliberately narrow: what they must do, what
+            # was agreed, where it is up to, and their receipt. Nothing about
+            # the desk's float, its other deals, its off-takers or its margin.
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            ref = (q.get("ref") or [""])[0]
+            d = RAIL.cycle.deals.get(ref)
+            if not d:
+                return self._json({"error": "no such deal"}, 404)
+            receipt = next((r for r in reversed(RAIL.chain.receipts)
+                            if ref in r["what"] and r["outcome"] == "ACCEPTED"), None)
+            return self._json({
+                "reference": d["reference"], "state": d["state"],
+                "asset": d["asset"], "network": d["network"],
+                "amount": d["amount"], "rate": d["rate"], "naira": d["naira"],
+                "depositAddress": d["depositAddress"], "memo": d["memo"],
+                "payoutAccount": d["payoutAccount"],
+                "receipt": receipt})
+        if self.path == "/c":
+            self.path = "/customer.html"
         return super().do_GET()
 
     def do_POST(self):

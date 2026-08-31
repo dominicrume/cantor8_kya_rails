@@ -111,6 +111,26 @@ try:
     check(again["outcome"] == "REFUSED" and "already been paid" in again["rule"],
           "the cycle cannot pay twice")
 
+    # --- the customer's view: the link you send on WhatsApp ---
+    cust = call("/api/customer?ref=" + ref)
+    check(cust["depositAddress"] == TRC and cust["network"] == "TRC20",
+          "the customer sees the address and the network they must use")
+    check(cust["payoutAccount"] == CUSTOMER_ACCT,
+          "the customer sees the account they will be paid to")
+    check(cust["state"] == "PAID", "the customer sees where the deal has got to")
+    check(cust.get("receipt") and cust["receipt"]["seal"],
+          "the customer gets their sealed receipt")
+    leaked = [k for k in ("offtaker", "nairaReceived", "opened", "expiresAt")
+              if k in cust]
+    check(not leaked, "the desk's internals are not on the customer's page (%s)" % leaked)
+
+    missing = None
+    try:
+        call("/api/customer?ref=KYA-DOESNOTEXIST")
+    except Exception as e:
+        missing = getattr(e, "code", None)
+    check(missing == 404, "an unknown reference is a 404, not someone else's deal")
+
     s = call("/api/state")
     d = [x for x in s["deals"] if x["reference"] == ref][0]
     check(d["state"] == "PAID", "the deal ends in PAID with the whole path on record")
