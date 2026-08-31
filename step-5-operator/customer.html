@@ -1,4 +1,5 @@
 <title>Your deal &middot; KYA Rails</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   :root{--bg:#0f1613;--card:#18211d;--line:#28332e;--ink:#eaf0ec;--dim:#93a29a;
         --ok:#2f9e5e;--gold:#c8b458;--warn:#c8853a;
@@ -42,6 +43,13 @@
   .foot{text-align:center;font-size:11px;color:var(--dim);padding-top:18px}
   .foot a{color:var(--gold)}
   .miss{text-align:center;padding:50px 0;color:var(--dim)}
+  /* The QR is a convenience, never the source of truth. The address stays
+     visible underneath it in full, because a QR that encodes the wrong thing
+     is indistinguishable from one that does not, and the loss is permanent. */
+  .qrwrap{text-align:center;margin:14px 0 4px}
+  .qr{display:inline-block;background:#fff;padding:12px;border-radius:12px;line-height:0}
+  .qr img,.qr canvas{display:block;width:180px;height:180px;image-rendering:pixelated}
+  .qrnote{font-size:11px;color:var(--dim);margin-top:8px}
 </style>
 
 <div class="wrap">
@@ -87,6 +95,9 @@ function render(d){
     '<div class="big">' + esc(d.amount) + ' ' + esc(d.asset) + '</div>' +
     '<div class="sub">on the ' + esc(d.network) + ' network only</div>' +
     '<label>To this address</label>' +
+    '<div class="qrwrap"><div class="qr" id="qr"></div>' +
+      '<div class="qrnote">Scan or copy. Always check the address on screen ' +
+      'matches what your wallet shows before you send.</div></div>' +
     '<div class="val">' + esc(d.depositAddress) + '</div>' +
     copyBtn(d.depositAddress, 'Copy address') + memo +
     '<div class="warn"><b>Check the network.</b> This address works on ' +
@@ -123,11 +134,32 @@ function render(d){
   });
 }
 
+// The QR encodes the address and nothing else -- no amount, no scheme, no
+// extra parameters -- so what is scanned is exactly what is displayed. If the
+// encoder is unavailable the block simply does not appear; the address and the
+// copy button are the primary path and never depend on it.
+function drawQR(text){
+  const host = document.getElementById('qr');
+  if (!host) return;
+  if (typeof qrcode !== 'function'){ host.parentElement.style.display = 'none'; return; }
+  try {
+    const q = qrcode(0, 'M');          // auto version, medium error correction
+    q.addData(text);
+    q.make();
+    host.innerHTML = q.createImgTag(5, 0);
+    host.dataset.encoded = text;       // asserted in tests: what we handed the encoder
+  } catch (e) {
+    host.parentElement.style.display = 'none';
+  }
+}
+
 async function load(){
   if (!ref){ $('body').innerHTML = '<div class="miss">No reference in this link.</div>'; return; }
   const res = await fetch('/api/customer?ref=' + encodeURIComponent(ref));
   if (!res.ok){ $('body').innerHTML = '<div class="miss">No deal found for ' + esc(ref) + '.</div>'; return; }
-  render(await res.json());
+  const d = await res.json();
+  render(d);
+  if (d.state === 'QUOTED') drawQR(d.depositAddress);
 }
 load();
 setInterval(load, 5000);   // the customer watches it progress without asking

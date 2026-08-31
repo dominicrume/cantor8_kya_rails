@@ -124,6 +124,22 @@ try:
               if k in cust]
     check(not leaked, "the desk's internals are not on the customer's page (%s)" % leaked)
 
+    # The QR must encode the address and nothing else, and must never be the
+    # only place the address appears. A QR that encodes the wrong string looks
+    # exactly like one that does not, and the loss is permanent.
+    page = urllib.request.urlopen(BASE + "/customer.html", timeout=10).read().decode()
+    check("drawQR(d.depositAddress)" in page,
+          "the QR is handed the deposit address itself, not a derived string")
+    check("q.addData(text)" in page and "amount" not in page.split("function drawQR")[1].split("}")[0],
+          "the QR encodes the address alone -- no amount, no scheme, no extras")
+    check(page.count("copyBtn(d.depositAddress") == 1 and "class=\"val\"" in page,
+          "the address stays visible and copyable, so the QR is never the only path")
+    check("host.parentElement.style.display = 'none'" in page,
+          "if the encoder is unavailable the QR block hides rather than showing a wrong one")
+
+    short = urllib.request.urlopen(BASE + "/c/" + ref, timeout=10).read().decode()
+    check(("ref=" + ref) in short, "the short link /c/<ref> resolves to the customer page")
+
     missing = None
     try:
         call("/api/customer?ref=KYA-DOESNOTEXIST")
