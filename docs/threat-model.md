@@ -196,9 +196,18 @@ gone. Nothing here defends that. A hold period before release is the usual
 mitigation and is **not implemented**; it is a commercial decision about how
 long the desk is willing to make customers wait.
 
-**Automation note:** `controller principal` is honest but slow — the principal
-confirms every inbound by hand. A bank feed that writes the confirmation
-directly is the same fence without the bottleneck, and is the right next step.
+**The bank feed.** `controller principal` is honest and does not scale past
+one person, so a feed party the principal names may write the confirmation
+instead. Its authority is deliberately narrow: confirm a credit that matches,
+and nothing else. It cannot release crypto, approve an account, or move the
+rate band, and the operator cannot appoint it. The same fences apply to it —
+a reference is required and a short credit is refused — so automating the
+confirmation does not quietly remove the check it was there to carry.
+
+**What the feed changes about hiring.** Confirmation was the reason an
+employee could not be trusted with the admin work: they would be confirming
+money into an account they can see. With a feed writing it, the human never
+holds that authority, and the job becomes safe to delegate.
 
 ## T13 — The desk sends on the wrong network
 

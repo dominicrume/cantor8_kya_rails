@@ -41,10 +41,40 @@ freeze policy become yours), plus terms that frequently prohibit third-party
 deposits — which is precisely what an OTC desk receives. Read that clause
 before building on it.
 
-**I am not naming vendors.** Which providers serve Nigeria and the UK, at what
-price, under what terms, changes faster than this document can, and the wrong
-answer here is expensive. What follows is how to interrogate whichever ones
-you shortlist.
+## Shortlist as of August 2026
+
+Named because a shortlist is more useful than a principle, and **every one of
+these must be verified against your own case** — availability, terms and
+pricing move faster than this file, and the questions below are how you check.
+
+**Nigeria-facing, crypto in and naira out.** This is the shape that matches
+the desk's forward leg most closely: accept a deposit, settle to a Nigerian
+bank account, one API.
+
+- **Breet** — 12+ assets, USDT and USDC across TRC20, ERC20, Solana, BNB,
+  Polygon, Arbitrum and Base; wallet generation, payouts and **real-time
+  deposit webhooks**; settles to NGN and GHS bank accounts. Custodial, so
+  their solvency and freeze policy become yours.
+- **Quidax Developer API** — buy, sell, hold and accept, with webhooks for
+  deposits, withdrawals and fills. A Nigerian exchange, so read the
+  third-party-deposit clause carefully.
+- **XPayr** — non-custodial payment infrastructure with webhooks and
+  reconciliation logs. Non-custodial changes the risk shape entirely: no
+  counterparty solvency exposure, and the key management is yours.
+- **Coinremitter** — narrower, USDT TRC20 focused, invoices and withdrawals.
+
+**Institutional custody.** The shape that matches KYA Rails most closely,
+because a policy engine and a mandate say the same thing at two layers.
+Expect institutional onboarding, due diligence and pricing built for firms
+larger than a starting desk. Worth a conversation once volume justifies it,
+not before.
+
+**A note on the trade-off.** The Nigeria-facing providers above are fast to
+integrate and remove the custody burden. What they do not remove is
+concentration: if the provider freezes, the desk stops. A desk of any size
+eventually wants two, and the fences in this repository are indifferent to
+which one is behind an address — which is the point of putting the rules on a
+ledger rather than in an integration.
 
 ## Questions to ask any provider
 
@@ -60,12 +90,30 @@ you shortlist.
 - Nigeria and UK: which entity holds the funds, and under which regime
 - What happens on a freeze, and who decides
 
-## Where Canton sits
+## Where Canton sits, and the part that changes the plan
 
-Canton Coin is separate from all of the above. A Canton party needs a
-**validator node** or a hosted validator; an exchange account is not a Canton
-party and cannot hold a mandate. Moving the desk's own CC under a mandate on
-MainNet requires that node first.
+Canton Coin is separate from all of the above. An exchange account is not a
+Canton party and cannot hold a mandate; a party needs a validator node.
+
+**Canton MainNet is invite-only.** New validators require sponsorship and
+approval — you cannot simply stand one up, and no amount of engineering
+shortens that. The routes are:
+
+1. **Node-as-a-Service.** An approved provider operates a white-label
+   validator for you. The fastest path, and the realistic one for a desk this
+   size.
+2. **A custody provider with Canton pre-integrated.** Some already offer
+   validator access alongside custody.
+3. **Your own validator.** Production-grade environment, Kubernetes-based
+   deployment recommended, plus the sponsorship and approval above.
+
+This is why "launch on MainNet today" is not available even setting the
+regulatory question aside: the network itself has a gate, and the queue for it
+is not a technical queue.
+
+**One useful consequence.** The Protocol Development Fund proposal and the
+validator sponsorship question go to overlapping people. A Tech & Ops
+Committee champion is worth asking about both.
 
 ## Until this is answered
 
