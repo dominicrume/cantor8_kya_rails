@@ -1,0 +1,139 @@
+-- KyaCycle: the two legs of an OTC cycle where the desk loses its OWN money.
+--
+-- KyaQuote defends the customer payout: a stranger cannot redirect someone
+-- else's deposit, and a quote cannot pay twice. That is half the cycle. The
+-- desk described the other half, and both halves of it are undefended:
+--
+--   Leg 1, the deposit instruction. The customer holds USDT, or BTC, or
+--   something else, and each of those arrives over a different network. Hand
+--   over an ERC-20 address for a TRC-20 transfer, or omit a memo on a chain
+--   that requires one, and the coin does not bounce -- it is gone, and no
+--   fence downstream can help.
+--
+--   Leg 2, the off-taker. When the desk has no naira it sends the crypto to a
+--   wallet the off-taker provides, and waits for naira in return. That is the
+--   same "wallet they provided" attack as the customer side, except the money
+--   is the desk's own and the amounts are larger.
+module KyaCycle where
+
+import DA.Optional (isNone)
+
+-- Where a given asset may be received, on a given network, and whether that
+-- network requires a memo or tag. Approved by the principal, not the operator.
+template DepositBook
+  with
+    principal : Party
+    operator  : Party
+    -- (asset, network, address, memoRequired)
+    addresses : [(Text, Text, Text, Bool)]
+  where
+    signatory principal
+    observer operator
+
+    nonconsuming choice IssueDepositInstruction : ContractId DepositInstruction
+      with
+        customer     : Party
+        quoteRef     : Text
+        asset        : Text        -- USDT, BTC, ...
+        network      : Text        -- TRC20, ERC20, BEP20, Lightning, ...
+        memo         : Optional Text
+      controller operator
+      do
+        let matches = [ (addr, needsMemo)
+                      | (a, n, addr, needsMemo) <- addresses
+                      , a == asset, n == network ]
+        assertMsg "no approved address for that asset on that network" (matches /= [])
+        -- Total by construction: the assertion above rules out the empty case,
+        -- and a partial function here would trade a clear refusal for a crash.
+        let (address, needsMemo) = case matches of
+              ((addr, m) :: _) -> (addr, m)
+              []               -> ("", False)
+        -- The memo fence. On a network that requires one, a deposit without it
+        -- credits nobody and is not recoverable by asking nicely.
+        assertMsg "this network requires a memo or tag and none was given" (not needsMemo || not (isNone memo))
+        create DepositInstruction with
+          operator; customer; quoteRef; asset; network; address; memo
+
+    choice ApproveDepositAddress : ContractId DepositBook
+      with asset : Text, network : Text, address : Text, memoRequired : Bool
+      controller principal
+      do
+        assertMsg "asset, network and address are all required" (asset /= "" && network /= "" && address /= "")
+        create this with addresses = (asset, network, address, memoRequired) :: addresses
+
+-- What the customer was actually told to do. On-ledger, so "you gave me the
+-- wrong address" is a question with an answer.
+template DepositInstruction
+  with
+    operator : Party
+    customer : Party
+    quoteRef : Text
+    asset    : Text
+    network  : Text
+    address  : Text
+    memo     : Optional Text
+  where
+    signatory operator
+    observer customer
+
+-- Off-taker wallets the principal has approved, per asset and network.
+template OffTakerBook
+  with
+    principal : Party
+    operator  : Party
+    wallets   : [(Text, Text, Text, Text)]   -- (offTaker, asset, network, address)
+  where
+    signatory principal
+    observer operator
+
+    -- Sending the desk's own crypto out. The riskiest action in the cycle.
+    nonconsuming choice SendToOffTaker : ContractId SupplyLeg
+      with
+        offTaker : Text
+        asset    : Text
+        network  : Text
+        toAddress : Text
+        amount   : Decimal
+        expectedNaira : Decimal
+      controller operator
+      do
+        now <- getTime
+        assertMsg "amount must be positive" (amount > 0.0)
+        assertMsg "off-taker wallet is not approved for that asset and network" ((offTaker, asset, network, toAddress) `elem` wallets)
+        create SupplyLeg with
+          operator; offTaker; asset; network; toAddress; amount
+          expectedNaira; sentAt = now; nairaReceived = False
+
+    choice ApproveOffTakerWallet : ContractId OffTakerBook
+      with offTaker : Text, asset : Text, network : Text, address : Text
+      controller principal
+      do create this with wallets = (offTaker, asset, network, address) :: wallets
+
+    choice WithdrawOffTakerWallet : ContractId OffTakerBook
+      with offTaker : Text, asset : Text, network : Text, address : Text
+      controller principal
+      do create this with wallets = filter (/= (offTaker, asset, network, address)) wallets
+
+-- One outgoing supply leg, and whether the naira came back.
+template SupplyLeg
+  with
+    operator      : Party
+    offTaker      : Text
+    asset         : Text
+    network       : Text
+    toAddress     : Text
+    amount        : Decimal
+    expectedNaira : Decimal
+    sentAt        : Time
+    nairaReceived : Bool
+  where
+    signatory operator
+
+    -- Record the naira arriving. Short of the agreed amount is not something
+    -- to be agreed to at 2am under pressure from a customer who is waiting.
+    choice ConfirmNairaReceived : ContractId SupplyLeg
+      with received : Decimal
+      controller operator
+      do
+        assertMsg "naira received is short of the amount agreed" (received >= expectedNaira)
+        create this with nairaReceived = True

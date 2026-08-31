@@ -48,8 +48,15 @@ RULES = re.compile(r"(mandate expired|charge would exceed the cap|"
                    r"new cap below what is already spent)")
 
 def _configure():
-    if not os.environ.get("C8_CLIENT_SECRET"):
+    secret = os.environ.get("C8_CLIENT_SECRET", "")
+    if not secret:
         raise SystemExit("C8_CLIENT_SECRET is not set. Shell only, never a file.")
+    if secret.strip(".") == "" or len(secret) < 12:
+        # "..." is a placeholder from the docs, and pasting it produces an auth
+        # failure that surfaces three layers away as "no holdings visible".
+        raise SystemExit(
+            "C8_CLIENT_SECRET looks like a placeholder (%r), not a real secret.\n"
+            "Paste the actual value from the organisers." % secret[:12])
     c8lab.BASE = os.environ["C8_BASE"]
     c8lab.IDP = os.environ["C8_IDP"]
     c8lab.CID = os.environ["C8_CLIENT_ID"]
@@ -234,7 +241,13 @@ class DevNetLedger:
         if move_coin:
             admin = discover_admin()
             if not admin:
-                raise RuntimeError("cannot find the instrument admin; no holdings visible")
+                # Almost always auth, not an empty wallet: a bad token returns
+                # no holdings, and "no holdings" is a misleading thing to say.
+                raise RuntimeError(
+                    "could not read any holding, so the instrument admin is "
+                    "unknown. This is usually a bad C8_CLIENT_SECRET rather "
+                    "than an empty wallet -- check the secret first, then that "
+                    "kya-agent-1 still holds Amulet.")
             c8lab.ADMIN_PARTY = admin
             os.environ["C8_ADMIN_PARTY"] = admin
             self.admin = admin
