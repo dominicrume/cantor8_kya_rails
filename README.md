@@ -9,7 +9,7 @@ Two parts, and the second one is not about Canton:
 1. **[SPEC.md](SPEC.md)** — an open format for tamper-evident receipts of agent
    actions, **including the actions that were refused**. Stdlib-only, no
    signatures, no network to verify. Two independent implementations and
-   [10 conformance vectors](tests/vectors.json). Three independent
+   [14 conformance vectors](tests/vectors.json). Three independent
    implementations agree.
 2. **A reference application** — the spend-limited wallet D1 asks for, with the
    limits enforced in a Daml choice body.
@@ -76,7 +76,7 @@ country and deciding whether to trust the person who produced it.
 | Attack suite green | **18 / 18** `daml test` scripts |
 | Every fence mutation-tested | delete any one and a named test goes red — enforced in CI |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
-| Deployed on Cantor8 DevNet | package `6d13f9948206e73684461925d830261bff5a5d265191b5c764258c98f40dc241` |
+| Deployed on Cantor8 DevNet | `kya-rails-mandate` 1.0.0, package `df5a02e88a68…`, vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
 | Receipt chain | 6 receipts, 2 accepted, 4 refused, chain verifies end to end |
 | Tamper evident | edit one receipt, every later seal breaks |
@@ -153,7 +153,7 @@ python3 tests/conformance.py     # seal format, Python
 node    tests/conformance.js     # seal format, JavaScript
 cd impl/go && go run .           # seal format, Go
 python3 tests/mutation.py        # delete each fence, prove a test goes red
-cd step-1-mandate && daml test   # the on-ledger fences, 10 scripts
+cd step-1-mandate && daml build && cd test && daml test   # 18 scripts
 ```
 
 ---
@@ -240,6 +240,8 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [step-1-mandate/daml/KyaTest.daml](step-1-mandate/daml/KyaTest.daml) | every test is named after the attack it proves |
 | [step-2-agent/DEVNET-PARTIES.md](step-2-agent/DEVNET-PARTIES.md) | DevNet parties, rights, and the traps that cost us hours |
 | [SPEC.md](SPEC.md) | the receipt format, written to be implemented from the text alone |
+| [docs/threat-model.md](docs/threat-model.md) | eight threats, four of them undefended and said so |
+| [docs/upgrade-path.md](docs/upgrade-path.md) | how we failed Canton's upgrade check, and the rules that came out of it |
 | [tests/vectors.json](tests/vectors.json) | 9 conformance vectors. Where the spec and a vector disagree, the vector wins. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | start here — the most useful contribution is a third implementation |
 

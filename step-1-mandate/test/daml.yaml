@@ -1,0 +1,18 @@
+# Test scripts live in their own package so they are NEVER part of the DAR
+# that gets deployed. This is not tidiness. Canton's upgrade checks require
+# every data type in a deployed package to still exist in its successor, so a
+# test helper shipped inside the mandate package makes renaming that helper an
+# on-ledger breaking change. Renaming one test record cost us a failed upgrade;
+# see docs/upgrade-path.md.
+sdk-version: 3.4.10
+name: kya-mandate-test
+source: daml
+version: 0.0.1
+dependencies:
+  - daml-prim
+  - daml-stdlib
+  - daml-script
+data-dependencies:
+  - ../.daml/dist/kya-rails-mandate-1.0.0.dar
+build-options:
+  - --target=2.1

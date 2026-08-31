@@ -134,6 +134,66 @@ cases.append({
     "canonical": canonical(b7), "seal": seal(b7, "GENESIS"),
 })
 
+# 7c. Empty strings. A field present but empty is not the same as absent, and
+#     an implementation that drops empties would produce a different seal.
+b7c = body(n=1, what="", amount="0.0", currency="", instrument="",
+           payee="", rule="", outcome="REFUSED", approved_by="",
+           ledger="TESTVECTOR", at="2026-01-01T00:00:00Z", prev="GENESIS")
+cases.append({
+    "name": "empty-strings-are-not-absent",
+    "kind": "seal",
+    "why": "an empty field still contributes its key and its quotes to the seal",
+    "body": b7c, "prev": "GENESIS",
+    "canonical": canonical(b7c), "seal": seal(b7c, "GENESIS"),
+})
+
+# 7d. A maximal field. Long values must not be truncated, chunked or
+#     normalised by any implementation.
+b7d = body(n=1, what="x" * 4096, amount="1.0", currency="CC",
+           instrument="Amulet", payee="A", rule="r", outcome="ACCEPTED",
+           approved_by="o", ledger="TESTVECTOR",
+           at="2026-01-01T00:00:00Z", prev="GENESIS")
+cases.append({
+    "name": "maximal-field-4096-chars",
+    "kind": "seal",
+    "why": "no implementation may truncate or chunk a long field",
+    "body": b7d, "prev": "GENESIS",
+    "canonical": canonical(b7d), "seal": seal(b7d, "GENESIS"),
+})
+
+# 7e. A deep chain. Verification is linear and must not stack-overflow, and
+#     the 200th seal must be reproducible from the 1st.
+deep = Chain()
+for i in range(200):
+    deep.stamp("payout %d" % i, 0.01, "R", "within limits", "ACCEPTED",
+               "o", "TESTVECTOR")
+deepr = [dict(r) for r in deep.receipts]
+prev = "GENESIS"
+for r in deepr:
+    r["at"] = "2026-01-01T00:00:00Z"
+    r["prev"] = prev
+    r["seal"] = seal({k: v for k, v in r.items() if k != "seal"}, prev)
+    prev = r["seal"]
+cases.append({
+    "name": "deep-chain-200-receipts",
+    "kind": "chain", "why": "verification is linear and must not blow the stack",
+    "receipts": deepr, "verdict": "PASS",
+})
+
+# 7f. A prev that points at a real seal, but the WRONG one. Every seal is
+#     individually valid; only the link is broken. An implementation that
+#     checks seals without checking prev passes this and must not.
+mis = [dict(r) for r in good]
+mis[2]["prev"] = mis[0]["prev"]           # points back at GENESIS
+mis[2]["seal"] = seal({k: v for k, v in mis[2].items() if k != "seal"},
+                      mis[2]["prev"])
+cases.append({
+    "name": "misaligned-prev-link",
+    "kind": "chain",
+    "why": "receipt 3 is internally valid but links to the wrong predecessor",
+    "receipts": mis, "verdict": "FAIL", "fail_at": 3,
+})
+
 # 8. Non-ASCII MUST be refused at sealing time, naming the field.
 cases.append({
     "name": "reject-non-ascii-currency-symbol",
