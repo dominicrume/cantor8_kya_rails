@@ -135,6 +135,45 @@ the fraudster can issue a quote naming their own account. The second is T4
 wearing different clothes — it needs the principal's controls over who may
 issue quotes, which is not built.
 
+## T10 — The customer is given the wrong deposit address
+
+The desk quotes for USDT, BTC, XRP and others, each arriving over a different
+network. Hand over an ERC-20 address for a TRC-20 transfer, or omit a memo on
+a chain that requires one, and the deposit does not bounce. **The coin is gone
+and no fence later in the cycle can recover it.**
+
+This is not a fraud. It is an operator moving fast on a phone while somebody
+waits, which is the condition under which the whole cycle runs.
+
+**Defence:** `DepositBook` holds approved addresses per (asset, network), each
+flagged for whether that network requires a memo. The operator cannot issue an
+instruction for a network the desk has no address on, and cannot issue one
+without a memo where a memo is required. `DepositInstruction` is observed by
+the customer, so *"you sent me the wrong address"* becomes a question with an
+answer on the ledger.
+
+**Residual risk:** an approved address that is itself wrong is faithfully
+handed out. The principal approves addresses, so this is T4 again.
+
+## T11 — The off-taker takes the crypto and does not send the naira
+
+When the desk has no naira it sends the crypto **first**, to a wallet the
+off-taker supplies, and waits. It is the same "wallet they provided" attack as
+T9, except the money is the desk's own and the amounts are much larger.
+
+**Defence:** `OffTakerBook` approves wallets per (off-taker, asset, network) —
+an approval is for a wallet on a chain, not for a name, so a new address sent
+over WhatsApp this morning is refused. `ConfirmNairaReceived` refuses an amount
+short of what was agreed, so a shortfall is a refusal rather than something
+argued about at 2am with a customer waiting.
+
+**Residual risk, and it is the big one: none of this makes the off-taker pay.**
+It bounds where the crypto may go and records what was owed. An off-taker who
+receives at an approved wallet and simply keeps it is a commercial and legal
+problem, not a technical one. The ledger gives you a timestamped record of
+exactly what was sent, where, and what was agreed — which is what a recovery
+action needs — and nothing more.
+
 ---
 
 ## What is not in scope
@@ -156,5 +195,8 @@ amount of Daml addresses it.
 | 6 | Operator persuaded (T1) | **defended** |
 | 7 | Float drained (T2) | **defended, bounded** |
 | 8 | Spending after revoke (T3) | **defended** |
+| 6 | Off-taker keeps the crypto (T11 residual) | **not defended** — bounded and recorded, not prevented |
 | 9 | Stranger claims a deposit (T9) | **defended** — the account is fixed before the money exists |
+| 9 | Wrong network or missing memo (T10) | **defended** — the instruction cannot be issued |
+| 9 | Crypto to an unapproved off-taker wallet (T11) | **defended** |
 | 10 | Implementations diverge (T7) | **defended, three implementations in CI** |

@@ -19,6 +19,7 @@ PKG = os.path.join(HERE, "..", "step-1-mandate")
 TESTPKG = os.path.join(PKG, "test")
 MANDATE = os.path.join(PKG, "daml", "KyaMandate.daml")
 QUOTE = os.path.join(PKG, "daml", "KyaQuote.daml")
+CYCLE = os.path.join(PKG, "daml", "KyaCycle.daml")
 
 # (source file, fence text, a test that MUST fail when that line is deleted)
 FENCES = [
@@ -34,6 +35,11 @@ FENCES = [
     (QUOTE, "amount does not match the quote",        "testAmountMustMatchTheQuote"),
     (QUOTE, "payout account does not match",          "testClaimantCannotRedirectToTheirOwnAccount"),
     (QUOTE, "payout account has not been approved",    "testOperatorCannotQuoteToTheirOwnAccount"),
+    # KyaCycle: the two legs where the desk loses its own money.
+    (CYCLE, "no approved address for that asset",      "testUnknownNetworkIsRefused"),
+    (CYCLE, "requires a memo or tag",                  "testMemoRequiredNetworkRefusesAMissingMemo"),
+    (CYCLE, "off-taker wallet is not approved",        "testCryptoCannotGoToAnUnapprovedOffTakerWallet"),
+    (CYCLE, "short of the amount agreed",              "testShortNairaIsRefused"),
 ]
 
 
@@ -64,7 +70,7 @@ def delete_line(path, containing):
 
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
-    backups = {p: tempfile.mktemp(suffix=".daml") for p in (MANDATE, QUOTE)}
+    backups = {p: tempfile.mktemp(suffix=".daml") for p in (MANDATE, QUOTE, CYCLE)}
     for p, b in backups.items():
         shutil.copy(p, b)
     failures = []
