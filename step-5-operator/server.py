@@ -22,6 +22,120 @@ from kya_chain import Chain, NonAsciiInReceipt
 PORT = int(os.environ.get("KYA_PORT", "8420"))
 
 
+class CycleDesk:
+    """The whole OTC cycle, mirroring KyaCycle.daml. MOCKED, and it says so.
+
+    A deal is one object moving through states, because that is how the desk
+    actually thinks about it -- not as four contracts to be joined by hand at
+    2am. Every refusal string is the assertion text from the Daml.
+    """
+
+    # (asset, network, address, memo_required) -- approved by the principal
+    ADDRESSES = [
+        ("USDT", "TRC20", "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", False),
+        ("USDT", "ERC20", "0x8f3aE9dB1B7B2f5F3aE44D9B3F1c8bA2E4d5C6f7", False),
+        ("BTC",  "BITCOIN", "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", False),
+        ("XRP",  "XRPL",  "rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh", True),
+    ]
+    OFFTAKERS = [("Supplier A", "USDT", "TRC20", "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t")]
+
+    def __init__(self):
+        self.deals = {}
+        self.seq = 0
+
+    def networks(self):
+        return [{"asset": a, "network": n, "memo_required": m}
+                for a, n, _, m in self.ADDRESSES]
+
+    def offtakers(self):
+        return [{"offtaker": o, "asset": a, "network": n, "address": w}
+                for o, a, n, w in self.OFFTAKERS]
+
+    def open_deal(self, customer, asset, network, amount, rate, payout_account,
+                  memo=None, approved_accounts=()):
+        # PayoutBook.IssueQuote
+        if payout_account not in approved_accounts:
+            return {"error": "payout account has not been approved by the principal"}
+        # DepositBook.IssueDepositInstruction
+        match = [(addr, needs) for a, n, addr, needs in self.ADDRESSES
+                 if a == asset and n == network]
+        if not match:
+            return {"error": "no approved address for that asset on that network"}
+        address, needs_memo = match[0]
+        if needs_memo and not memo:
+            return {"error": "this network requires a memo or tag and none was given"}
+        self.seq += 1
+        ref = "KYA-%04d" % (7000 + self.seq)
+        d = {"reference": ref, "customer": customer, "asset": asset,
+             "network": network, "amount": amount, "rate": rate,
+             "naira": round(amount * rate, 2), "payoutAccount": payout_account,
+             "depositAddress": address, "memo": memo,
+             "state": "QUOTED", "offtaker": None, "nairaReceived": False,
+             "opened": time.time(), "expiresAt": time.time() + 7200}
+        self.deals[ref] = d
+        return d
+
+    def confirm_deposit(self, ref):
+        d = self.deals.get(ref)
+        if not d:
+            return {"error": "no such deal"}
+        if d["state"] != "QUOTED":
+            return {"error": "deposit already confirmed for this deal"}
+        d["state"] = "DEPOSITED"
+        return d
+
+    def send_to_offtaker(self, ref, offtaker, address):
+        # OffTakerBook.SendToOffTaker
+        d = self.deals.get(ref)
+        if not d:
+            return {"error": "no such deal"}
+        if d["state"] != "DEPOSITED":
+            return {"outcome": "REFUSED",
+                    "rule": "the customer's deposit has not been confirmed yet"}
+        if (offtaker, d["asset"], d["network"], address) not in self.OFFTAKERS:
+            return {"outcome": "REFUSED",
+                    "rule": "off-taker wallet is not approved for that asset and network"}
+        d["state"] = "WITH_OFFTAKER"
+        d["offtaker"] = {"name": offtaker, "address": address}
+        return {"outcome": "SENT", "rule": "sent to an approved off-taker wallet", "deal": d}
+
+    def confirm_naira(self, ref, received):
+        # SupplyLeg.ConfirmNairaReceived
+        d = self.deals.get(ref)
+        if not d or d["state"] != "WITH_OFFTAKER":
+            return {"outcome": "REFUSED", "rule": "no supply leg awaiting naira"}
+        if float(received) < d["naira"]:
+            return {"outcome": "REFUSED", "rule": "naira received is short of the amount agreed"}
+        d["nairaReceived"] = True
+        d["state"] = "FUNDED"
+        return {"outcome": "RECEIVED", "rule": "naira received in full", "deal": d}
+
+    def pay(self, ref, claimed_account, amount):
+        # Quote.Fulfil
+        d = self.deals.get(ref)
+        if not d:
+            return {"outcome": "REFUSED",
+                    "rule": "deposit does not carry this quote's reference"}
+        if d["state"] == "PAID":
+            return {"outcome": "REFUSED", "rule": "this quote has already been paid once"}
+        if d["state"] == "QUOTED":
+            return {"outcome": "REFUSED",
+                    "rule": "the customer's deposit has not been confirmed yet"}
+        if d["state"] == "WITH_OFFTAKER":
+            return {"outcome": "REFUSED",
+                    "rule": "naira has not been received from the off-taker yet"}
+        if time.time() >= d["expiresAt"]:
+            return {"outcome": "REFUSED", "rule": "quote expired"}
+        if abs(float(amount) - d["amount"]) > 1e-9:
+            return {"outcome": "REFUSED", "rule": "amount does not match the quote"}
+        if claimed_account != d["payoutAccount"]:
+            return {"outcome": "REFUSED",
+                    "rule": "payout account does not match the account named in the quote"}
+        d["state"] = "PAID"
+        return {"outcome": "PAID",
+                "rule": "paid to the account named when the quote was issued", "deal": d}
+
+
 class QuoteDesk:
     """Mirrors KyaQuote and PayoutBook. MOCKED, and it says so.
 
@@ -88,6 +202,7 @@ class Rail:
             self.ledger = MockLedger()
         self.chain = Chain()
         self.desk = QuoteDesk()
+        self.cycle = CycleDesk()
         self.cap = 5.0
         self.period_limit = None
         self.opened = False
@@ -110,7 +225,11 @@ class Rail:
                 "receipts": self.chain.receipts,
                 "approved": self.desk.approved,
                 "quotes": sorted(self.desk.quotes.values(),
-                                 key=lambda q: q["reference"], reverse=True)}
+                                 key=lambda q: q["reference"], reverse=True),
+                "networks": self.cycle.networks(),
+                "offtakers": self.cycle.offtakers(),
+                "deals": sorted(self.cycle.deals.values(),
+                                key=lambda d: d["reference"], reverse=True)}
 
     def request(self, amount, payee, what):
         if not self.opened:
@@ -187,6 +306,36 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 r = RAIL.chain.stamp(
                     body.get("what") or ("payout against " + body.get("reference", "")),
+                    float(body.get("amount", 0)), body.get("claimed_account", "")[:60],
+                    res["rule"], "ACCEPTED" if res["outcome"] == "PAID" else "REFUSED",
+                    "quote issued by Principal + Operator", RAIL.ledger.label,
+                    RAIL.ledger.currency, RAIL.ledger.instrument)
+                res["receipt"] = r
+            except NonAsciiInReceipt as e:
+                res["error"] = str(e)
+            return self._json(res)
+        if self.path == "/api/deal":
+            return self._json(RAIL.cycle.open_deal(
+                body.get("customer", ""), body.get("asset", ""), body.get("network", ""),
+                float(body.get("amount", 0)), float(body.get("rate", 0)),
+                body.get("payout_account", ""), body.get("memo") or None,
+                RAIL.desk.approved))
+        if self.path == "/api/deposit-confirmed":
+            return self._json(RAIL.cycle.confirm_deposit(body.get("reference", "")))
+        if self.path == "/api/offtaker":
+            return self._json(RAIL.cycle.send_to_offtaker(
+                body.get("reference", ""), body.get("offtaker", ""),
+                body.get("address", "")))
+        if self.path == "/api/naira":
+            return self._json(RAIL.cycle.confirm_naira(
+                body.get("reference", ""), float(body.get("received", 0))))
+        if self.path == "/api/pay":
+            res = RAIL.cycle.pay(body.get("reference", ""),
+                                 body.get("claimed_account", ""),
+                                 float(body.get("amount", 0)))
+            try:
+                r = RAIL.chain.stamp(
+                    body.get("what") or ("payout for " + body.get("reference", "")),
                     float(body.get("amount", 0)), body.get("claimed_account", "")[:60],
                     res["rule"], "ACCEPTED" if res["outcome"] == "PAID" else "REFUSED",
                     "quote issued by Principal + Operator", RAIL.ledger.label,
