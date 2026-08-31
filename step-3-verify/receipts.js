@@ -10,9 +10,9 @@ const RECEIPTS = [
     "outcome": "ACCEPTED",
     "approved_by": "mandate signed by DeskOwner + KyaAgent",
     "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-29T18:56:55Z",
+    "at": "2026-08-31T03:18:58Z",
     "prev": "GENESIS",
-    "seal": "a6e099c60bea22886239babef1454688bfac9137e9162cf577a73ef0ea3e2785"
+    "seal": "cf55a92b7195c87c594e94bbc5bc149103dfb969878ae26ed2153ac07a8e3ed9"
   },
   {
     "n": 2,
@@ -25,9 +25,9 @@ const RECEIPTS = [
     "outcome": "ACCEPTED",
     "approved_by": "mandate signed by DeskOwner + KyaAgent",
     "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-29T18:56:55Z",
-    "prev": "a6e099c60bea22886239babef1454688bfac9137e9162cf577a73ef0ea3e2785",
-    "seal": "d6dfdb19ec96598ad9164a4e1516d527248f8bf77ebe7adfb1ca8bf892555a82"
+    "at": "2026-08-31T03:18:58Z",
+    "prev": "cf55a92b7195c87c594e94bbc5bc149103dfb969878ae26ed2153ac07a8e3ed9",
+    "seal": "8c96c8f96fa8fea024ea0dbb769cb7db326b5d33a5521579b5ec597626c72191"
   },
   {
     "n": 3,
@@ -40,9 +40,9 @@ const RECEIPTS = [
     "outcome": "REFUSED",
     "approved_by": "mandate signed by DeskOwner + KyaAgent",
     "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-29T18:56:55Z",
-    "prev": "d6dfdb19ec96598ad9164a4e1516d527248f8bf77ebe7adfb1ca8bf892555a82",
-    "seal": "1ce973423bceea4a1a1a1c734a894cd434653dd6493786890c9f05c1fa0e6113"
+    "at": "2026-08-31T03:18:58Z",
+    "prev": "8c96c8f96fa8fea024ea0dbb769cb7db326b5d33a5521579b5ec597626c72191",
+    "seal": "6184e577f6d6cacc28ead39e7da7dd76281129419d16c604f7a9f18004662079"
   },
   {
     "n": 4,
@@ -55,9 +55,9 @@ const RECEIPTS = [
     "outcome": "REFUSED",
     "approved_by": "mandate signed by DeskOwner + KyaAgent",
     "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-29T18:56:55Z",
-    "prev": "1ce973423bceea4a1a1a1c734a894cd434653dd6493786890c9f05c1fa0e6113",
-    "seal": "25548a5385ed4de6c67a541c675f64fb07d56b8a73956729e00c7bcdcbdca3e3"
+    "at": "2026-08-31T03:18:58Z",
+    "prev": "6184e577f6d6cacc28ead39e7da7dd76281129419d16c604f7a9f18004662079",
+    "seal": "d98da5bf35b16f36d0094532d089db4bed716550c2910a04462fa202b0077116"
   },
   {
     "n": 5,
@@ -70,9 +70,9 @@ const RECEIPTS = [
     "outcome": "REFUSED",
     "approved_by": "mandate signed by DeskOwner + KyaAgent, clock past expiresAt",
     "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-29T18:56:55Z",
-    "prev": "25548a5385ed4de6c67a541c675f64fb07d56b8a73956729e00c7bcdcbdca3e3",
-    "seal": "d1ffeb7b8619894d262d3b5d7f597fc5ca04f9dd1068e85c2fb48d0a8be32c7e"
+    "at": "2026-08-31T03:18:58Z",
+    "prev": "d98da5bf35b16f36d0094532d089db4bed716550c2910a04462fa202b0077116",
+    "seal": "6434733a687415f26d2815647c84e738f0836c6cd8cdb0372b32e2e5fa1e98a3"
   },
   {
     "n": 6,
@@ -85,8 +85,8 @@ const RECEIPTS = [
     "outcome": "REFUSED",
     "approved_by": "owner exercised Revoke",
     "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
-    "at": "2026-08-29T18:56:55Z",
-    "prev": "d1ffeb7b8619894d262d3b5d7f597fc5ca04f9dd1068e85c2fb48d0a8be32c7e",
-    "seal": "e49646e521d41bf1cff9155adcbf339347d097fc8c87b06a4e3e2c6c1e5c0339"
+    "at": "2026-08-31T03:18:58Z",
+    "prev": "6434733a687415f26d2815647c84e738f0836c6cd8cdb0372b32e2e5fa1e98a3",
+    "seal": "e4208831b14bf4e3d8967ce7ad6bc8bdbd3e3e7dd2186b085ffddf3d40dafb23"
   }
 ];
