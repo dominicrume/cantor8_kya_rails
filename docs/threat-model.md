@@ -155,6 +155,17 @@ answer on the ledger.
 **Residual risk:** an approved address that is itself wrong is faithfully
 handed out. The principal approves addresses, so this is T4 again.
 
+**Confirming the deposit.** An operator confirming that money landed is an
+operator reading a block explorer on a phone under pressure — a judgement
+call, and the class of failure this system exists to remove. A deposit feed
+the principal names may write the confirmation instead, with a transaction
+reference required. Its authority is deliberately narrow: it says money
+arrived on chain, and it cannot pay anyone. The operator cannot appoint it.
+
+This is the exact twin of the bank feed in T12, and the symmetry is the
+point: **both directions of the cycle have a moment where a human is asked
+to believe a screen, and both are now feeds rather than judgement.**
+
 ## T11 — The off-taker takes the crypto and does not send the naira
 
 When the desk has no naira it sends the crypto **first**, to a wallet the

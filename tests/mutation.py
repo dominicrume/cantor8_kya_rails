@@ -53,6 +53,8 @@ FENCES = [
     (INBOUND, "rate is outside the band",                      "testInboundRateMustBeInsideTheBand"),
     (QUOTE,   "rate is outside the band",                      "testOperatorCannotQuoteOutsideTheRateBand"),
     (INBOUND, "no bank feed is configured",                     "testFeedChoiceIsUnusableWithoutAFeed"),
+    (CYCLE,   "no deposit feed is configured",                  "testDepositFeedChoiceUnusableWithoutAFeed"),
+    (CYCLE,   "a transaction reference is required",            "testDepositFeedNeedsATransactionReference"),
 ]
 
 
