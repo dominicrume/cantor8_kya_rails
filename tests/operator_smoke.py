@@ -72,11 +72,39 @@ try:
     e = call("/api/request", {"amount": 0.5, "payee": "customer", "what": "after revoke"})
     check(e["outcome"] == "REFUSED", "nothing is paid after the principal revokes")
 
+    # --- the quote desk: the fraud the desk actually lost money to ---
+    q = call("/api/quote", {"customer": "Blessing", "rate": 1250, "amount": 10,
+                            "payout_account": "UBA 2233445566 / BLESSING ADEYEMI"})
+    check("reference" in q, "a quote is issued to an approved account")
+    ref = q["reference"]
+
+    bad = call("/api/quote", {"customer": "Jennifer", "rate": 1250, "amount": 10,
+                              "payout_account": "OPAY 5555555555 / THE OPERATOR"})
+    check("error" in bad and "approved" in bad["error"],
+          "the operator cannot quote to an account the principal never approved")
+
+    claim = call("/api/fulfil", {"reference": ref, "amount": 10,
+                                 "claimed_account": "OPAY 9999999999 / UNKNOWN",
+                                 "what": "claimant with a screenshot"})
+    check(claim["outcome"] == "REFUSED" and "payout account does not match" in claim["rule"],
+          "a claimant cannot redirect someone else's deposit to their own account")
+
+    paid = call("/api/fulfil", {"reference": ref, "amount": 10,
+                                "claimed_account": "UBA 2233445566 / BLESSING ADEYEMI",
+                                "what": "settle Blessing"})
+    check(paid["outcome"] == "PAID", "the real customer is paid to the account on the quote")
+
+    twice = call("/api/fulfil", {"reference": ref, "amount": 10,
+                                 "claimed_account": "UBA 2233445566 / BLESSING ADEYEMI",
+                                 "what": "second attempt on the same deposit"})
+    check(twice["outcome"] == "REFUSED" and "already been paid" in twice["rule"],
+          "the same quote cannot pay twice -- the other half of the real loss")
+
     s = call("/api/state")
     check(all(r.get("ledger") for r in s["receipts"]),
           "every receipt on the operator's screen names its ledger")
-    check(sum(1 for r in s["receipts"] if r["outcome"] == "REFUSED") == 3,
-          "every refusal is on the operator's own record")
+    refused = sum(1 for r in s["receipts"] if r["outcome"] == "REFUSED")
+    check(refused == 5, "every refusal is on the operator's own record (got %d)" % refused)
 finally:
     proc.terminate()
     try:

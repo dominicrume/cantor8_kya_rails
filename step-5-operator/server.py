@@ -13,13 +13,67 @@ Then open http://localhost:8420 on the same machine, or on a phone using the
 machine's LAN address. It binds localhost by default: this thing carries
 payout authority and should not appear on a network by accident.
 """
-import json, os, sys, http.server, socketserver, urllib.parse
+import json, os, sys, time, http.server, socketserver, urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "step-2-agent"))
 from kya_chain import Chain, NonAsciiInReceipt
 
 PORT = int(os.environ.get("KYA_PORT", "8420"))
+
+
+class QuoteDesk:
+    """Mirrors KyaQuote and PayoutBook. MOCKED, and it says so.
+
+    The Daml is the rule; this is the same rule in Python so the screen works
+    offline. Every refusal string below is the assertion text from the
+    contract, so what the operator reads here is what Canton would say.
+    """
+
+    def __init__(self):
+        self.approved = ["GTB 0123456789 / CHIDI OKAFOR",
+                         "UBA 2233445566 / BLESSING ADEYEMI"]
+        self.quotes = {}
+        self.seq = 0
+
+    def approve(self, account):
+        if account and account not in self.approved:
+            self.approved.append(account)
+        return self.approved
+
+    def issue(self, customer, rate, amount, payout_account, minutes=120):
+        # PayoutBook.IssueQuote
+        if payout_account not in self.approved:
+            return {"error": "payout account has not been approved by the principal"}
+        self.seq += 1
+        ref = "KYA-%04d" % (7000 + self.seq)
+        self.quotes[ref] = {"reference": ref, "customer": customer, "rate": rate,
+                            "expectedAmount": amount, "payoutAccount": payout_account,
+                            "expiresAt": time.time() + minutes * 60,
+                            "settled": False, "abandoned": False}
+        return self.quotes[ref]
+
+    def fulfil(self, ref, amount, claimed_account):
+        # Quote.Fulfil, assertion by assertion, in the same order.
+        q = self.quotes.get(ref)
+        if not q:
+            return {"outcome": "REFUSED",
+                    "rule": "deposit does not carry this quote's reference"}
+        if q["settled"]:
+            return {"outcome": "REFUSED",
+                    "rule": "this quote has already been paid once"}
+        if q["abandoned"]:
+            return {"outcome": "REFUSED", "rule": "quote was abandoned"}
+        if time.time() >= q["expiresAt"]:
+            return {"outcome": "REFUSED", "rule": "quote expired"}
+        if abs(float(amount) - q["expectedAmount"]) > 1e-9:
+            return {"outcome": "REFUSED", "rule": "amount does not match the quote"}
+        if claimed_account != q["payoutAccount"]:
+            return {"outcome": "REFUSED",
+                    "rule": "payout account does not match the account named in the quote"}
+        q["settled"] = True
+        return {"outcome": "PAID", "rule": "paid to the account named when the quote was issued",
+                "quote": q}
 
 
 class Rail:
@@ -33,6 +87,7 @@ class Rail:
             from agent import MockLedger
             self.ledger = MockLedger()
         self.chain = Chain()
+        self.desk = QuoteDesk()
         self.cap = 5.0
         self.period_limit = None
         self.opened = False
@@ -52,7 +107,10 @@ class Rail:
                 "ledger": self.ledger.label,
                 "recipients": [{"key": k, "name": self.ledger.name(k)}
                                for k in ("customer", "partner")],
-                "receipts": self.chain.receipts}
+                "receipts": self.chain.receipts,
+                "approved": self.desk.approved,
+                "quotes": sorted(self.desk.quotes.values(),
+                                 key=lambda q: q["reference"], reverse=True)}
 
     def request(self, amount, payee, what):
         if not self.opened:
@@ -117,6 +175,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                            body.get("what", "")))
         if self.path == "/api/revoke":
             return self._json(RAIL.revoke())
+        if self.path == "/api/quote":
+            return self._json(RAIL.desk.issue(
+                body.get("customer", ""), float(body.get("rate", 0)),
+                float(body.get("amount", 0)), body.get("payout_account", "")))
+        if self.path == "/api/fulfil":
+            res = RAIL.desk.fulfil(body.get("reference", ""),
+                                   float(body.get("amount", 0)),
+                                   body.get("claimed_account", ""))
+            # A payout attempt is a receipt whether or not it was allowed.
+            try:
+                r = RAIL.chain.stamp(
+                    body.get("what") or ("payout against " + body.get("reference", "")),
+                    float(body.get("amount", 0)), body.get("claimed_account", "")[:60],
+                    res["rule"], "ACCEPTED" if res["outcome"] == "PAID" else "REFUSED",
+                    "quote issued by Principal + Operator", RAIL.ledger.label,
+                    RAIL.ledger.currency, RAIL.ledger.instrument)
+                res["receipt"] = r
+            except NonAsciiInReceipt as e:
+                res["error"] = str(e)
+            return self._json(res)
+        if self.path == "/api/approve":
+            return self._json({"approved": RAIL.desk.approve(body.get("account", ""))})
         return self._json({"error": "unknown endpoint"}, 404)
 
 

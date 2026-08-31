@@ -39,6 +39,59 @@ template Settlement
     signatory operator
     observer customer
 
+-- Who may be paid at all, decided by the principal and not by the operator.
+--
+-- KyaQuote stops a stranger redirecting someone else's deposit. It does not
+-- stop the operator issuing a quote that names the operator's own account --
+-- they are authorised to issue quotes, so the ledger allows it. That is T9's
+-- residual risk in the threat model, and this is the fence for it.
+--
+-- The answer is separation of duties on FIRST USE, not more identity checks.
+-- An account the desk has never paid needs the principal's approval once;
+-- after that the operator quotes to it freely, all day, without asking. New
+-- customers cost the principal one action. Fraud costs the operator an
+-- approval they cannot grant themselves.
+template PayoutBook
+  with
+    principal : Party
+    operator  : Party
+    approved  : [Text]     -- payout accounts the principal has approved
+  where
+    signatory principal
+    observer operator
+
+    -- The operator issues quotes. Nonconsuming: this happens all day.
+    nonconsuming choice IssueQuote : ContractId Quote
+      with
+        customer       : Party
+        reference      : Text
+        rate           : Decimal
+        expectedAmount : Decimal
+        payoutAccount  : Text
+        expiresAt      : Time
+      controller operator
+      do
+        assertMsg "payout account has not been approved by the principal" (payoutAccount `elem` approved)
+        create Quote with
+          operator; customer; reference; rate; expectedAmount
+          payoutAccount; expiresAt
+
+    -- Only the principal widens the book. An operator cannot approve the
+    -- account they are about to pay themselves through.
+    choice ApproveAccount : ContractId PayoutBook
+      with account : Text
+      controller principal
+      do
+        assertMsg "account is already approved" (account `notElem` approved)
+        assertMsg "an account must have a name" (account /= "")
+        create this with approved = account :: approved
+
+    -- Remove an account that should no longer be paid. Principal only.
+    choice WithdrawAccount : ContractId PayoutBook
+      with account : Text
+      controller principal
+      do create this with approved = filter (/= account) approved
+
 template Quote
   with
     operator       : Party

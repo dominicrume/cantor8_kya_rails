@@ -33,6 +33,7 @@ FENCES = [
     (QUOTE, "deposit does not carry this quote",      "testDepositWithoutTheQuoteReferenceIsRefused"),
     (QUOTE, "amount does not match the quote",        "testAmountMustMatchTheQuote"),
     (QUOTE, "payout account does not match",          "testClaimantCannotRedirectToTheirOwnAccount"),
+    (QUOTE, "payout account has not been approved",    "testOperatorCannotQuoteToTheirOwnAccount"),
 ]
 
 
