@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""Drive the operator rail over HTTP and prove the fences reach the screen.
+
+The interface is where the fences either hold or quietly stop mattering, so
+this exercises the same endpoints the phone does.
+
+Run: python3 tests/operator_smoke.py
+"""
+import json, os, subprocess, sys, time, urllib.error, urllib.request
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SERVER = os.path.join(HERE, "..", "step-5-operator", "server.py")
+PORT = "8421"
+BASE = "http://127.0.0.1:" + PORT
+
+
+def call(path, body=None):
+    req = urllib.request.Request(BASE + path,
+        data=None if body is None else json.dumps(body).encode(),
+        headers={"Content-Type": "application/json"},
+        method="GET" if body is None else "POST")
+    return json.loads(urllib.request.urlopen(req, timeout=10).read())
+
+
+env = dict(os.environ, KYA_PORT=PORT)
+proc = subprocess.Popen([sys.executable, SERVER], env=env,
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+fails = []
+
+
+def check(ok, what):
+    print("  %s %s" % ("PASS" if ok else "FAIL", what))
+    if not ok:
+        fails.append(what)
+
+
+try:
+    for _ in range(40):                     # wait for the port
+        try:
+            call("/api/state"); break
+        except Exception:
+            time.sleep(0.25)
+
+    print("KYA Rails - operator interface smoke test")
+    s = call("/api/open", {"cap": 5.0, "period_limit": 3.0, "period_seconds": 86400})
+    check(s["open"] is True, "mandate opens")
+    check(abs(s["remaining"] - 5.0) < 1e-9, "float shows the full cap before any payout")
+    check([r["key"] for r in s["recipients"]] == ["customer", "partner"],
+          "only authorised accounts are offered")
+
+    a = call("/api/request", {"amount": 2.0, "payee": "customer", "what": "payout 1"})
+    check(a["outcome"] == "ACCEPTED", "payout inside the mandate is paid")
+    check("seal" in a["receipt"], "an accepted payout is sealed")
+
+    s = call("/api/state")
+    check(abs(s["remaining"] - 3.0) < 1e-9, "float falls by the amount paid")
+
+    b = call("/api/request", {"amount": 1.5, "payee": "customer", "what": "same window"})
+    check(b["outcome"] == "REFUSED" and "period" in b["rule"],
+          "period limit refuses while the cap still has room")
+
+    c = call("/api/request", {"amount": 1.0, "payee": "unverified",
+                              "what": "customer says this is their new account"})
+    check(c["outcome"] == "REFUSED" and "allow-list" in c["rule"],
+          "an account not on the allow-list is refused")
+
+    d = call("/api/request", {"amount": 1.0, "payee": "customer",
+                              "what": "note with a curly quote ’ in it"})
+    check("error" in d, "a receipt that could not be verified is never sealed")
+
+    call("/api/revoke", {})
+    e = call("/api/request", {"amount": 0.5, "payee": "customer", "what": "after revoke"})
+    check(e["outcome"] == "REFUSED", "nothing is paid after the principal revokes")
+
+    s = call("/api/state")
+    check(all(r.get("ledger") for r in s["receipts"]),
+          "every receipt on the operator's screen names its ledger")
+    check(sum(1 for r in s["receipts"] if r["outcome"] == "REFUSED") == 3,
+          "every refusal is on the operator's own record")
+finally:
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except Exception:
+        proc.kill()
+
+print()
+if fails:
+    print("OPERATOR SMOKE FAILED - %d:" % len(fails))
+    for f in fails:
+        print("  -", f)
+    sys.exit(1)
+print("operator interface: the fences reach the screen, and every refusal is recorded.")
