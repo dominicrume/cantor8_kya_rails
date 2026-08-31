@@ -209,6 +209,9 @@ class Rail:
         self.transcript = []       # every message in and out, for the operator
         self.rate = 1250.0
         self.band = (1000.0, 1500.0)
+        self.cap = 5.0
+        self.period_limit = None
+        self.opened = False
 
     def thread(self, wa_id):
         if wa_id not in self.threads:
@@ -227,9 +230,6 @@ class Rail:
         reply = self.thread(wa_id).handle(text, self.rate, self.band)
         self.transcript.append({"wa_id": wa_id, "dir": "out", "text": reply})
         return reply
-        self.cap = 5.0
-        self.period_limit = None
-        self.opened = False
 
     def open(self, cap, period_limit=None, period_seconds=None):
         self.ledger.open_mandate(cap=cap, period_limit=period_limit,
