@@ -18,12 +18,17 @@ jobs:
         with: { python-version: '3.11' }
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.21' }
 
       - name: Python implementation
         run: python3 tests/conformance.py
 
       - name: JavaScript implementation
         run: node tests/conformance.js
+
+      - name: Go implementation
+        run: cd impl/go && go run .
 
       - name: vectors are reproducible from the reference implementation
         run: |

@@ -72,6 +72,23 @@ field of receipt *k* invalidates receipt *k* and every receipt after it.
 - non-ASCII characters escaped as `\uXXXX` (lowercase hex)
 - no trailing newline
 
+Within a string, these escapes are required — they are RFC 8259's, and they are
+written out here because a third implementation was produced from this document
+and had to infer them:
+
+| character | escape |
+| --- | --- |
+| `"` | `\"` |
+| `\` | `\\` |
+| newline, carriage return, tab | `\n`, `\r`, `\t` |
+| backspace, form feed | `\b`, `\f` |
+| any other code point below `0x20` | `\u00XX`, lowercase hex |
+| any code point above `0x7E` | `\uXXXX`, lowercase hex; above the BMP, a surrogate pair |
+
+Forward slash is **not** escaped. Code point above `0x7E` is a rejection case in
+practice — see section 5 — but the escape is specified so that implementations
+agree on what they would have produced.
+
 In Python this is exactly:
 
 ```python

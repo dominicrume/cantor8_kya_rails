@@ -298,6 +298,28 @@
       "fail_at": 3
     },
     {
+      "name": "escapes-quote-backslash-tab",
+      "kind": "seal",
+      "why": "quote, backslash and tab must escape identically in every language",
+      "body": {
+        "n": 1,
+        "what": "He said \"change of account\" then left",
+        "amount": "1.0",
+        "currency": "CC",
+        "instrument": "Amulet",
+        "payee": "Alice\tBob",
+        "rule": "path C:\\ops\\float",
+        "outcome": "ACCEPTED",
+        "approved_by": "owner+agent",
+        "ledger": "TESTVECTOR",
+        "at": "2026-01-01T00:00:00Z",
+        "prev": "GENESIS"
+      },
+      "prev": "GENESIS",
+      "canonical": "{\"amount\":\"1.0\",\"approved_by\":\"owner+agent\",\"at\":\"2026-01-01T00:00:00Z\",\"currency\":\"CC\",\"instrument\":\"Amulet\",\"ledger\":\"TESTVECTOR\",\"n\":1,\"outcome\":\"ACCEPTED\",\"payee\":\"Alice\\tBob\",\"prev\":\"GENESIS\",\"rule\":\"path C:\\\\ops\\\\float\",\"what\":\"He said \\\"change of account\\\" then left\"}",
+      "seal": "b88ed28553109edc633669b69abbf3511ff9fd920dd273a4954e4f01042ae6a0"
+    },
+    {
       "name": "reject-non-ascii-currency-symbol",
       "kind": "reject",
       "why": "Python escapes it, JSON.stringify does not: the chain would verify in Python and go red in the browser",
