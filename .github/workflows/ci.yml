@@ -69,8 +69,15 @@ jobs:
         run: |
           curl -sSL https://get.daml.com | sh -s 3.4.10
           echo "$HOME/.daml/bin" >> "$GITHUB_PATH"
-      - name: every test is named after the attack it proves
+      - name: build the mandate (deployed package, no test types in it)
         working-directory: step-1-mandate
+        run: |
+          daml build
+          if daml damlc inspect-dar .daml/dist/kya-rails-mandate-*.dar | grep -q KyaTest; then
+            echo "::error::test types leaked into the deployed DAR"; exit 1
+          fi
+      - name: every test is named after the attack it proves
+        working-directory: step-1-mandate/test
         run: daml test
 
   mutation:

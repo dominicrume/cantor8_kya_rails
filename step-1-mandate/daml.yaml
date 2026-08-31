@@ -1,7 +1,12 @@
+# Renamed and restarted at 1.0.0 deliberately. The kya-mandate lineage was
+# published with test scaffolding inside the package, which makes renaming a
+# test helper an on-ledger breaking change under Canton's upgrade checks.
+# This lineage starts clean: the deployed DAR contains the mandate and
+# nothing else. See docs/upgrade-path.md.
 sdk-version: 3.4.10
-name: kya-mandate
+name: kya-rails-mandate
 source: daml
-version: 0.0.2
+version: 1.0.0
 dependencies:
   - daml-prim
   - daml-stdlib

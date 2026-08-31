@@ -31,19 +31,21 @@ import c8lab
 USER = os.environ["C8_USER"]        # passed explicitly, never left to the default
 
 NS  = "::12204e94c0e449c0efcd270dd1e68259c36471cebef132e5c7dfc2750fe8c9eed77f"
-PKG = "6d13f9948206e73684461925d830261bff5a5d265191b5c764258c98f40dc241"
+PKG = "df5a02e88a68521095a7e6bb08a4d2c57ee87d4af0910a7c656fb231a5a07b0b"
 TPL, PROP = f"{PKG}:KyaMandate:KyaMandate", f"{PKG}:KyaMandate:KyaMandateProposal"
 # Commands take a package ID. ACS filters insist on a package NAME reference
 # and reject an ID outright: "expected a package name". Same template, two
 # spellings, and the error only tells you which one you got wrong.
-TPL_BY_NAME = "#kya-mandate:KyaMandate:KyaMandate"
+TPL_BY_NAME = "#kya-rails-mandate:KyaMandate:KyaMandate"
 PARTY = {r: f"kya-{r}-1{NS}" for r in
          ("owner", "agent", "customer", "partner", "unverified")}
 
 # The assertion messages in KyaMandate.daml. We match them so the receipt can
 # cite the rule by name; the ledger, not this file, decides which one fires.
 RULES = re.compile(r"(mandate expired|charge would exceed the cap|"
-                   r"payee is not on the allow-list|amount must be positive)")
+                   r"charge would exceed the period limit|"
+                   r"payee is not on the allow-list|amount must be positive|"
+                   r"new cap below what is already spent)")
 
 def _configure():
     if not os.environ.get("C8_CLIENT_SECRET"):
@@ -67,7 +69,13 @@ def _is_ledger_answer(m):
     """
     return (bool(RULES.search(m)) or "CONTRACT_NOT_ACTIVE" in m
             or "NOT_FOUND" in m or "uthoriz" in m
-            or "INVALID_ARGUMENT" in m or "DAML_AUTHORIZATION_ERROR" in m)
+            or "INVALID_ARGUMENT" in m or "DAML_AUTHORIZATION_ERROR" in m
+            # DAML_FAILURE is an assertion in the choice body firing. That is
+            # the ledger deciding, not the network failing, and treating it as
+            # retryable meant a real refusal was retried eight times and then
+            # reported as "the ledger never answered".
+            or "DAML_FAILURE" in m or "User failure" in m
+            or "NOT_VALID_UPGRADE_PACKAGE" in m)
 
 
 def _retry(fn, tries=8):

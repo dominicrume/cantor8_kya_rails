@@ -16,6 +16,7 @@ import os, re, shutil, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PKG = os.path.join(HERE, "..", "step-1-mandate")
+TESTPKG = os.path.join(PKG, "test")
 SRC = os.path.join(PKG, "daml", "KyaMandate.daml")
 
 # fence -> a test that MUST fail when that line is deleted.
@@ -30,8 +31,18 @@ FENCES = [
 
 
 def run_suite():
-    p = subprocess.run(["daml", "test", "--no-legacy-assistant-warning"],
+    """Rebuild the mandate, then run the scripts from their own package.
+
+    The test package takes the built DAR as a data-dependency, so a mutated
+    mandate only reaches the tests after a rebuild. Skipping the rebuild would
+    silently test the previous DAR and report every fence as covered.
+    """
+    b = subprocess.run(["daml", "build", "--no-legacy-assistant-warning"],
                        cwd=PKG, capture_output=True, text=True)
+    if b.returncode != 0:
+        return "BUILD FAILED\n" + b.stdout + b.stderr
+    p = subprocess.run(["daml", "test", "--no-legacy-assistant-warning"],
+                       cwd=TESTPKG, capture_output=True, text=True)
     return p.stdout + p.stderr
 
 
