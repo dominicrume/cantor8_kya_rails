@@ -362,6 +362,20 @@ class Rail:
         self.cap, self.period_limit, self.opened = cap, period_limit, True
         return self.state()
 
+    @staticmethod
+    def dress(deal):
+        """A deal, plus how old it is and whether its quote is still alive.
+
+        Computed here, against the SAME clock the expiry fence uses, and not
+        in the browser. A screen that decides "expired" from the viewer's
+        clock will disagree with the desk on a laptop whose time has drifted,
+        and the disagreement shows up as a button that does nothing.
+        """
+        now = time.time()
+        left = deal.get("expiresAt", now) - now
+        return dict(deal, ageSeconds=int(now - deal.get("opened", now)),
+                    expiresInSeconds=int(left), expired=left <= 0)
+
     def storage_state(self):
         """What the operator needs to know before they trust this screen.
 
@@ -397,7 +411,7 @@ class Rail:
                                  key=lambda q: q["reference"], reverse=True),
                 "networks": self.cycle.networks(),
                 "offtakers": self.cycle.offtakers(),
-                "deals": sorted(self.cycle.deals.values(),
+                "deals": sorted(map(self.dress, self.cycle.deals.values()),
                                 key=lambda d: d["reference"], reverse=True),
                 "rate": self.rate, "band": list(self.band),
                 "transcript": self.transcript[-40:]}
