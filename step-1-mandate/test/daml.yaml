@@ -13,6 +13,6 @@ dependencies:
   - daml-stdlib
   - daml-script
 data-dependencies:
-  - ../.daml/dist/kya-rails-mandate-1.0.0.dar
+  - ../.daml/dist/kya-rails-mandate-1.1.0.dar
 build-options:
   - --target=2.1

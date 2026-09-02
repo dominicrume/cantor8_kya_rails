@@ -1,0 +1,86 @@
+-- | Bind a receipt chain to where it came from.
+--
+-- SPEC.md section 8 says the chain "is not signed. It proves internal
+-- consistency, not origin. Anyone can produce a valid chain saying anything."
+-- That is exactly true and it is the last hole in the evidence: hand someone a
+-- completely fabricated receipts.js and the verifier goes green, because every
+-- seal in it really does follow from the one before.
+--
+-- The fix SPEC.md names is to bind it to a ledger transaction, and that is
+-- what this is. The principal publishes the final seal of a chain on Canton.
+-- Forging a chain now means forging a Canton contract signed by a party whose
+-- key you do not have, which is a different and much harder problem.
+--
+-- What this does NOT do, said here so nobody has to guess:
+--   * It does not prove the receipts are true. It proves this exact chain was
+--     published by this party at this time. A principal can anchor a chain of
+--     lies; they just cannot anchor it and later deny it, or swap it for a
+--     different one afterwards.
+--   * It does not stop a chain being discarded entirely. Anchoring makes
+--     substitution detectable, not deletion.
+module KyaAnchor where
+
+import DA.Text (explode)
+import qualified DA.Text as T
+
+-- explode gives [Text], one single-character Text per character, so the digit
+-- set has to be exploded too rather than compared against a Text.
+hexDigits : [Text]
+hexDigits = explode "0123456789abcdef"
+
+-- | One published chain head. Immutable by construction: there is no choice
+-- that edits it, so a new chain means a new contract and the old one stays on
+-- the ledger as history.
+template ChainAnchor
+  with
+    principal : Party
+      -- ^ Whose desk this chain belongs to. The only signatory: an anchor is
+      -- a statement by the principal about their own records, and nobody
+      -- else's signature makes it more true.
+    seal      : Text
+      -- ^ The final seal of the chain, 64 lowercase hex characters.
+    receipts  : Int
+      -- ^ How many receipts that seal covers. Without this, a chain could be
+      -- truncated to an earlier receipt and re-anchored at that receipt's
+      -- seal, which would verify. With it, the count has to match too.
+    ledger    : Text
+      -- ^ Which rail produced the chain, copied from the receipts. A MOCKED
+      -- chain anchored on real Canton is still a MOCKED chain and must say so.
+      --
+      -- There is deliberately no anchoredAt field. The creator would supply
+      -- it, which makes it a number they choose rather than a fact; Canton
+      -- already records when the contract was created, and that record they
+      -- cannot write. A timestamp inside the payload would look like evidence
+      -- while being the one field in here nobody has checked.
+  where
+    signatory principal
+
+    -- A seal is a sha256 in lowercase hex. Anything else is not a chain head,
+    -- and anchoring one would put a permanent lie on the ledger.
+    -- The label rule goes first deliberately. tests/mutation.py proves a fence
+    -- matters by deleting its line and requiring a named test to go red, and
+    -- the first term of an `ensure` chain cannot be deleted on its own without
+    -- leaving a dangling `&&`. So the term that sits in the undeletable slot is
+    -- the one about labelling, not one of the three about the seal itself.
+    ensure ledger /= ""
+        && T.length seal == 64
+        && all (`elem` hexDigits) (explode seal)
+        && receipts > 0
+
+    -- Anyone holding the receipts file can be shown the anchor; that is the
+    -- entire point of publishing it.
+    choice Confirm : Bool
+      with
+        claimedSeal : Text
+        claimedCount : Int
+      controller principal
+      do
+        -- Both, not just the seal. A truncated chain has a real seal -- the
+        -- seal of the receipt it was cut at -- so the count is what catches it.
+        pure (claimedSeal == seal && claimedCount == receipts)
+
+-- Publishing is a plain create. There was a two-step AnchorRequest/Publish
+-- here and it earned nothing: the principal is the only signatory, so there is
+-- no second party to agree, and the extra template moved the ensure clause off
+-- the thing being validated -- a malformed request could be created and only
+-- refused a step later. One template, validated at the door.

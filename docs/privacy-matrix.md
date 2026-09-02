@@ -11,6 +11,7 @@ a claim and one read out of the contracts is a fact.*
 
 | Contract | Signatories | Observers | Excluded |
 | --- | --- | --- | --- |
+| `ChainAnchor` | `principal` | — | **everyone else** |
 | `DepositBook` | `principal` | `operator` | `depositFeed`, **everyone else** |
 | `DepositInstruction` | `operator` | `customer`, `depositFeed` | **everyone else** |
 | `OffTakerBook` | `principal` | `operator` | **everyone else** |
