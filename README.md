@@ -76,6 +76,7 @@ country and deciding whether to trust the person who produced it.
 | Attack suite green | **73 / 73** `daml test` scripts, both directions of the cycle |
 | The cycle holds at every join | 15 checks over HTTP, in the order a desk works it |
 | Every fence mutation-tested | all **27** in the Daml, and all **29** refusals in the two webhook adapters: delete any one and a named test goes red — enforced in CI |
+| The chain is bound to its origin | the head is published on Canton — a **fully forged** chain verifies green in all three implementations, and the ledger answers `NOT ANCHORED` |
 | The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **27** checks, including a forged journal entry that proves the limit |
 | The deposit door | **30** attacks on the adapter + **15** over a real socket, including the X-Forwarded-For spoof that defeats a naive IP allowlist |
 | The WhatsApp door | **54** attacks on the adapter + **14** over a real socket: unsigned, wrongly signed, signed-for-another-body, replayed, day-old, another business account, delivery reports, hostile display names |
@@ -184,6 +185,32 @@ allowlist into a value the attacker sets; that is T21 in the threat model, and
 
 `KYA_BREET_REQUIRE_IP=0` turns the allowlist off for a laptop demo. It leaves
 a header secret as the only check, so the startup banner says so out loud.
+
+### Proving a chain came from you
+
+The receipt chain proves nothing was *edited*. It never proved where the file
+came from — hand someone a wholly fabricated `receipts.js` and the verifier
+goes green, because every seal in it really does follow from the one before.
+SPEC.md said so from the day it was written, and named the fix: bind it to a
+ledger transaction.
+
+```bash
+python3 tests/devnet_anchor.py           # publish this chain's head on Canton
+python3 tests/devnet_anchor.py --check   # does the ledger agree with this file?
+```
+
+The principal publishes the final seal **and the receipt count** as a
+`ChainAnchor` contract. The count is not decoration: a chain truncated after
+receipt 3 still verifies, and its head is a real seal — dropping the last three
+receipts is how you hide a refusal. The count is what catches it.
+
+Demonstrated rather than asserted: a forged two-receipt chain claiming two 9.9
+CC payouts to the operator's own wallet verifies with **0 broken seals**, and
+`--check` answers `NOT ANCHORED`.
+
+What this does not prove is that the receipts are *true*. A principal can
+anchor a chain of lies. What they cannot do is anchor one and later swap it,
+or deny publishing it.
 
 ### The desk survives the laptop closing
 

@@ -1,0 +1,98 @@
+-- The attack suite for KyaAnchor. What an anchor must refuse to say.
+--
+-- An anchor is a claim published on a public ledger under the principal's own
+-- signature. A wrong one is worse than none: it is a permanent, signed
+-- statement pointing at a chain that does not exist. So every test here is a
+-- lie the contract will not carry.
+module KyaAnchorTest where
+
+import DA.Assert ((===))
+import Daml.Script
+import KyaAnchor
+
+-- A real chain head from a DevNet run. 64 lowercase hex.
+goodSeal : Text
+goodSeal = "37a65e561d99a840dc1535513c71ad193a6f09dc05a74c5b091660b76b212bc4"
+
+anchor : Party -> Text -> Int -> Text -> ChainAnchor
+anchor p s n l = ChainAnchor with principal = p; seal = s; receipts = n; ledger = l
+
+testAnchorPublishesAChainHead : Script ()
+testAnchorPublishesAChainHead = script do
+  principal <- allocateParty "Principal"
+  aid <- submit principal do
+    createCmd (anchor principal goodSeal 6 "DevNet (real Canton)")
+  Some a <- queryContractId principal aid
+  a.seal === goodSeal
+  a.receipts === 6
+
+testShortSealIsRefused : Script ()
+testShortSealIsRefused = script do
+  principal <- allocateParty "Principal"
+  submitMustFail principal do
+    createCmd (anchor principal "37a65e56" 6 "DevNet")
+
+testUppercaseSealIsRefused : Script ()
+testUppercaseSealIsRefused = script do
+  -- Same seal, different case. It would hash-compare unequal against every
+  -- implementation in SPEC.md, which all emit lowercase, so an anchor holding
+  -- it would never match the chain it claims to cover.
+  principal <- allocateParty "Principal"
+  submitMustFail principal do
+    createCmd (anchor principal
+      "37A65E561D99A840DC1535513C71AD193A6F09DC05A74C5B091660B76B212BC4" 6 "DevNet")
+
+testNonHexSealIsRefused : Script ()
+testNonHexSealIsRefused = script do
+  principal <- allocateParty "Principal"
+  submitMustFail principal do
+    createCmd (anchor principal
+      "zzz65e561d99a840dc1535513c71ad193a6f09dc05a74c5b091660b76b212bc4" 6 "DevNet")
+
+testZeroReceiptsIsRefused : Script ()
+testZeroReceiptsIsRefused = script do
+  -- An anchor over nothing is a signature on an empty claim.
+  principal <- allocateParty "Principal"
+  submitMustFail principal do
+    createCmd (anchor principal goodSeal 0 "DevNet")
+
+testAnchorMustNameItsLedger : Script ()
+testAnchorMustNameItsLedger = script do
+  -- A MOCKED chain anchored on real Canton is still MOCKED. If the label can
+  -- be blank, the anchor stops saying which rail produced what it covers.
+  principal <- allocateParty "Principal"
+  submitMustFail principal do
+    createCmd (anchor principal goodSeal 6 "")
+
+testConfirmMatchesTheRealChainHead : Script ()
+testConfirmMatchesTheRealChainHead = script do
+  principal <- allocateParty "Principal"
+  aid <- submit principal do
+    createCmd (anchor principal goodSeal 6 "DevNet (real Canton)")
+  ok <- submit principal do
+    exerciseCmd aid Confirm with claimedSeal = goodSeal; claimedCount = 6
+  ok === True
+
+testADifferentChainDoesNotConfirm : Script ()
+testADifferentChainDoesNotConfirm = script do
+  principal <- allocateParty "Principal"
+  aid <- submit principal do
+    createCmd (anchor principal goodSeal 6 "DevNet (real Canton)")
+  ok <- submit principal do
+    exerciseCmd aid Confirm with
+      claimedSeal = "0000000000000000000000000000000000000000000000000000000000000000"
+      claimedCount = 6
+  ok === False
+
+testTruncatedChainIsCaughtByTheCount : Script ()
+testTruncatedChainIsCaughtByTheCount = script do
+  -- The attack the count exists for. Cut a chain off after receipt 3 and it
+  -- still verifies perfectly -- every seal follows from the one before, because
+  -- they did. The head is now receipt 3's seal, which is a genuine seal. Only
+  -- the number of receipts gives it away.
+  principal <- allocateParty "Principal"
+  aid <- submit principal do
+    createCmd (anchor principal goodSeal 6 "DevNet (real Canton)")
+  ok <- submit principal do
+    exerciseCmd aid Confirm with claimedSeal = goodSeal; claimedCount = 3
+  ok === False

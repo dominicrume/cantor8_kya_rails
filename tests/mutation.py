@@ -23,6 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PKG = os.path.join(HERE, "..", "step-1-mandate")
 TESTPKG = os.path.join(PKG, "test")
 MANDATE = os.path.join(PKG, "daml", "KyaMandate.daml")
+ANCHOR = os.path.join(PKG, "daml", "KyaAnchor.daml")
 QUOTE = os.path.join(PKG, "daml", "KyaQuote.daml")
 CYCLE = os.path.join(PKG, "daml", "KyaCycle.daml")
 INBOUND = os.path.join(PKG, "daml", "KyaInbound.daml")
@@ -48,6 +49,10 @@ FENCES = [
     (CYCLE, "short of the amount agreed",              "testShortNairaIsRefused"),
     # KyaInbound: naira in, crypto out. The more dangerous direction, because
     # a naira transfer can be reversed and a crypto send cannot.
+    # KyaAnchor: what the chain head is not allowed to claim.
+    (ANCHOR, "&& T.length seal == 64",                  "testShortSealIsRefused"),
+    (ANCHOR, "&& all (`elem` hexDigits) (explode seal)", "testNonHexSealIsRefused"),
+    (ANCHOR, "&& receipts > 0",                          "testZeroReceiptsIsRefused"),
     (INBOUND, "not one of the desk's approved naira accounts", "testOperatorCannotNominateTheirOwnNairaAccount"),
     (INBOUND, "cannot send that asset on that network",        "testCannotQuoteAnAssetTheDeskCannotSend"),
     (INBOUND, "a bank reference is required",                  "testConfirmationNeedsABankReference"),
@@ -192,7 +197,7 @@ def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
     refuse_if_ambiguous()
     failures = []
-    with preserved((MANDATE, QUOTE, CYCLE, INBOUND)) as restore:
+    with preserved((MANDATE, QUOTE, CYCLE, INBOUND, ANCHOR)) as restore:
         baseline = run_suite()
         # Every test module, not just KyaTest: the suite grew to four and the
         # old pattern silently reported a third of the real baseline.

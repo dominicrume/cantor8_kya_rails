@@ -164,8 +164,21 @@ Stated plainly, because a security format that overstates itself is worse than
 none:
 
 - **It is not signed.** It proves internal consistency, not origin. Anyone can
-  produce a valid chain saying anything. Bind it to an identity — a ledger
-  transaction, a signature over the final seal — if origin matters.
+  produce a valid chain saying anything, and a forged one verifies green in
+  every implementation here — that is a property of the format, not a bug in
+  the verifiers.
+
+  The reference application now binds it the way this paragraph has always
+  recommended: the principal publishes the final seal and the receipt count as
+  a `ChainAnchor` contract on Canton (`step-1-mandate/daml/KyaAnchor.daml`,
+  `tests/devnet_anchor.py`). Forging a chain then also means forging a contract
+  signed by a party whose key you do not have. **The count is published
+  alongside the seal on purpose**: a chain truncated after receipt 3 still
+  verifies, and its head is a real seal — the count is what catches it.
+
+  This is a binding, not a signature: the format is unchanged, every seal is
+  unchanged, and all 14 conformance vectors still hold. An unanchored chain is
+  still a valid chain; it just carries no claim about where it came from.
 - **It does not prove the rule was enforced.** `rule` is a string. The
   guarantee that a limit was actually applied comes from wherever the decision
   was made — in the reference application, assertions in a Daml choice body.

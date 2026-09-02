@@ -33,6 +33,10 @@ USER = os.environ["C8_USER"]        # passed explicitly, never left to the defau
 NS  = "::12204e94c0e449c0efcd270dd1e68259c36471cebef132e5c7dfc2750fe8c9eed77f"
 PKG = "df5a02e88a68521095a7e6bb08a4d2c57ee87d4af0910a7c656fb231a5a07b0b"
 TPL, PROP = f"{PKG}:KyaMandate:KyaMandate", f"{PKG}:KyaMandate:KyaMandateProposal"
+# KyaAnchor arrived in 1.1.0, so it carries that package id rather than the
+# 1.0.0 the mandate templates were deployed under. Both are vetted; a command
+# names the package it wants and Canton resolves it.
+ANCHOR_PKG = "fd3f43a273be2187025c03699b8a107f58fe2d0a5b7a62295885b6ab58f12ab9"
 # Commands take a package ID. ACS filters insist on a package NAME reference
 # and reject an ID outright: "expected a package name". Same template, two
 # spellings, and the error only tells you which one you got wrong.

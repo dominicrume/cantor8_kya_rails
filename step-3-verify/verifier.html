@@ -294,7 +294,17 @@ async function verifyAnimated(){
   }
 }
 document.getElementById('verifyBtn').onclick=verifyAnimated;
-document.getElementById('tamperBtn').onclick=()=>{ RECEIPTS[1].amount='3500.0'; renderAll(); };
+// A believable skim, not an absurd one. 0.1 -> 0.4 is the change a dishonest
+// operator would actually make: small enough that nobody rereading the file
+// would blink, large enough to be worth doing. 3500.0 against a 0.5 cap just
+// invites "well, obviously that is fake" and teaches nobody anything. The
+// point is that the size of the lie does not matter -- the maths notices a
+// one-digit edit exactly as fast as a ludicrous one.
+document.getElementById('tamperBtn').onclick=()=>{
+  const r=RECEIPTS[1];
+  r.amount=(Math.round((parseFloat(r.amount)+0.3)*10)/10).toFixed(1);
+  renderAll();
+};
 renderAll();
 </script>
 </body>

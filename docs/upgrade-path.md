@@ -61,8 +61,16 @@ first version rather than the third.
 ```bash
 cd step-1-mandate && daml build
 daml damlc inspect-dar .daml/dist/kya-rails-mandate-*.dar | grep -c KyaTest   # must be 0
-cd test && daml build && daml test                                            # 18/18
+cd test && daml build && daml test                                            # 82/82
 ```
 
-Then upload to DevNet and read the response. A `NOT_VALID_UPGRADE_PACKAGE`
-tells you what changed; a silent 200 tells you it vetted.
+Then upload and read the response:
+
+```bash
+python3 tests/devnet_upload.py
+```
+
+A `NOT_VALID_UPGRADE_PACKAGE` names the type that changed; HTTP 200 means
+Canton vetted it as an upgrade of what was already there. The tool refuses to
+upload a DAR containing test types at all, which is the mistake that cost us
+the first lineage.
