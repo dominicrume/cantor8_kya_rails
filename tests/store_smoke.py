@@ -182,6 +182,44 @@ st = r12.state()["storage"]
 check(st["intact"] is False, "a tampered journal reports intact=false to the screen")
 check("do not trust" in st["warning"].lower(), "and the warning says not to trust it")
 
+# --- a deal that came back from a restart, and died while away --------------
+# The trap this closes: an operator opens a restarted desk, sees QUOTED and a
+# "Deposit confirmed" button, and walks a dead quote all the way to DEPOSITED
+# before pay refuses it -- by which point the customer's crypto has landed.
+aged = os.path.join(tempfile.mkdtemp(), "aged.db")
+_ma, ra = rail_on(aged)
+ra.desk.approved = [ACCT]
+old = ra.cycle.open_deal("Chidi", "USDT", "TRC20", 10.0, 1250.0, ACCT,
+                         None, ra.desk.approved)
+oref = old["reference"]
+import time as _time
+ra.cycle.deals[oref]["opened"] = _time.time() - 90000        # quoted yesterday
+ra.cycle.deals[oref]["expiresAt"] = _time.time() - 3600      # ran out an hour ago
+ra.persist()
+
+_mb, rb = rail_on(aged)
+card = [d for d in rb.state()["deals"] if d["reference"] == oref][0]
+check(card["expired"] is True, "a quote that ran out while the desk was off comes back expired")
+check(card["ageSeconds"] > 80000,
+      "its age is measured from when it was QUOTED, not from the restart")
+check(card["expiresInSeconds"] < 0, "and the time left is negative, not reset")
+
+fresh_deal = rb.cycle.open_deal("Ngozi", "USDT", "TRC20", 5.0, 1250.0, ACCT,
+                                None, rb.desk.approved)
+live = [d for d in rb.state()["deals"] if d["reference"] == fresh_deal["reference"]][0]
+check(live["expired"] is False, "a deal quoted after the restart is not expired")
+
+# The screen refuses it because the desk does, and the desk because the Daml
+# does. The fences fire in the contract's order, so walk the deal to where the
+# expiry fence is the one that speaks.
+check(rb.cycle.pay(oref, ACCT, 12500.0)["outcome"] == "REFUSED",
+      "an expired deal cannot be paid straight from QUOTED")
+rb.cycle.confirm_deposit(oref)
+check(rb.cycle.deals[oref]["state"] == "DEPOSITED",
+      "a late deposit can still be recorded -- the crypto arrived either way")
+check(rb.cycle.pay(oref, ACCT, 12500.0)["rule"] == "quote expired",
+      "and then the payout is refused in the contract's own words")
+
 # --- no test may write into a real desk's journal ---------------------------
 # Persistence is the server's default, so a test that spawns server.py without
 # --ephemeral writes to kya-desk.db in the repository root -- the same file a

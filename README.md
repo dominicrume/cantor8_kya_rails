@@ -220,6 +220,19 @@ by forging one rather than pretending otherwise. It makes rewriting history
 detectable, not adding to it — the same limit as the receipt chain, for the
 same reason. The quote on the ledger is what actually holds.
 
+Coming back to a restarted desk, the screen shows each deal's age and what is
+left on its quote, computed against **the desk's clock, not the browser's** —
+a screen that decides "expired" from the viewer's clock will disagree with the
+fence and show a button that does nothing.
+
+A quote that ran out while the desk was off is marked expired, greyed, and its
+Pay button is disabled with the reason. That closes a trap rather than a hole:
+`pay` already refuses with `quote expired` and always did, but an operator who
+only discovers that *after* walking the deal to DEPOSITED has had the
+customer's crypto land against a quote that can never be paid. Recording the
+late deposit is still allowed — the money arrived either way, and the screen
+says to re-quote or return it rather than pay.
+
 ### The operator's screen
 
 The person on the ground, on a phone, under pressure from a customer who is

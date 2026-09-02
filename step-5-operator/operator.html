@@ -108,6 +108,12 @@
   .r .rule{font-size:11.5px;color:var(--dim);margin-top:3px}
   .empty{color:var(--dim);font-size:13px;padding:6px 0}
   .ledger{text-align:center;font-size:11px;color:var(--gold);padding:14px 0 0}
+  .clock{font-size:11px;color:var(--dim);padding:2px 0 4px;
+         font-variant-numeric:tabular-nums}
+  .deal.dead{opacity:.72;border-color:#8c2f2f}
+  .s-EXPIRED{background:#8c2f2f;color:#fff;margin-left:6px}
+  .next.warn{color:#fff;background:#8c2f2f;border-radius:6px;padding:8px 10px;
+             line-height:1.45;font-weight:600}
   .storage{text-align:center;font-size:11px;padding:6px 0 0;color:var(--dim)}
   .storage.warn{color:#fff;background:#8c2f2f;border-radius:6px;padding:8px 10px;
                 margin-top:8px;font-weight:600;line-height:1.45}
@@ -380,19 +386,48 @@ const NEXT = {
   PAID:          'Complete.',
 };
 
+// Whole units only. "quoted 25h ago" is what an operator returning to a
+// restarted desk needs; seconds of precision are noise.
+function span(sec){
+  sec = Math.abs(Math.round(sec));
+  if (sec < 90) return sec + 's';
+  if (sec < 5400) return Math.round(sec/60) + 'm';
+  if (sec < 172800) return Math.round(sec/3600) + 'h';
+  return Math.round(sec/86400) + 'd';
+}
+
+// A quote that has run out is not a deal in progress, and the screen must not
+// let it look like one. The fence is in KyaQuote.daml -- pay REFUSES with
+// "quote expired" -- but an operator who only finds that out after the
+// customer's crypto has landed has been trapped by the interface, not
+// protected by it. Deals come back from a restart hours old, so this is
+// exactly when it bites.
+const EXPIRED_NOTE =
+  'This quote has run out. The desk will refuse to pay against it, and that ' +
+  'refusal is in the contract, not on this screen. If the customer has ' +
+  'already sent, the crypto is real and still yours to account for: re-quote ' +
+  'at today\u2019s rate, or return it. Do not pay on this one.';
+
 function dealCard(d){
   const el = document.createElement('div');
-  el.className = 'deal';
+  el.className = 'deal' + (d.expired ? ' dead' : '');
   const memo = d.memo ? '<div class="addr">memo / tag: ' + esc(d.memo) + '</div>' : '';
+  const chip = d.expired && d.state !== 'PAID'
+    ? '<span class="state s-EXPIRED">expired</span>' : '';
+  const clock = d.expired
+    ? 'quoted ' + span(d.ageSeconds) + ' ago \u00b7 expired ' + span(d.expiresInSeconds) + ' ago'
+    : 'quoted ' + span(d.ageSeconds) + ' ago \u00b7 ' + span(d.expiresInSeconds) + ' left';
   el.innerHTML =
     '<div class="top"><span class="ref">' + esc(d.reference) + '</span>' +
-    '<span class="state s-' + d.state + '">' + d.state.replace('_',' ') + '</span></div>' +
+    '<span class="state s-' + d.state + '">' + d.state.replace('_',' ') + '</span>' + chip + '</div>' +
     '<div class="line"><b>' + d.amount + ' ' + esc(d.asset) + '</b> on ' + esc(d.network) +
     ' &middot; ' + esc(d.customer) + '</div>' +
     '<div class="line">' + Number(d.naira).toLocaleString() + ' NGN at ' + d.rate + '</div>' +
+    '<div class="clock">' + esc(clock) + '</div>' +
     '<div class="addr">deposit to ' + esc(d.depositAddress) + '</div>' + memo +
     '<div class="addr">pay out to ' + esc(d.payoutAccount) + '</div>' +
-    '<div class="next">' + esc(NEXT[d.state] || '') + '</div>' +
+    '<div class="next' + (d.expired ? ' warn' : '') + '">' +
+    esc(d.expired ? EXPIRED_NOTE : (NEXT[d.state] || '')) + '</div>' +
     '<div class="acts" id="acts-' + d.reference + '"></div>';
   return el;
 }
@@ -403,7 +438,13 @@ function dealActions(d){
   const add = (label, cls, fn) => {
     const b = document.createElement('button');
     b.textContent = label; if (cls) b.className = cls;
-    b.onclick = async () => { await fn(); await refresh(); };
+    if (d.expired && /^Pay/.test(label)){
+      b.disabled = true;
+      b.title = 'The quote has run out. KyaQuote.daml refuses this; the '
+              + 'button would only tell you so after the fact.';
+    } else {
+      b.onclick = async () => { await fn(); await refresh(); };
+    }
     host.appendChild(b);
   };
   if (d.state === 'QUOTED')
