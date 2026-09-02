@@ -304,10 +304,16 @@ accident: see [ARCHITECTURE.md](ARCHITECTURE.md).
 Against real Canton DevNet:
 
 ```bash
-export C8_CLIENT_SECRET=...            # shell only, never committed
+read -rs "C8_CLIENT_SECRET?paste your DevNet secret: "; export C8_CLIENT_SECRET
 python3 tests/devnet_check.py          # is the rail usable? answers in seconds
 python3 step-2-agent/agent.py --devnet
 ```
+
+That first line is deliberate. `export C8_CLIENT_SECRET=<value>` invites you to
+paste angle brackets, and `<` is a redirect in zsh — you get
+`parse error near '\n'` and no secret. `read -rs` prompts instead: nothing is
+echoed to the screen and nothing lands in your shell history, which is where a
+secret typed on a command line lives forever.
 
 Run the preflight first. Everything else about DevNet is already defaulted in
 `devnet_ledger.py` — the secret is the only thing you supply — and when it is
