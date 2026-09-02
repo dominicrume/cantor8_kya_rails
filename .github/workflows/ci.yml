@@ -79,6 +79,9 @@ jobs:
       - name: the Meta webhook is actually wired into the server
         run: python3 tests/meta_wire_smoke.py
 
+      - name: the Breet webhook is wired in and its allowlist survives a proxy
+        run: python3 tests/breet_wire_smoke.py
+
       - name: every refusal in the webhook adapters is covered by a test
         run: python3 tests/mutation_py.py
 

@@ -76,6 +76,7 @@ country and deciding whether to trust the person who produced it.
 | Attack suite green | **73 / 73** `daml test` scripts, both directions of the cycle |
 | The cycle holds at every join | 15 checks over HTTP, in the order a desk works it |
 | Every fence mutation-tested | all **27** in the Daml, and all **29** refusals in the two webhook adapters: delete any one and a named test goes red — enforced in CI |
+| The deposit door | **30** attacks on the adapter + **15** over a real socket, including the X-Forwarded-For spoof that defeats a naive IP allowlist |
 | The WhatsApp door | **54** attacks on the adapter + **14** over a real socket: unsigned, wrongly signed, signed-for-another-body, replayed, day-old, another business account, delivery reports, hostile display names |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
 | Deployed on Cantor8 DevNet | `kya-rails-mandate` 1.0.0, package `df5a02e88a68…`, vetted |
@@ -155,6 +156,33 @@ set out what this stops and what it does not.
 access token this repository does not have. The reply text is returned and
 recorded; nothing is sent to Meta. It says so in the code and on the startup
 banner.
+
+### Connecting the deposit feed
+
+`step-7-providers/breet.py` turns a Breet deposit webhook into the
+`ConfirmDepositSeen` the cycle needs, so the desk stops taking a customer's
+screenshot as proof that money arrived. Same rule: it exists only when it is
+configured.
+
+```bash
+export KYA_BREET_SECRET=...          # their shared header secret
+python3 step-5-operator/server.py    # webhook at /webhook/breet
+```
+
+Breet signs nothing — a shared secret in a header is a **bearer credential**,
+not a signature, and anyone who obtains it can forge a confirmation. So it is
+compared in constant time, the provider's IP allowlist is the second lock, and
+every field is matched against a deal we already hold before anything is
+confirmed. The webhook does not get to say which deal it is.
+
+Behind a reverse proxy the allowlist needs `KYA_BREET_TRUST_PROXY=1`, and then
+only the **last** hop of `X-Forwarded-For` counts — the one the proxy
+appended. Reading that header without a declared proxy would turn the
+allowlist into a value the attacker sets; that is T21 in the threat model, and
+`tests/breet_wire_smoke.py` proves all three cases by mutation.
+
+`KYA_BREET_REQUIRE_IP=0` turns the allowlist off for a laptop demo. It leaves
+a header secret as the only check, so the startup banner says so out loud.
 
 ### The operator's screen
 
@@ -242,6 +270,7 @@ python3 tests/mutation.py        # delete each Daml fence, prove a test goes red
 python3 tests/mutation_py.py     # same, for every refusal in the webhook adapters
 python3 tests/meta_smoke.py      # attack the WhatsApp webhook adapter
 python3 tests/meta_wire_smoke.py # and again over a real socket, through the server
+python3 tests/breet_wire_smoke.py # the deposit webhook, and its IP allowlist
 python3 tests/complexity_lint.py # no function over the ceiling without a written reason
 cd step-1-mandate && daml build && cd test && daml test   # 73 scripts
 ```
