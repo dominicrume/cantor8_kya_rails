@@ -75,7 +75,8 @@ country and deciding whether to trust the person who produced it.
 | --- | --- |
 | Attack suite green | **73 / 73** `daml test` scripts, both directions of the cycle |
 | The cycle holds at every join | 15 checks over HTTP, in the order a desk works it |
-| Every fence mutation-tested | all **27**: delete any one and a named test goes red — enforced in CI |
+| Every fence mutation-tested | all **27** in the Daml, and all **29** refusals in the two webhook adapters: delete any one and a named test goes red — enforced in CI |
+| The WhatsApp door | **54** attacks on the adapter + **14** over a real socket: unsigned, wrongly signed, signed-for-another-body, replayed, day-old, another business account, delivery reports, hostile display names |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
 | Deployed on Cantor8 DevNet | `kya-rails-mandate` 1.0.0, package `df5a02e88a68…`, vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
@@ -123,6 +124,37 @@ messages a real desk receives.
 
 Where a model *is* useful is turning messy human text into an intent at the
 edge. Its output would still have to pass every fence. That is not wired up.
+
+### Connecting it to real WhatsApp
+
+`step-7-providers/meta.py` translates Meta's WhatsApp Cloud API webhook into
+the same `on_message` the simulator uses, so the bot cannot tell the two
+apart. It exists only when it is fully configured — three environment
+variables, none of which go in this repository:
+
+```bash
+export KYA_META_APP_SECRET=...      # signs every delivery
+export KYA_META_VERIFY_TOKEN=...    # answers Meta's one-time GET challenge
+export KYA_META_PHONE_ID=...        # the desk's own number, and no other
+python3 step-5-operator/server.py   # webhook at /webhook/meta
+```
+
+With any of them missing the path returns 404 rather than running unguarded,
+and the startup banner says which mode it is in. A **half-configured webhook
+endpoint is an open one**, and this one is a door straight into the desk's
+conversation engine.
+
+Every delivery must carry a valid `X-Hub-Signature-256` over the **raw bytes**
+— not over a re-serialised parse, which is the mistake that makes a signature
+check decorative. Deliveries are deduplicated on Meta's own message id and
+bounded by a freshness window, because an HMAC proves who sent a body and
+never says when. Threats T16–T20 in [docs/threat-model.md](docs/threat-model.md)
+set out what this stops and what it does not.
+
+**Replies are MOCKED.** Sending a message back needs a Graph API call with an
+access token this repository does not have. The reply text is returned and
+recorded; nothing is sent to Meta. It says so in the code and on the startup
+banner.
 
 ### The operator's screen
 
@@ -205,8 +237,13 @@ The checks, all three of which run in CI:
 python3 tests/conformance.py     # seal format, Python
 node    tests/conformance.js     # seal format, JavaScript
 cd impl/go && go run .           # seal format, Go
-python3 tests/mutation.py        # delete each fence, prove a test goes red
-cd step-1-mandate && daml build && cd test && daml test   # 18 scripts
+python3 tests/fence_lint.py      # every spending rule is present in its contract
+python3 tests/mutation.py        # delete each Daml fence, prove a test goes red
+python3 tests/mutation_py.py     # same, for every refusal in the webhook adapters
+python3 tests/meta_smoke.py      # attack the WhatsApp webhook adapter
+python3 tests/meta_wire_smoke.py # and again over a real socket, through the server
+python3 tests/complexity_lint.py # no function over the ceiling without a written reason
+cd step-1-mandate && daml build && cd test && daml test   # 73 scripts
 ```
 
 ---

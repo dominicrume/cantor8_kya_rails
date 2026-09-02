@@ -18,8 +18,26 @@ import hmac, json, os, secrets, sys, time, http.server, socketserver, urllib.par
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "step-2-agent"))
 sys.path.insert(0, os.path.join(HERE, "..", "step-6-whatsapp"))
+sys.path.insert(0, os.path.join(HERE, "..", "step-7-providers"))
 from kya_chain import Chain, NonAsciiInReceipt
 from bot import Conversation, GREETING
+from meta import MetaAdapter, MAX_BODY
+
+# Meta's webhook, if and only if it is fully configured. A half-configured
+# webhook endpoint is an open one, so all three values must be present or the
+# path does not exist at all. None of them belong in this file: they live in
+# the shell, like every other secret in this repository.
+META = None
+META_PATH = "/webhook/meta"
+
+
+def build_meta(rail):
+    secret = os.environ.get("KYA_META_APP_SECRET")
+    token = os.environ.get("KYA_META_VERIFY_TOKEN")
+    phone_id = os.environ.get("KYA_META_PHONE_ID")
+    if not (secret and token and phone_id):
+        return None
+    return MetaAdapter(rail, secret, token, phone_id)
 
 PORT = int(os.environ.get("KYA_PORT", "8420"))
 
@@ -414,9 +432,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        parsed = urllib.parse.urlparse(self.path)
+        # Meta's verification GET carries no LAN token and cannot be given
+        # one. It is answered only when it proves it knows the verify token.
+        if parsed.path == META_PATH and META is not None:
+            return self._meta_verify(parsed.query)
         if not self.authorised():
             return self._json({"error": "unauthorised"}, 401)
-        path = urllib.parse.urlparse(self.path).path
+        path = parsed.path
 
         if path == "/api/state":
             return self._json(RAIL.state())
@@ -455,7 +478,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _meta_verify(self, query):
+        params = {k: v[0] for k, v in urllib.parse.parse_qs(query).items()}
+        code, text = META.verify(params)
+        payload = text.encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _meta_post(self):
+        """The signature covers the bytes on the wire, so the bytes go
+        through untouched: no parse, no re-encode, no LAN token."""
+        n = int(self.headers.get("Content-Length", 0))
+        if n > MAX_BODY:
+            return self._json({"error": "body too large"}, 413)
+        code, body = META.handle(dict(self.headers), self.rfile.read(n))
+        return self._json(body, code)
+
     def do_POST(self):
+        if self.path == META_PATH and META is not None:
+            return self._meta_post()
         if not self.authorised():
             return self._json({"error": "unauthorised"}, 401)
         n = int(self.headers.get("Content-Length", 0))
@@ -470,8 +514,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 def main(argv):
-    global RAIL, LAN_TOKEN
+    global RAIL, LAN_TOKEN, META
     RAIL = Rail(argv)
+    META = build_meta(RAIL)
 
     # Localhost by default. --lan is how the operator opens this on a phone,
     # and it puts a payout interface on a network, so it is not a warning-level
@@ -500,6 +545,13 @@ def main(argv):
             print("  other devices on your wifi, and nothing more -- it travels")
             print("  in plain HTTP. Do not expose this beyond a network you own.")
         print("ledger:", RAIL.ledger.label)
+        if META is None:
+            print("WhatsApp: MOCKED only (/bot). The Meta webhook is OFF -- set")
+            print("          KYA_META_APP_SECRET, KYA_META_VERIFY_TOKEN and")
+            print("          KYA_META_PHONE_ID to turn it on.")
+        else:
+            print("WhatsApp: live webhook at %s (signature-checked)." % META_PATH)
+            print("          Replies are MOCKED: nothing is sent back to Meta.")
         httpd.serve_forever()
 
 

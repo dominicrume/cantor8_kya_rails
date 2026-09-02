@@ -53,6 +53,9 @@ jobs:
       - name: the privacy matrix matches the Daml
         run: python3 tests/privacy_matrix.py --check
 
+      - name: every spending rule is present in its contract
+        run: python3 tests/fence_lint.py
+
       - name: nothing unreachable after a return
         run: python3 tests/deadcode_lint.py
 
@@ -69,6 +72,15 @@ jobs:
 
       - name: the whole OTC cycle holds at every join
         run: python3 tests/cycle_smoke.py
+
+      - name: nothing reaches the bot unless Meta sent it
+        run: python3 tests/meta_smoke.py
+
+      - name: the Meta webhook is actually wired into the server
+        run: python3 tests/meta_wire_smoke.py
+
+      - name: every refusal in the webhook adapters is covered by a test
+        run: python3 tests/mutation_py.py
 
       - name: the agent runs offline, stdlib only
         run: |
