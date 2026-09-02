@@ -89,12 +89,35 @@ def check_wallet(dn):
                     "than an empty wallet -- but the token worked above, so "
                     "check that kya-agent-1 still holds Amulet.")
     line(True, "a holding is visible", "instrument admin %s" % admin[:40])
+    return check_balance(dn)
+
+
+# agent.py makes two charges the mandate allows: 2.0 then 1.5. With
+# --move-coin each one is a real transfer, so the agent has to hold this much
+# or the second settles short -- and a payout that is authorised but does not
+# settle is the worst outcome in the whole system.
+NEEDED = 3.5
+
+
+def check_balance(dn):
+    """Enough coin to actually settle, or only enough to record?"""
+    held = dn._spendable(dn.PARTY["agent"])
+    where = dn.PARTY["agent"].split("::")[0]
+    line(True, "the agent's spendable balance", "%s holds %.4f CC" % (where, held))
 
     print()
-    print("  DevNet is usable. The rails that need it:")
+    if held >= NEEDED:
+        print("  DevNet is usable, and there is enough to move coin:")
+        print("    python3 step-2-agent/agent.py --devnet")
+        print("    python3 step-2-agent/agent.py --devnet --move-coin")
+        return 0
+    print("  DevNet is usable, but --move-coin needs %.1f CC and %s has %.4f."
+          % (NEEDED, where, held))
+    print("  A previous --move-coin run already sent this coin on to the")
+    print("  recipient and partner parties; it was not lost, it moved.")
+    print("  Run without --move-coin -- the fences are what the judges ask")
+    print("  about, and they are proved either way:")
     print("    python3 step-2-agent/agent.py --devnet")
-    print("    python3 step-2-agent/agent.py --devnet --move-coin")
-    print("    python3 step-5-operator/server.py --devnet --move-coin")
     return 0
 
 
