@@ -12,9 +12,13 @@ another, and a float the principal cannot stand next to. The operator may pay
 verified recipients and the settlement partner, up to a cap, until an expiry,
 and the principal can stop it at any moment from anywhere.
 
-Amounts are sized to what kya-agent-1 actually holds on DevNet (5 CC), so the
-same script runs offline and against the real ledger without a rewrite. Party
-names match KyaTest.daml exactly: one story, one set of names."""
+Amounts are deliberately small -- a 0.5 CC cap, payouts of 0.2 and 0.1 -- so
+the demo can be run over and over on DevNet without exhausting the wallet.
+With --move-coin each run sends 0.3 CC, so a 1.4 CC balance is four or five
+runs rather than one. The fences do not care about the size of the number, and
+a demo you can only run once is a demo you will get wrong in front of people.
+
+Party names match KyaTest.daml exactly: one story, one set of names."""
 import sys, os, time
 sys.path.insert(0, os.path.dirname(__file__))
 from kya_chain import Chain
@@ -38,7 +42,7 @@ class MockLedger:
     def name(self, role):
         return NAMES[role]
 
-    def open_mandate(self, cap=5.0, life_seconds=86400,
+    def open_mandate(self, cap=0.5, life_seconds=86400,
                      period_limit=None, period_seconds=None):
         self.m = {"cap": cap, "spent": 0.0, "allowed": list(ALLOWED),
                   "expired": life_seconds < 0, "revoked": False,
@@ -89,12 +93,13 @@ def main(argv):
           "float, change-of-account, expired mandate, after revoke -> write receipts")
     print("LEDGER:", L.label)
 
-    L.open_mandate(cap=5.0)
+    # 0.2 + 0.1 = 0.3 spent, so the 0.3 attack lands at 0.6 against a 0.5 cap.
+    L.open_mandate(cap=0.5)
     for what, amount, payee in [
-        ("Payout to a verified recipient",       2.0, "customer"),
-        ("Settle with the liquidity partner",    1.5, "partner"),
-        ("ATTACK: operator exceeds the float",   3.0, "customer"),
-        ("ATTACK: change of account, send here", 1.0, "unverified"),
+        ("Payout to a verified recipient",       0.2, "customer"),
+        ("Settle with the liquidity partner",    0.1, "partner"),
+        ("ATTACK: operator exceeds the float",   0.3, "customer"),
+        ("ATTACK: change of account, send here", 0.1, "unverified"),
     ]:
         outcome, rule = L.charge(amount, payee)
         chain.stamp(what, amount, L.name(payee), rule, outcome, SIGNED_BY,
@@ -103,16 +108,16 @@ def main(argv):
     # Expiry gets its own mandate, as testAfterExpiryRefused uses a fresh
     # deskWithExpiry plus passTime. Attacking the live mandate after Revoke
     # would report the revoke and the expiry fence would never be shown.
-    L.open_mandate(cap=5.0, life_seconds=-3600)
-    outcome, rule = L.charge(1.0, "customer")
-    chain.stamp("ATTACK: payout after the mandate expired", 1.0, L.name("customer"),
+    L.open_mandate(cap=0.5, life_seconds=-3600)
+    outcome, rule = L.charge(0.1, "customer")
+    chain.stamp("ATTACK: payout after the mandate expired", 0.1, L.name("customer"),
                 rule, outcome, SIGNED_BY + ", clock past expiresAt",
                 L.label, L.currency, L.instrument)
 
-    L.open_mandate(cap=5.0)
+    L.open_mandate(cap=0.5)
     L.revoke()
-    outcome, rule = L.charge(0.5, "customer")
-    chain.stamp("ATTACK: payout after the principal revoked", 0.5, L.name("customer"),
+    outcome, rule = L.charge(0.1, "customer")
+    chain.stamp("ATTACK: payout after the principal revoked", 0.1, L.name("customer"),
                 rule, outcome, "principal exercised Revoke",
                 L.label, L.currency, L.instrument)
 
