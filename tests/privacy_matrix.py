@@ -54,17 +54,23 @@ def clean(s):
     return [p.strip() for p in s.split(",") if p.strip()]
 
 
+def excluded_from(t):
+    """Party fields on the template that neither sign nor observe it."""
+    can_see = set(t["signatory"]) | set(t["observer"])
+    return [f for f in t["fields"] if f not in can_see]
+
+
+def cell(parties):
+    return ", ".join("`%s`" % p for p in parties) or "—"
+
+
 def render(ts):
     rows = []
     for t in ts:
-        can_see = set(t["signatory"]) | set(t["observer"])
-        excluded = [f for f in t["fields"] if f not in can_see]
-        rows.append("| `%s` | %s | %s | %s |" % (
-            t["name"],
-            ", ".join("`%s`" % p for p in t["signatory"]) or "—",
-            ", ".join("`%s`" % p for p in t["observer"]) or "—",
-            ", ".join("`%s`" % p for p in excluded) + (", **everyone else**"
-                                                      if excluded else "**everyone else**")))
+        ex = excluded_from(t)
+        tail = (cell(ex) + ", " if ex else "") + "**everyone else**"
+        rows.append("| `%s` | %s | %s | %s |"
+                    % (t["name"], cell(t["signatory"]), cell(t["observer"]), tail))
     return rows
 
 

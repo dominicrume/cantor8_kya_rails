@@ -142,41 +142,50 @@ def call_tool(wallet, name, args):
     raise ValueError("unknown tool: %s" % name)
 
 
+def _initialize(msg, wallet, mid):
+    want = (msg.get("params") or {}).get("protocolVersion", PROTOCOL)
+    return {"jsonrpc": "2.0", "id": mid, "result": {
+        "protocolVersion": want if want == PROTOCOL else PROTOCOL,
+        "capabilities": {"tools": {}},
+        "serverInfo": SERVER}}
+
+
+def _tools_list(msg, wallet, mid):
+    return {"jsonrpc": "2.0", "id": mid, "result": {"tools": TOOLS}}
+
+
+def _tools_call(msg, wallet, mid):
+    p = msg.get("params") or {}
+    try:
+        out = call_tool(wallet, p.get("name"), p.get("arguments") or {})
+        text, is_error = json.dumps(out, indent=2), False
+    except NonAsciiInReceipt as e:
+        # The seal guard. Surfaced as a tool error so the model can fix its own
+        # text rather than the chain being poisoned.
+        text, is_error = "refused before sealing: %s" % e, True
+    except Exception as e:
+        text, is_error = "%s: %s" % (type(e).__name__, e), True
+    return {"jsonrpc": "2.0", "id": mid,
+            "result": {"content": [{"type": "text", "text": text}],
+                       "isError": is_error}}
+
+
+# method -> handler. Notifications map to None: nothing to answer.
+METHODS = {
+    "initialize": _initialize,
+    "tools/list": _tools_list,
+    "tools/call": _tools_call,
+    "notifications/initialized": None,
+    "notifications/cancelled": None,
+}
+
+
 def handle(msg, wallet):
     """Returns a response dict, or None for a notification."""
     method, mid = msg.get("method"), msg.get("id")
-
-    if method == "initialize":
-        want = (msg.get("params") or {}).get("protocolVersion", PROTOCOL)
-        return {"jsonrpc": "2.0", "id": mid, "result": {
-            "protocolVersion": want if want == PROTOCOL else PROTOCOL,
-            "capabilities": {"tools": {}},
-            "serverInfo": SERVER}}
-
-    if method in ("notifications/initialized", "notifications/cancelled"):
-        return None
-
-    if method == "tools/list":
-        return {"jsonrpc": "2.0", "id": mid, "result": {"tools": TOOLS}}
-
-    if method == "tools/call":
-        p = msg.get("params") or {}
-        try:
-            out = call_tool(wallet, p.get("name"), p.get("arguments") or {})
-            return {"jsonrpc": "2.0", "id": mid, "result": {
-                "content": [{"type": "text", "text": json.dumps(out, indent=2)}],
-                "isError": False}}
-        except NonAsciiInReceipt as e:
-            # The seal guard. Surfaced as a tool error so the model can fix
-            # its own text rather than the chain being poisoned.
-            return {"jsonrpc": "2.0", "id": mid, "result": {
-                "content": [{"type": "text", "text": "refused before sealing: %s" % e}],
-                "isError": True}}
-        except Exception as e:
-            return {"jsonrpc": "2.0", "id": mid, "result": {
-                "content": [{"type": "text", "text": "%s: %s" % (type(e).__name__, e)}],
-                "isError": True}}
-
+    if method in METHODS:
+        fn = METHODS[method]
+        return fn(msg, wallet, mid) if fn else None
     if mid is None:
         return None
     return {"jsonrpc": "2.0", "id": mid,

@@ -11,20 +11,29 @@ def canonical(d):
     # browser. Proven: "\u20a6" seals 89e828df..., "N" raw seals 71e44b13...
     return json.dumps(d, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
+def _first_non_ascii(d):
+    """The first field carrying a character outside ASCII, or (None, None)."""
+    for k, v in d.items():
+        for text in (k, v):
+            if isinstance(text, str) and not text.isascii():
+                return k, text
+    return None, None
+
+
 def assert_ascii(d):
     """Refuse to seal what the verifier cannot reproduce. Guard, not hope.
 
     Currency SYMBOLS are a display concern: put the code (CC, USD) in the
     receipt and render the glyph in verifier.html."""
-    for k, v in d.items():
-        for field, s in ((k, k), (k, v)):
-            if isinstance(s, str) and not s.isascii():
-                bad = [c for c in s if not c.isascii()]
-                raise NonAsciiInReceipt(
-                    "field %r carries non-ASCII %r. Python would hash it as %s, "
-                    "the browser as the raw character, and the chain would break "
-                    "in front of a judge. Use an ASCII currency code."
-                    % (field, "".join(bad), "".join("\\u%04x" % ord(c) for c in bad)))
+    field, text = _first_non_ascii(d)
+    if field is None:
+        return
+    bad = [c for c in text if not c.isascii()]
+    raise NonAsciiInReceipt(
+        "field %r carries non-ASCII %r. Python would hash it as %s, "
+        "the browser as the raw character, and the chain would break "
+        "in front of a judge. Use an ASCII currency code."
+        % (field, "".join(bad), "".join("\\u%04x" % ord(c) for c in bad)))
 
 def seal(receipt_without_seal, prev_seal):
     return hashlib.sha256((canonical(receipt_without_seal) + prev_seal).encode()).hexdigest()
