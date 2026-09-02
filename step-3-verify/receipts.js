@@ -5,14 +5,14 @@ const RECEIPTS = [
     "amount": "0.2",
     "payee": "VerifiedRecipient (kya-customer-1)",
     "currency": "CC",
-    "instrument": "Amulet (transferred on DevNet)",
-    "rule": "authorised by the mandate and settled on DevNet: 0.2 Amulet transferred (offer accepted)",
+    "instrument": "Amulet (recorded, not transferred)",
+    "rule": "cap and allow-list satisfied, committed on DevNet",
     "outcome": "ACCEPTED",
     "approved_by": "mandate signed by Principal + Operator",
     "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-02T18:38:25Z",
+    "at": "2026-09-02T19:19:06Z",
     "prev": "GENESIS",
-    "seal": "29498f8b2df1965b45554a91ef8959c3dae6c72c86fb6b16f9bdd251c14d6a78"
+    "seal": "5197c2f3b9bdaae8501a5f52a7115b6a776f669c9d9ae970754af6fc342f475e"
   },
   {
     "n": 2,
@@ -20,14 +20,14 @@ const RECEIPTS = [
     "amount": "0.1",
     "payee": "SettlementPartner (kya-partner-1)",
     "currency": "CC",
-    "instrument": "Amulet (transferred on DevNet)",
-    "rule": "authorised by the mandate and settled on DevNet: 0.1 Amulet transferred (offer accepted)",
+    "instrument": "Amulet (recorded, not transferred)",
+    "rule": "cap and allow-list satisfied, committed on DevNet",
     "outcome": "ACCEPTED",
     "approved_by": "mandate signed by Principal + Operator",
     "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-02T18:38:37Z",
-    "prev": "29498f8b2df1965b45554a91ef8959c3dae6c72c86fb6b16f9bdd251c14d6a78",
-    "seal": "7b8dca5e84e05a0415a83d1f4a30856e3231d2d245b16088c6f61cc166d48205"
+    "at": "2026-09-02T19:19:15Z",
+    "prev": "5197c2f3b9bdaae8501a5f52a7115b6a776f669c9d9ae970754af6fc342f475e",
+    "seal": "94c6843547ac77529557aeee9ea962e05a8b2ab37d3de14f193edeb38e68158c"
   },
   {
     "n": 3,
@@ -35,14 +35,14 @@ const RECEIPTS = [
     "amount": "0.3",
     "payee": "VerifiedRecipient (kya-customer-1)",
     "currency": "CC",
-    "instrument": "Amulet (transferred on DevNet)",
+    "instrument": "Amulet (recorded, not transferred)",
     "rule": "charge would exceed the cap",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by Principal + Operator",
     "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-02T18:38:37Z",
-    "prev": "7b8dca5e84e05a0415a83d1f4a30856e3231d2d245b16088c6f61cc166d48205",
-    "seal": "320685046480c354d8b9accff289ef4f277e0af202ad4deec3b3156c6337651a"
+    "at": "2026-09-02T19:19:15Z",
+    "prev": "94c6843547ac77529557aeee9ea962e05a8b2ab37d3de14f193edeb38e68158c",
+    "seal": "44dbcf4ef24d6eb7b367c59791da519e4025de8e003c61c1b81f1c030643b016"
   },
   {
     "n": 4,
@@ -50,14 +50,14 @@ const RECEIPTS = [
     "amount": "0.1",
     "payee": "UnverifiedAccount (kya-unverified-1)",
     "currency": "CC",
-    "instrument": "Amulet (transferred on DevNet)",
+    "instrument": "Amulet (recorded, not transferred)",
     "rule": "payee is not on the allow-list",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by Principal + Operator",
     "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-02T18:38:37Z",
-    "prev": "320685046480c354d8b9accff289ef4f277e0af202ad4deec3b3156c6337651a",
-    "seal": "6bcf5d1f3bf9e992e739a2245cdc0fd662e03e1d3072b13b9c3411761c7904b1"
+    "at": "2026-09-02T19:19:15Z",
+    "prev": "44dbcf4ef24d6eb7b367c59791da519e4025de8e003c61c1b81f1c030643b016",
+    "seal": "f1b099e3813b9ac848290c2f4ab348a412224878fa7ccca20ef9520a6f30d6c2"
   },
   {
     "n": 5,
@@ -65,14 +65,14 @@ const RECEIPTS = [
     "amount": "0.1",
     "payee": "VerifiedRecipient (kya-customer-1)",
     "currency": "CC",
-    "instrument": "Amulet (transferred on DevNet)",
+    "instrument": "Amulet (recorded, not transferred)",
     "rule": "mandate expired",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by Principal + Operator, clock past expiresAt",
     "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-02T18:38:47Z",
-    "prev": "6bcf5d1f3bf9e992e739a2245cdc0fd662e03e1d3072b13b9c3411761c7904b1",
-    "seal": "999559bf8f6d0b21ac832ed9e76e7ee8cc6c29981b655094977f7511c077f7a5"
+    "at": "2026-09-02T19:19:34Z",
+    "prev": "f1b099e3813b9ac848290c2f4ab348a412224878fa7ccca20ef9520a6f30d6c2",
+    "seal": "4be50db6f0de4597af1f9b4126729b7a298b8e80b0c71d9d6b06398933481378"
   },
   {
     "n": 6,
@@ -80,13 +80,13 @@ const RECEIPTS = [
     "amount": "0.1",
     "payee": "VerifiedRecipient (kya-customer-1)",
     "currency": "CC",
-    "instrument": "Amulet (transferred on DevNet)",
+    "instrument": "Amulet (recorded, not transferred)",
     "rule": "Revoke: mandate no longer active on the ledger",
     "outcome": "REFUSED",
     "approved_by": "principal exercised Revoke",
     "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-02T18:39:31Z",
-    "prev": "999559bf8f6d0b21ac832ed9e76e7ee8cc6c29981b655094977f7511c077f7a5",
-    "seal": "65502426233c4144ab9c0341ea40c0c623f0bbad935d75b011172397e147a5b1"
+    "at": "2026-09-02T19:19:49Z",
+    "prev": "4be50db6f0de4597af1f9b4126729b7a298b8e80b0c71d9d6b06398933481378",
+    "seal": "1e0d5f42d165acf378a6b19135033c3ef04172661159e0a6b16ee9d29205e38d"
   }
 ];

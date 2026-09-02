@@ -15,6 +15,11 @@ whose key you do not have.
     python3 tests/devnet_anchor.py            publish the current chain's head
     python3 tests/devnet_anchor.py --check    does the ledger agree with it?
 
+A --devnet run anchors itself at the end, so publishing by hand is only for a
+chain that was produced with --no-anchor or whose anchor failed. --check is
+the one you will actually use: it is the question a reader of a receipts file
+should be asking.
+
 What this does NOT prove, so nobody overstates it: that the receipts are TRUE.
 A principal can anchor a chain of lies. What they cannot do is anchor one and
 later swap it for a different one, or deny having published it.
@@ -35,24 +40,6 @@ def chain_head():
     return receipts[-1]["seal"], len(receipts), receipts[-1]["ledger"]
 
 
-def template(dn):
-    return "%s:KyaAnchor:ChainAnchor" % dn.ANCHOR_PKG
-
-
-def publish(dn, seal, count, ledger):
-    ok, r = dn._submit([{"CreateCommand": {
-        "templateId": template(dn),
-        # Daml Int64 crosses the JSON Ledger API as a STRING, not a number.
-        # Sending 6 gets HTTP 500 "Expected ujson.Str (data: 6)", which does
-        # not mention types, fields, or JSON. Same reason SPEC.md makes amounts
-        # strings: a number that survives one encoder is not a number that
-        # survives all of them.
-        "createArguments": {"principal": dn.PARTY["owner"], "seal": seal,
-                            "receipts": str(count), "ledger": ledger}}}],
-        act_as=dn.PARTY["owner"])
-    return ok, r
-
-
 def anchors(dn, c8lab):
     """Every ChainAnchor the principal can see, newest first."""
     body = {"filter": {"filtersByParty": {dn.PARTY["owner"]: {"cumulative": [
@@ -69,7 +56,16 @@ def anchors(dn, c8lab):
 
 
 def do_check(dn, c8lab, seal, count):
-    found = anchors(dn, c8lab)
+    # A dropped connection is not an unanchored chain, and must never be
+    # reported as one. It is also not a traceback: this tool exists to answer
+    # a question about evidence, and "the network blinked" is a different
+    # answer from "nobody published this".
+    try:
+        found = anchors(dn, c8lab)
+    except Exception as e:
+        print("  could not reach the ledger: %s" % str(e)[:150])
+        print("  This says NOTHING about whether the chain is anchored.")
+        return 2
     print("  %d anchor(s) on the ledger" % len(found))
     match = [a for a in found
              if a.get("seal") == seal and int(a.get("receipts", 0)) == count]
@@ -106,11 +102,13 @@ def main():
     if "--check" in sys.argv:
         return do_check(dn, c8lab, seal, count)
 
-    ok, r = publish(dn, seal, count, ledger)
+    # The same method a --devnet run calls at the end. One implementation of
+    # publishing, so this tool cannot drift from what the rail actually does.
+    ok, detail = dn.DevNetLedger().anchor(seal, count, ledger)
     if not ok:
-        print("  refused: %s" % str(r)[:300])
+        print("  refused: %s" % detail)
         return 1
-    print("  published on Canton, signed by %s" % dn.PARTY["owner"].split("::")[0])
+    print("  published on Canton, %s" % detail)
     return do_check(dn, c8lab, seal, count)
 
 

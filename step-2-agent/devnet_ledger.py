@@ -377,6 +377,33 @@ class DevNetLedger:
             return True, "%.1f Amulet transferred (direct)" % amount
         return False, "unexpected transferKind: %s" % kind
 
+    def anchor(self, seal, count, label):
+        """Publish this chain's head on Canton. Returns (published, detail).
+
+        Called at the end of every --devnet run rather than when somebody
+        remembers, because a chain that is not anchored carries no claim about
+        where it came from -- and the gap between writing the receipts and
+        anchoring them is exactly the window in which they could be swapped.
+
+        Never raises. A run that produced real refusals is still worth having
+        if the anchor fails; what is not acceptable is that failing quietly,
+        so the caller is handed the reason and says so.
+        """
+        try:
+            ok, r = _submit([{"CreateCommand": {
+                "templateId": "%s:KyaAnchor:ChainAnchor" % ANCHOR_PKG,
+                # Daml Int64 crosses the JSON Ledger API as a STRING. Sending
+                # 6 returns HTTP 500 "Expected ujson.Str (data: 6)", which
+                # names neither the field nor the type.
+                "createArguments": {"principal": PARTY["owner"], "seal": seal,
+                                    "receipts": str(count), "ledger": label}}}],
+                act_as=PARTY["owner"])
+        except LedgerUnreachable as e:
+            return False, "the ledger never answered: %s" % str(e)[:110]
+        if not ok:
+            return False, str(r)[:150]
+        return True, "signed by %s" % PARTY["owner"].split("::")[0]
+
     def revoke(self):
         _submit([{"ExerciseCommand": {
             "templateId": TPL, "contractId": self.cid,

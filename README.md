@@ -194,9 +194,26 @@ goes green, because every seal in it really does follow from the one before.
 SPEC.md said so from the day it was written, and named the fix: bind it to a
 ledger transaction.
 
+**A `--devnet` run anchors itself**, at the end, every time — not when someone
+remembers. The gap between receipts existing and being bound to anybody is
+exactly the window in which they could be swapped, and a step you have to
+remember is a step that gets skipped on the day it matters.
+
+```
+ANCHOR: head 1e0d5f42d165acf3... (6 receipts) published on Canton, signed by kya-owner-1
+```
+
+An offline run says the opposite just as plainly, because a MOCKED chain has
+no origin to claim:
+
+```
+ANCHOR: NOT PUBLISHED -- MOCKED rail: nothing was published, so this chain is not anchored
+        The receipts verify, but nothing ties them to this desk.
+```
+
 ```bash
-python3 tests/devnet_anchor.py           # publish this chain's head on Canton
 python3 tests/devnet_anchor.py --check   # does the ledger agree with this file?
+python3 step-2-agent/agent.py --devnet --no-anchor   # publish nothing, and say so
 ```
 
 The principal publishes the final seal **and the receipt count** as a

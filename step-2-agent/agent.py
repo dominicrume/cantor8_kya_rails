@@ -75,8 +75,47 @@ class MockLedger:
             m["period_start"] = time.time()
         return "ACCEPTED", "cap %.1f, spent %.1f, payee on allow-list" % (m["cap"], m["spent"])
 
+    def anchor(self, seal, count, label):
+        """MOCKED: publishes nothing. There is no ledger to publish to."""
+        return False, "MOCKED rail: nothing was published, so this chain is not anchored"
+
     def revoke(self):
         self.m["revoked"] = True
+
+
+def receipts_path():
+    """Where the chain gets written.
+
+    Overridable because tests run this whole main() to check what it anchors,
+    and a test that clobbers the repository's real DevNet receipts with a
+    MOCKED run has destroyed the evidence it was meant to be protecting. That
+    happened once.
+    """
+    return os.environ.get("KYA_RECEIPTS") or os.path.join(
+        os.path.dirname(__file__), "..", "step-3-verify", "receipts.js")
+
+
+def anchor_the_chain(L, chain, argv):
+    """Bind the finished chain to where it came from, or say why not.
+
+    The chain proves nothing was edited. It says nothing about origin until
+    its head is on the ledger -- SPEC.md section 8. Doing this here rather
+    than as a step someone runs afterwards closes the window between the
+    receipts existing and being bound to anybody.
+    """
+    if "--no-anchor" in argv:
+        print("ANCHOR: skipped (--no-anchor). This chain claims no origin.")
+        return
+    head = chain.receipts[-1]["seal"]
+    published, detail = L.anchor(head, len(chain.receipts), L.label)
+    if published:
+        print("ANCHOR: head %s... (%d receipts) published on Canton, %s"
+              % (head[:16], len(chain.receipts), detail))
+        return
+    # Not a warning to be skimmed past: an unanchored chain is a file anyone
+    # could have written.
+    print("ANCHOR: NOT PUBLISHED -- %s" % detail)
+    print("        The receipts verify, but nothing ties them to this desk.")
 
 
 def build_ledger(argv):
@@ -122,7 +161,7 @@ def main(argv):
                 L.label, L.currency, L.instrument)
 
     ok, bad = chain.verify()
-    chain.write_js(os.path.join(os.path.dirname(__file__), "..", "step-3-verify", "receipts.js"))
+    chain.write_js(receipts_path())
     n_ok = sum(1 for r in chain.receipts if r["outcome"] == "ACCEPTED")
     n_no = sum(1 for r in chain.receipts if r["outcome"] == "REFUSED")
     print("STATEMENT: %d receipts, %d accepted, %d refused, chain verifies: %s" %
@@ -130,6 +169,7 @@ def main(argv):
     print("NUMBERS FOR JUDGES: over-cap refused, unverified payee refused, expired refused, "
           "post-revoke refused. All four fences enforced in the Daml choice body.")
     print("Ledger mode:", L.label)
+    anchor_the_chain(L, chain, argv)
 
 
 if __name__ == "__main__":

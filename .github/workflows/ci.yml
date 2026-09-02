@@ -73,6 +73,9 @@ jobs:
       - name: the whole OTC cycle holds at every join
         run: python3 tests/cycle_smoke.py
 
+      - name: the agent anchors the chain it wrote, or says it did not
+        run: python3 tests/anchor_smoke.py
+
       - name: nothing reaches the bot unless Meta sent it
         run: python3 tests/meta_smoke.py
 
