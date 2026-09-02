@@ -11,6 +11,11 @@ was safe; the test was not. Every fence below is now covered by a test that
 distinguishes it.
 
 Run: python3 tests/mutation.py        (slow: one daml test run per fence)
+
+DO NOT COMMIT WHILE THIS IS RUNNING. It deletes one fence at a time from the
+contracts and restores them at the end, so for most of the run the working
+tree holds a contract with a spending rule missing. `tests/fence_lint.py`
+takes no time and will tell you; it runs first in CI for the same reason.
 """
 import contextlib, os, re, shutil, subprocess, sys, tempfile
 

@@ -1,9 +1,18 @@
 # Complexity: the number, and why it sits where it does
 
 The auditor reports mean cyclomatic complexity across the Python in this
-repository. It was **4.21**. It is now **3.18**. The auditor's warning
-threshold is 3.00, so it still reads amber, and this document is the reason
+repository. It was **4.21**. The refactoring below took it to **3.18**, and
+adding the WhatsApp webhook adapter moved it to **3.26**. The auditor's
+warning threshold is 3.00, so it reads amber, and this document is the reason
 it is allowed to.
+
+That last movement is worth naming rather than hiding. `meta.py` is 250 lines
+of refusals — signature, account, freshness, duplication, shape, size, type —
+and a function whose whole job is to say no branches once per reason it can
+say no. Code that guards an internet-facing endpoint raises this average by
+existing. An average that punishes adding guards is not measuring the thing
+the project cares about, which is the second reason the ceiling below is the
+number that is actually enforced.
 
 ## What was actually wrong at 4.21
 
@@ -63,8 +72,9 @@ engineering. So the mean is reported, not enforced. What CI enforces is
 
 The metric is computed from the standard library `ast`, because this
 repository installs nothing. It follows the usual McCabe model and may differ
-from radon by a point on unusual code — our mean is 3.15, the auditor's is
-3.18. Both numbers are in this document; neither is doing any hiding.
+from radon by a point on unusual code — as of this writing our mean is 3.25
+and the auditor's is 3.26. Both numbers are in this document; neither is
+doing any hiding.
 
 Writing the exemption down is the point. "One function is complicated, here is
 the reason, and CI will tell you when the reason expires" is a claim that can
@@ -75,7 +85,8 @@ be checked. "Our mean is 2.99" is not.
 | | |
 |---|---|
 | Auditor mean, before | 4.21 (WARN) |
-| Auditor mean, now | 3.18 (WARN — threshold is 3.00) |
+| Auditor mean, after the refactor | 3.18 (WARN — threshold is 3.00) |
+| Auditor mean, after adding the Meta webhook | 3.26 (WARN) |
 | Functions over the enforced ceiling of 8 | 1 |
 | Exemptions, each with a written reason | 1 |
 | Coverage of that function's branches | every one, via `tests/mutation.py` |

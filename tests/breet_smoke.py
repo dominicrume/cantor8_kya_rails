@@ -119,6 +119,47 @@ rail, a, deal = setup()
 code, r = a.handle(H, GOOD_IP, event(id=None))
 check(r.get("acted") is False, "an event with no id cannot be deduplicated, so it is refused")
 
+# --- two deals, one address -------------------------------------------------
+# Not hypothetical: the deposit address comes from a fixed table per asset and
+# network, so the SECOND customer wanting USDT on TRC20 is quoted the same
+# address as the first. A deposit then cannot be attributed to either, and
+# guessing would pay the wrong person.
+rail, a, deal = setup()
+second = rail.cycle.open_deal("Ngozi", "USDT", "TRC20", 10.0, 1250.0, ACCT,
+                              None, rail.desk.approved)
+check(second["depositAddress"] == deal["depositAddress"],
+      "two concurrent deals really do share a deposit address")
+code, r = a.handle(H, GOOD_IP, event())
+check(r.get("acted") is False, "a deposit to a shared address is not attributed to either deal")
+check("cannot attribute" in (r.get("reason") or ""), "and the reason says so")
+check(rail.cycle.deals[deal["reference"]]["state"] == "QUOTED"
+      and rail.cycle.deals[second["reference"]]["state"] == "QUOTED",
+      "neither deal is confirmed by the ambiguous deposit")
+
+# --- shapes that are not events ---------------------------------------------
+rail, a, deal = setup()
+for _name, _body in [("a list", ["nope"]), ("a string", "nope"), ("null", None)]:
+    code, r = a.handle(H, GOOD_IP, _body)
+    check(code == 200 and r.get("acted") is False,
+          "refused without crashing: body is " + _name)
+
+# --- the amount must be a number --------------------------------------------
+rail, a, deal = setup()
+code, r = a.handle(H, GOOD_IP, event(cryptoAmount=None))
+check(r.get("acted") is False, "a deposit with no cryptoAmount is refused")
+rail, a, deal = setup()
+code, r = a.handle(H, GOOD_IP, event(id="e2", cryptoAmount="ten"))
+check(r.get("acted") is False, "a deposit whose cryptoAmount is not a number is refused")
+rail, a, deal = setup()
+code, r = a.handle(H, GOOD_IP, event(id="e3", destinationAddress=None))
+check(r.get("acted") is False, "an event with no destinationAddress is refused")
+# Also caught by the address lookup below it, but that one would report "no
+# open deal is expecting a deposit at that address" -- which is not what
+# happened, and would send someone looking for a deal that was never the
+# problem.
+check("no destinationAddress" in (r.get("reason") or ""),
+      "and the reason says the address was missing, not that no deal matched")
+
 # --- refusals are recorded --------------------------------------------------
 rail, a, deal = setup()
 a.handle({"x-webhook-secret": "wrong"}, GOOD_IP, event())

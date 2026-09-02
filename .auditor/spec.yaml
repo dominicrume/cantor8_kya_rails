@@ -30,6 +30,12 @@ features:
 - id: relabel.demo.story
   description: "Relabel the demo story to the OTC desk \u2014 parties, chat script\
     \ and architecture note only"
+- id: whatsapp.webhook.adapter
+  description: Meta WhatsApp Cloud API webhook adapter, signature-checked over the
+    raw body, replay-bounded, wired into the operator server only when fully configured
+- id: webhook.refusal.mutation
+  description: Every refusal in the webhook adapters mutation-tested, and a complexity
+    ceiling enforced with written reasons for exceptions
 - id: expiry.attack.attempt
   description: Expiry attack attempt recorded as a receipt
 governance:
