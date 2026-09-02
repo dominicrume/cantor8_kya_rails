@@ -13,7 +13,7 @@ Then open http://localhost:8420 on the same machine, or on a phone using the
 machine's LAN address. It binds localhost by default: this thing carries
 payout authority and should not appear on a network by accident.
 """
-import json, os, sys, time, http.server, socketserver, urllib.parse
+import hmac, json, os, secrets, sys, time, http.server, socketserver, urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "step-2-agent"))
@@ -22,6 +22,9 @@ from kya_chain import Chain, NonAsciiInReceipt
 from bot import Conversation, GREETING
 
 PORT = int(os.environ.get("KYA_PORT", "8420"))
+
+# Set only when bound off the loopback. None means localhost-only, no token.
+LAN_TOKEN = None
 
 
 class CycleDesk:
@@ -284,6 +287,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=HERE, **kw)
 
+    def authorised(self):
+        """No token required on loopback; required on everything else."""
+        if LAN_TOKEN is None:
+            return True
+        got = (self.headers.get("X-KYA-Token")
+               or urllib.parse.parse_qs(
+                   urllib.parse.urlparse(self.path).query).get("t", [""])[0])
+        return hmac.compare_digest(str(got), str(LAN_TOKEN))
+
     def log_message(self, fmt, *args):
         pass  # the page is the log
 
@@ -296,6 +308,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if not self.authorised():
+            return self._json({"error": "unauthorised"}, 401)
         if self.path == "/":
             self.path = "/operator.html"
         if self.path == "/api/state":
@@ -336,6 +350,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        if not self.authorised():
+            return self._json({"error": "unauthorised"}, 401)
         n = int(self.headers.get("Content-Length", 0))
         try:
             body = json.loads(self.rfile.read(n) or b"{}")
@@ -422,17 +438,36 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 def main(argv):
-    global RAIL
+    global RAIL, LAN_TOKEN
     RAIL = Rail(argv)
-    host = "0.0.0.0" if "--lan" in argv else "127.0.0.1"
+
+    # Localhost by default. --lan is how the operator opens this on a phone,
+    # and it puts a payout interface on a network, so it is not a warning-level
+    # decision: off the loopback, every request needs a token.
+    #
+    # A shared token over plain HTTP on a local network is modest protection.
+    # It stops the other devices on the wifi, which is the realistic threat in
+    # a shared office, and it is not a substitute for HTTPS on anything wider.
+    host = "127.0.0.1"
+    if "--lan" in argv:
+        host = "0.0.0.0"                                   # nosec B104 - gated below
+        LAN_TOKEN = os.environ.get("KYA_LAN_TOKEN") or secrets.token_urlsafe(18)
+
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer((host, PORT), Handler) as httpd:
-        print("operator rail on http://%s:%d" % (
-            "localhost" if host == "127.0.0.1" else host, PORT))
+        if host == "127.0.0.1":
+            print("operator rail on http://localhost:%d" % PORT)
+        else:
+            print("operator rail on http://<this machine>:%d" % PORT)
+            print("")
+            print("  Bound to the LAN. Every request needs this token:")
+            print("      %s" % LAN_TOKEN)
+            print("  Open:  http://<this machine>:%d/?t=%s" % (PORT, LAN_TOKEN))
+            print("")
+            print("  This screen carries payout authority. The token stops the")
+            print("  other devices on your wifi, and nothing more -- it travels")
+            print("  in plain HTTP. Do not expose this beyond a network you own.")
         print("ledger:", RAIL.ledger.label)
-        if host == "0.0.0.0":
-            print("WARNING: bound to the LAN. This screen carries payout "
-                  "authority; do not leave it running on an open network.")
         httpd.serve_forever()
 
 

@@ -108,7 +108,14 @@ def main():
         for g, mods in ambiguous.items():
             print("  %s -> %s" % (g, ", ".join(mods)))
         sys.exit(1)
-    backups = {p: tempfile.mktemp(suffix=".daml") for p in (MANDATE, QUOTE, CYCLE, INBOUND)}
+    # mkstemp, not mktemp: mktemp returns a path and leaves a window in which
+    # anything can create it first. These hold the only copies of the contracts
+    # while a fence is deleted, so losing that race loses the source.
+    backups = {}
+    for _p in (MANDATE, QUOTE, CYCLE, INBOUND):
+        fd, path = tempfile.mkstemp(suffix=".daml")
+        os.close(fd)
+        backups[_p] = path
     for p, b in backups.items():
         shutil.copy(p, b)
     failures = []

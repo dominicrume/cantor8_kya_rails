@@ -56,6 +56,11 @@ jobs:
       - name: nothing unreachable after a return
         run: python3 tests/deadcode_lint.py
 
+      - name: bandit - production code must be clean
+        run: |
+          pip install --quiet bandit
+          python3 tests/security_lint.py
+
       - name: no unescaped interpolation reaches the DOM
         run: python3 tests/xss_lint.py
 
