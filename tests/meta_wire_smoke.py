@@ -49,6 +49,9 @@ def body(text="hi", wamid="wamid.WIRE1", ts=None):
                           "text": {"body": text}}]}}]}]}).encode()
 
 
+RESET = "reset"          # the server refused before reading, and closed on us
+
+
 def request(method, path, data=None, headers=None):
     req = urllib.request.Request(BASE + path, data=data, method=method,
                                  headers=headers or {})
@@ -57,6 +60,10 @@ def request(method, path, data=None, headers=None):
             return r.status, r.read()
     except urllib.error.HTTPError as e:
         return e.code, e.read()
+    except urllib.error.URLError as e:
+        if isinstance(getattr(e, "reason", None), ConnectionResetError):
+            return RESET, b""
+        raise
 
 
 def sign(raw):
@@ -116,9 +123,18 @@ try:
     check(code == 401, "a wrongly signed POST is 401 over HTTP")
 
     # -- an oversized body is refused without being read into memory ---------
+    # The server reads Content-Length and answers 413 WITHOUT reading the body,
+    # which is the correct thing to do with 300KB it has already decided to
+    # refuse. It then closes, while the client is still writing -- so the
+    # client sees either the 413 or a connection reset, depending on timing.
+    # Both mean refused-before-reading. Asserting only on 413 made this test
+    # fail roughly one run in ten; the flake was in the assertion, not the
+    # server. What must hold either way is that nothing was acted on.
     huge = b'{"object":"whatsapp_business_account","pad":"' + b"A" * 300_000 + b'"}'
+    before = len(srv.RAIL.transcript)
     code, out = request("POST", srv.META_PATH, huge, sign(huge))
-    check(code == 413, "an oversized body is refused at the server edge")
+    check(code in (413, RESET), "an oversized body is refused at the server edge")
+    check(len(srv.RAIL.transcript) == before, "and nothing reached the bot")
 
     # -- the ordinary API is untouched --------------------------------------
     code, out = request("POST", "/api/wa", json.dumps({"from": "sim", "text": "hi"}).encode(),

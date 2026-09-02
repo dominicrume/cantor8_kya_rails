@@ -305,8 +305,17 @@ Against real Canton DevNet:
 
 ```bash
 export C8_CLIENT_SECRET=...            # shell only, never committed
+python3 tests/devnet_check.py          # is the rail usable? answers in seconds
 python3 step-2-agent/agent.py --devnet
 ```
+
+Run the preflight first. Everything else about DevNet is already defaulted in
+`devnet_ledger.py` — the secret is the only thing you supply — and when it is
+wrong the failure used to surface three layers down as *"cannot find the
+instrument admin; no holdings visible"*, which sends you to check your wallet
+when the problem is your token. The preflight separates the three cases that
+look identical from the outside: no secret, the `...` placeholder pasted from
+the docs, and a real secret that has expired.
 
 The checks, all three of which run in CI:
 

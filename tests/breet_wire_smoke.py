@@ -57,6 +57,9 @@ def event(**kw):
     return json.dumps(d).encode()
 
 
+RESET = "reset"          # the server refused before reading, and closed on us
+
+
 def post(path, data, headers):
     req = urllib.request.Request(BASE + path, data=data, method="POST",
                                  headers=headers)
@@ -68,6 +71,10 @@ def post(path, data, headers):
             return e.code, json.loads(e.read() or b"{}")
         except ValueError:
             return e.code, {}
+    except urllib.error.URLError as e:
+        if isinstance(getattr(e, "reason", None), ConnectionResetError):
+            return RESET, {}
+        raise
 
 
 H = {"x-webhook-secret": SECRET, "Content-Type": "application/json"}
@@ -133,9 +140,17 @@ try:
                    {"x-webhook-secret": "wrong", "Content-Type": "application/json"})
     check(code == 401, "and an unauthenticated caller learns nothing about the shape")
 
+    # The server reads Content-Length and answers 413 WITHOUT reading the body,
+    # which is the correct thing to do with 300KB it has already decided to
+    # refuse. It then closes, while the client is still writing -- so the
+    # client sees either the 413 or a connection reset, depending on timing.
+    # Both mean refused-before-reading. Asserting only on 413 made this test
+    # fail roughly one run in ten; the flake was in the assertion, not the
+    # server. What must hold either way is that nothing was acted on.
     huge = b'{"pad":"' + b"A" * 300_000 + b'"}'
     code, r = post(srv.BREET_PATH, huge, H)
-    check(code == 413, "an oversized body is refused at the server edge")
+    check(code in (413, RESET), "an oversized body is refused at the server edge")
+    check(not r.get("acted"), "and nothing was acted on")
 
     # -- the other routes are untouched -------------------------------------
     code, r = post("/api/wa", json.dumps({"from": "sim", "text": "hi"}).encode(),
