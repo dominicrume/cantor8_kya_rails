@@ -705,12 +705,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return self._json(out)
 
 
+def saved_summary():
+    """What an operator needs from the last line they will read."""
+    if RAIL.store is None:
+        return "Nothing was saved (--ephemeral)."
+    n = RAIL.store.journal.n
+    where = short_path(RAIL.store.journal.path)
+    if n == 0:
+        return "Nothing happened, so nothing was written to %s." % where
+    return ("%d journal %s in %s -- your open deals are still there."
+            % (n, "entry" if n == 1 else "entries", where))
+
+
+def short_path(path):
+    """Whichever of relative or absolute is easier to read."""
+    rel = os.path.relpath(path)
+    return rel if len(rel) <= len(path) else path
+
+
 def print_store_status():
     if RAIL.store is None:
         print("Storage: EPHEMERAL (--ephemeral). Deals, conversations and the")
         print("         receipt chain are lost when this process stops.")
         return
-    print("Storage: %s" % os.path.relpath(RAIL.store.journal.path))
+    print("Storage: %s" % short_path(RAIL.store.journal.path))
     print("         restored %d open deal(s), %d message(s), %d receipt(s);"
           % (RAIL.restored, len(RAIL.transcript), len(RAIL.chain.receipts)))
     print("         journal verified: history has not been edited.")
@@ -781,7 +799,14 @@ def main(argv):
         print("ledger:", RAIL.ledger.label)
         print_provider_status()
         print_store_status()
-        httpd.serve_forever()
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            # Ctrl-C is how this is meant to be stopped. A traceback on the
+            # ordinary way out makes a working desk look broken, and the last
+            # thing an operator sees should say whether their deals are safe.
+            print()
+            print("stopped. " + saved_summary())
 
 
 if __name__ == "__main__":
