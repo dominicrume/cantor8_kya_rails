@@ -36,6 +36,12 @@ features:
 - id: webhook.refusal.mutation
   description: Every refusal in the webhook adapters mutation-tested, and a complexity
     ceiling enforced with written reasons for exceptions
+- id: desk.state.persistence
+  description: Desk state persisted so a quote outlives the process that issued it,
+    in an append-only seal-chained journal whose history cannot be edited undetected
+- id: operator.recovery.view
+  description: The operator screen shows each deal's age and remaining quote time on
+    the desk's clock, and marks a quote that expired while the desk was off
 - id: expiry.attack.attempt
   description: Expiry attack attempt recorded as a receipt
 governance:

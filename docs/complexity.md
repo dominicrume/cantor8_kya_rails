@@ -72,8 +72,8 @@ engineering. So the mean is reported, not enforced. What CI enforces is
 
 The metric is computed from the standard library `ast`, because this
 repository installs nothing. It follows the usual McCabe model and may differ
-from radon by a point on unusual code — as of this writing our mean is 3.25
-and the auditor's is 3.26. Both numbers are in this document; neither is
+from radon by a point on unusual code — as of this writing our mean is 3.20
+and the auditor's is 3.17. Both numbers are in this document; neither is
 doing any hiding.
 
 Writing the exemption down is the point. "One function is complicated, here is
@@ -87,6 +87,7 @@ be checked. "Our mean is 2.99" is not.
 | Auditor mean, before | 4.21 (WARN) |
 | Auditor mean, after the refactor | 3.18 (WARN — threshold is 3.00) |
 | Auditor mean, after adding the Meta webhook | 3.26 (WARN) |
+| Auditor mean, after the store and recovery view | 3.17 (WARN) |
 | Functions over the enforced ceiling of 8 | 1 |
 | Exemptions, each with a written reason | 1 |
 | Coverage of that function's branches | every one, via `tests/mutation.py` |
