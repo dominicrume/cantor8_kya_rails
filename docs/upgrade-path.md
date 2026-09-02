@@ -61,7 +61,7 @@ first version rather than the third.
 ```bash
 cd step-1-mandate && daml build
 daml damlc inspect-dar .daml/dist/kya-rails-mandate-*.dar | grep -c KyaTest   # must be 0
-cd test && daml build && daml test                                            # 82/82
+cd test && daml build && daml test                                            # 89/89
 ```
 
 Then upload and read the response:
