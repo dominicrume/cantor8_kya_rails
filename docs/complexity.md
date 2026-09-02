@@ -72,9 +72,18 @@ engineering. So the mean is reported, not enforced. What CI enforces is
 
 The metric is computed from the standard library `ast`, because this
 repository installs nothing. It follows the usual McCabe model and may differ
-from radon by a point on unusual code — as of this writing our mean is 3.20
-and the auditor's is 3.17. Both numbers are in this document; neither is
-doing any hiding.
+from radon by a point on unusual code. For the current pair of figures, run:
+
+```
+python3 tests/complexity_lint.py --report   # ours
+auditor scan . --spec .auditor/spec.yaml    # the auditor's
+```
+
+They are not written out here on purpose. This paragraph has quoted a stale
+number three times — every commit moves the mean, and a document that states
+a figure it cannot keep is worse than one that tells you how to get it. The
+trajectory in the table below is history and does not rot; the current value
+is a command away.
 
 Writing the exemption down is the point. "One function is complicated, here is
 the reason, and CI will tell you when the reason expires" is a claim that can
