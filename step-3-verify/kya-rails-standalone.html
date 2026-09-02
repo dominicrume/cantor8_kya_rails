@@ -91,7 +91,22 @@
   <h1>KYA RAILS &middot; Know Your AgenticAI</h1>
   <p>Your operator pays out where you are not. The mandate holds where you cannot stand. Screenshots can lie. Sealed receipts cannot.</p>
 </header>
-<div class="w-bar" style="margin-top:10px"><div id="origin" class="origin"></div></div>
+<div class="origin" id="origin">
+  <div class="o-head"><b>Where did this file come from?</b></div>
+  <p class="o-say">Every seal verifying proves nothing was <em>edited</em>. It does not
+  prove this file came from anybody &mdash; a wholly forged chain verifies just as
+  green, and that is a property of a hash chain, not a fault in this page. Only
+  the ledger settles origin, and this page is deliberately offline.</p>
+  <p class="o-say"><b>So do the comparison here.</b> Ask anyone with Canton access
+  to run <code>python3 tests/devnet_anchor.py --check</code>, and paste what it prints
+  into the box. This page will tell you whether the ledger is holding
+  <em>this</em> chain.</p>
+  <div class="o-head">This file's chain head, <span id="oCount"></span> receipts</div>
+  <code class="o-seal" id="oHead"></code>
+  <textarea id="oPaste" rows="3" spellcheck="false"
+    placeholder="Paste the output of devnet_anchor.py --check here (or just the seal the ledger returned)"></textarea>
+  <div class="o-verdict" id="oVerdict">Not checked. On its own, this file is only self-consistent.</div>
+</div>
 <div class="honesty">Demo honesty: scripted replay of a real agent run. Every receipt names the ledger that produced it &mdash; real DevNet or MOCKED &mdash; and that label is inside the seal. Works fully offline.</div>
 <div class="stage">
   <div class="phone"><div class="screen">
@@ -326,49 +341,13 @@ async function play(){ if(playing) return; playing=true;
   for(const m of SCRIPT){ addMsg(m);
     if(m.receipt){ await sleep(500); await playTxn(m.receipt); }
     else { await sleep(MSG_MS); } }
-  await // Origin is the one question this page cannot answer, and it should say so
-// rather than leave a reader assuming green means genuine. Every seal here
-// verifying proves nothing was EDITED. It does not prove the file came from
-// anybody: a wholly forged chain verifies exactly as green, which is a
-// property of a hash chain and not a bug in this page. Only the ledger
-// settles it, and this page is offline by design -- so it hands over the two
-// numbers to check and the command that checks them.
-(function showOrigin(){
-  const el=document.getElementById('origin');
-  if(!el||!RECEIPTS.length) return;
-  const head=RECEIPTS[RECEIPTS.length-1].seal, n=RECEIPTS.length;
-  el.innerHTML =
-    '<b>This page cannot tell you where these receipts came from.</b> '
-    + 'Every seal verifying proves nothing was edited &mdash; a forged chain '
-    + 'verifies just as green. Only the ledger settles origin.<br><br>'
-    + 'Chain head, ' + n + ' receipts:<br><code>' + esc(head) + '</code><br><br>'
-    + 'Check it against Canton: <code>python3 tests/devnet_anchor.py --check</code>';
-})();
-renderAll(); playing=false; }
+  await renderAll(); playing=false; }
 document.getElementById('paceBtn').onclick=e=>{ PACE = (PACE===1.0) ? 0.55 : 1.0;
   e.target.textContent = (PACE===1.0) ? 'Slow' : 'Fast'; };
 document.getElementById('playBtn').onclick=play;
 document.getElementById('skipBtn').onclick=async()=>{ playing=false; chat.innerHTML='';
   SCRIPT.forEach(m=>{const d=document.createElement('div'); d.className='msg show '+m.who; d.textContent=m.text; chat.appendChild(d);});
-  chat.scrollTop=chat.scrollHeight; await // Origin is the one question this page cannot answer, and it should say so
-// rather than leave a reader assuming green means genuine. Every seal here
-// verifying proves nothing was EDITED. It does not prove the file came from
-// anybody: a wholly forged chain verifies exactly as green, which is a
-// property of a hash chain and not a bug in this page. Only the ledger
-// settles it, and this page is offline by design -- so it hands over the two
-// numbers to check and the command that checks them.
-(function showOrigin(){
-  const el=document.getElementById('origin');
-  if(!el||!RECEIPTS.length) return;
-  const head=RECEIPTS[RECEIPTS.length-1].seal, n=RECEIPTS.length;
-  el.innerHTML =
-    '<b>This page cannot tell you where these receipts came from.</b> '
-    + 'Every seal verifying proves nothing was edited &mdash; a forged chain '
-    + 'verifies just as green. Only the ledger settles origin.<br><br>'
-    + 'Chain head, ' + n + ' receipts:<br><code>' + esc(head) + '</code><br><br>'
-    + 'Check it against Canton: <code>python3 tests/devnet_anchor.py --check</code>';
-})();
-renderAll(); };
+  chat.scrollTop=chat.scrollHeight; await renderAll(); };
 async function verifyAnimated(){
   const st=document.getElementById('status'), btn=document.getElementById('verifyBtn');
   if(btn.dataset.busy) return;
@@ -433,43 +412,62 @@ document.getElementById('verifyBtn').onclick=verifyAnimated;
 document.getElementById('tamperBtn').onclick=()=>{
   const r=RECEIPTS[1];
   r.amount=(Math.round((parseFloat(r.amount)+0.3)*10)/10).toFixed(1);
-  // Origin is the one question this page cannot answer, and it should say so
-// rather than leave a reader assuming green means genuine. Every seal here
-// verifying proves nothing was EDITED. It does not prove the file came from
-// anybody: a wholly forged chain verifies exactly as green, which is a
-// property of a hash chain and not a bug in this page. Only the ledger
-// settles it, and this page is offline by design -- so it hands over the two
-// numbers to check and the command that checks them.
-(function showOrigin(){
-  const el=document.getElementById('origin');
-  if(!el||!RECEIPTS.length) return;
-  const head=RECEIPTS[RECEIPTS.length-1].seal, n=RECEIPTS.length;
-  el.innerHTML =
-    '<b>This page cannot tell you where these receipts came from.</b> '
-    + 'Every seal verifying proves nothing was edited &mdash; a forged chain '
-    + 'verifies just as green. Only the ledger settles origin.<br><br>'
-    + 'Chain head, ' + n + ' receipts:<br><code>' + esc(head) + '</code><br><br>'
-    + 'Check it against Canton: <code>python3 tests/devnet_anchor.py --check</code>';
-})();
-renderAll();
+  renderAll();
 };
-// Origin is the one question this page cannot answer, and it should say so
-// rather than leave a reader assuming green means genuine. Every seal here
-// verifying proves nothing was EDITED. It does not prove the file came from
-// anybody: a wholly forged chain verifies exactly as green, which is a
-// property of a hash chain and not a bug in this page. Only the ledger
-// settles it, and this page is offline by design -- so it hands over the two
-// numbers to check and the command that checks them.
-(function showOrigin(){
-  const el=document.getElementById('origin');
-  if(!el||!RECEIPTS.length) return;
-  const head=RECEIPTS[RECEIPTS.length-1].seal, n=RECEIPTS.length;
-  el.innerHTML =
-    '<b>This page cannot tell you where these receipts came from.</b> '
-    + 'Every seal verifying proves nothing was edited &mdash; a forged chain '
-    + 'verifies just as green. Only the ledger settles origin.<br><br>'
-    + 'Chain head, ' + n + ' receipts:<br><code>' + esc(head) + '</code><br><br>'
-    + 'Check it against Canton: <code>python3 tests/devnet_anchor.py --check</code>';
+
+// Origin is the one question this page cannot answer on its own, so it does
+// the next most useful thing: the comparison. The reader supplies what the
+// LEDGER said; this page checks it against what the file claims. That split
+// matters -- if this page fetched the answer itself, or if the answer were
+// baked into the file at build time, whoever forged the receipts would have
+// forged that too. The reader getting it independently is the entire point.
+(function origin(){
+  const head = RECEIPTS.length ? RECEIPTS[RECEIPTS.length-1].seal : '';
+  const n = RECEIPTS.length;
+  const headEl=document.getElementById('oHead'), countEl=document.getElementById('oCount');
+  const paste=document.getElementById('oPaste'), out=document.getElementById('oVerdict');
+  if(!headEl) return;
+  headEl.textContent = head;                     // textContent: never innerHTML
+  countEl.textContent = n;
+
+  function judge(){
+    const text = paste.value || '';
+    const seals = text.toLowerCase().match(/\b[0-9a-f]{64}\b/g) || [];
+    out.className = 'o-verdict';
+    if(!text.trim()){
+      out.textContent = 'Not checked. On its own, this file is only self-consistent.';
+      return;
+    }
+    if(!seals.length){
+      out.textContent = 'No 64-character seal found in that. Paste the whole output '
+        + 'of devnet_anchor.py --check, or just the seal itself.';
+      return;
+    }
+    if(seals.indexOf(head) !== -1){
+      // The count is checked too. A chain cut short still verifies, and its
+      // head is a real seal -- dropping the last receipts is how you hide a
+      // refusal. Only the count catches that.
+      const counts = (text.match(/(\d+)\s*receipts?/i) || [])[1];
+      if(counts && Number(counts) !== n){
+        out.className = 'o-verdict bad';
+        out.textContent = 'The seal matches, but the ledger records ' + counts
+          + ' receipts and this file has ' + n + '. Receipts may have been removed '
+          + 'from the end of the chain.';
+        return;
+      }
+      out.className = 'o-verdict good';
+      out.textContent = 'MATCHES. The ledger is holding this exact chain — all '
+        + n + ' receipts, published by the principal. This file is the one they '
+        + 'anchored.';
+      return;
+    }
+    out.className = 'o-verdict bad';
+    out.textContent = 'DIFFERENT. The ledger has a chain, and it is not this one. '
+      + 'Either this file was not published by that party, or it was changed after '
+      + 'it was.';
+  }
+  paste.addEventListener('input', judge);
+  judge();
 })();
 renderAll();
 </script>

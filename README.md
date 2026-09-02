@@ -216,6 +216,19 @@ python3 tests/devnet_anchor.py --check   # does the ledger agree with this file?
 python3 step-2-agent/agent.py --devnet --no-anchor   # publish nothing, and say so
 ```
 
+**And the verifier page answers it too, without a terminal.** It shows the
+chain head it is holding, and takes a paste of whatever the ledger returned —
+the whole output of `--check`, or just the seal. It then says `MATCHES`,
+`DIFFERENT`, or that the count disagrees, which is how a truncated chain is
+caught: cutting the last three receipts off leaves a chain that still verifies,
+with a head that is still a real seal.
+
+The split is deliberate. The page does the **comparison**; the reader supplies
+what the **ledger** said. If the page fetched that itself, or if it were baked
+into the file at build time, whoever forged the receipts would have forged that
+too. A reader obtaining it independently is the entire point — and until they
+do, the page says *"Not checked"*, never *"unanchored"*.
+
 The principal publishes the final seal **and the receipt count** as a
 `ChainAnchor` contract. The count is not decoration: a chain truncated after
 receipt 3 still verifies, and its head is a real seal — dropping the last three

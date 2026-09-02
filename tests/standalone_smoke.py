@@ -83,8 +83,10 @@ for x in built:
 check(bad == 0, "the chain inside it verifies end to end")
 
 # -- the controls the demo depends on ---------------------------------------
-for control in ("verifyBtn", "tamperBtn", "playBtn"):
+for control in ("verifyBtn", "tamperBtn", "playBtn", "oPaste", "oHead"):
     check(control in page, "the %s control survived the fold" % control)
+check("function origin(" in page,
+      "and the origin panel, which is the only part that answers WHO")
 
 print()
 if fails:
