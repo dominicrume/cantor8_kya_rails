@@ -5,7 +5,7 @@ Every test here is someone who has found the URL.
 
 Run: python3 tests/breet_smoke.py
 """
-import importlib.util, os, sys
+import hashlib, importlib.util, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 for p in ("step-7-providers", "step-6-whatsapp", "step-5-operator", "step-2-agent"):
@@ -15,7 +15,8 @@ spec = importlib.util.spec_from_file_location(
 srv = importlib.util.module_from_spec(spec); spec.loader.exec_module(srv)
 from breet import BreetAdapter, BREET_IPS
 
-SECRET = "sk_test_the_real_secret"
+# Not a credential: a fixture, generated so it can never be mistaken for one.
+SECRET = "FIXTURE-" + hashlib.sha256(b"breet_smoke").hexdigest()[:24]
 GOOD_IP = sorted(BREET_IPS)[0]
 ACCT = "GTB 0123456789 / CHIDI OKAFOR"
 fails = []

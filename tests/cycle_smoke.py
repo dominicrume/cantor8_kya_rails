@@ -19,6 +19,15 @@ TRC = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
 CUSTOMER_ACCT = "GTB 0123456789 / CHIDI OKAFOR"
 
 
+def _http(url, **kw):
+    """urlopen, restricted to http. Bandit flags bare urlopen because it will
+    happily open file:// and ftp://; every URL here is our own test server, and
+    saying so in code is better than saying so in a comment."""
+    if not url.startswith(("http://127.0.0.1", "http://localhost")):
+        raise ValueError("refusing a non-local URL: %r" % url)
+    return urllib.request.urlopen(url, **kw)
+
+
 def call(path, body=None):
     req = urllib.request.Request(BASE + path,
         data=None if body is None else json.dumps(body).encode(),

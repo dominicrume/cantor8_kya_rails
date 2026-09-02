@@ -251,6 +251,24 @@ markup renders as text.
 **Residual risk:** the same discipline is needed on any page added later. The
 lint covers the three that exist; a fourth would need adding to its list.
 
+## T15 — The operator screen on the office wifi
+
+`--lan` is how the operator opens the screen on a phone, and it puts a payout
+interface on a network. Previously that printed a warning and bound anyway.
+
+**Defence:** off the loopback, every request needs a token. It is printed once
+at startup and carried in the URL or an `X-KYA-Token` header, compared in
+constant time.
+
+**Stated plainly: this is modest protection.** A shared token over plain HTTP
+stops the other devices on the wifi, which is the realistic threat in a shared
+office. It is not a substitute for HTTPS and does not survive anything wider
+than a network you own. The startup banner says exactly that rather than
+implying more.
+
+Found by running bandit — B104, and the only two findings in production code
+out of nineteen.
+
 ---
 
 ## What is not in scope
