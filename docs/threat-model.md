@@ -421,7 +421,7 @@ amount of Daml addresses it.
 | 2 | Chain not bound to origin (T5) | **defended** — the head is anchored on Canton; a forged chain verifies green and the ledger says NOT ANCHORED |
 | 3 | Refusals can be omitted (T6) | partially detectable; tail truncation is not |
 | 4 | Adding a counterparty (T1 residual) | the real privileged operation; deserves its own control |
-| 5 | Operator issues a quote to themselves (T9 residual) | not defended; needs controls on quote issuance |
+| 7 | Operator issues a quote to themselves (T9 residual) | **defended** — `PayoutBook` refuses a quote to an unapproved account (`KyaQuote.daml:76`), and only the principal may approve one. What remains is a KYC question, not a code one: the principal must not approve an account that is secretly the operator's |
 | 6 | Operator persuaded (T1) | **defended** |
 | 7 | Float drained (T2) | **defended, bounded** |
 | 8 | Spending after revoke (T3) | **defended** |
