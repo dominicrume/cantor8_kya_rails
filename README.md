@@ -73,9 +73,9 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **73 / 73** `daml test` scripts, both directions of the cycle |
+| Attack suite green | **89 / 89** `daml test` scripts, both directions of the cycle, every choice exercised |
 | The cycle holds at every join | 15 checks over HTTP, in the order a desk works it |
-| Every fence mutation-tested | all **27** in the Daml, and all **29** refusals in the two webhook adapters: delete any one and a named test goes red — enforced in CI |
+| Every fence mutation-tested | all **30** in the Daml, and all **30** refusals at the edges — both webhook adapters and the store: delete any one and a named test goes red — enforced in CI |
 | The chain is bound to its origin | the head is published on Canton — a **fully forged** chain verifies green in all three implementations, and the ledger answers `NOT ANCHORED` |
 | The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **27** checks, including a forged journal entry that proves the limit |
 | The deposit door | **30** attacks on the adapter + **15** over a real socket, including the X-Forwarded-For spoof that defeats a naive IP allowlist |
@@ -380,8 +380,10 @@ python3 tests/meta_smoke.py      # attack the WhatsApp webhook adapter
 python3 tests/meta_wire_smoke.py # and again over a real socket, through the server
 python3 tests/breet_wire_smoke.py # the deposit webhook, and its IP allowlist
 python3 tests/store_smoke.py     # the quote outlives the process; history is tamper-evident
+python3 tests/anchor_smoke.py    # the agent anchors the chain it wrote, or says it did not
+python3 tests/standalone_smoke.py # the handed-out file is self-contained and current
 python3 tests/complexity_lint.py # no function over the ceiling without a written reason
-cd step-1-mandate && daml build && cd test && daml test   # 73 scripts
+cd step-1-mandate && daml build && cd test && daml test   # 89 scripts
 ```
 
 ---

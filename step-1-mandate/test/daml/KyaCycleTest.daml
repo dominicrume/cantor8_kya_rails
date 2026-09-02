@@ -205,3 +205,59 @@ testOperatorCannotAppointTheDepositFeed = script do
   feed <- allocateParty "SomethingTheOperatorControls"
   submitMustFail k.operator do
     exerciseCmd d SetDepositFeed with feed = Some feed
+
+-- The counterparty list is the real privileged operation. Every fence in this
+-- file assumes the list is right; whoever can edit the list can walk around
+-- all of them by simply adding themselves to it. These choices had no test at
+-- all, which meant the most valuable control in the cycle was the only one
+-- nobody had attacked.
+testOperatorCannotApproveAnOffTakerWallet : Script ()
+testOperatorCannotApproveAnOffTakerWallet = script do
+  principal <- allocateParty "Principal"
+  operator  <- allocateParty "Operator"
+  book <- submit principal do
+    createCmd OffTakerBook with principal; operator; wallets = []
+  -- The whole attack in one line: the operator adds their own wallet, then
+  -- sends the desk's crypto to an address that is now "approved".
+  submitMustFail operator do
+    exerciseCmd book ApproveOffTakerWallet with
+      offTaker = "Supplier A"; asset = "USDT"; network = "TRC20"
+      address = "TOperatorOwnWallet"
+
+testOperatorCannotWithdrawAnOffTakerWallet : Script ()
+testOperatorCannotWithdrawAnOffTakerWallet = script do
+  -- Removal matters as much as addition: quietly dropping the real supplier
+  -- and leaving one wallet on the list makes that wallet the only choice.
+  principal <- allocateParty "Principal"
+  operator  <- allocateParty "Operator"
+  book <- submit principal do
+    createCmd OffTakerBook with
+      principal
+      operator
+      wallets = [("Supplier A", "USDT", "TRC20", "TRealSupplierWallet")]
+  submitMustFail operator do
+    exerciseCmd book WithdrawOffTakerWallet with
+      offTaker = "Supplier A"; asset = "USDT"; network = "TRC20"
+      address = "TRealSupplierWallet"
+
+testApprovingAWalletMakesItUsableAndOnlyThen : Script ()
+testApprovingAWalletMakesItUsableAndOnlyThen = script do
+  -- Both directions of the same fence, so the test cannot pass by the choice
+  -- doing nothing at all.
+  principal <- allocateParty "Principal"
+  operator  <- allocateParty "Operator"
+  empty <- submit principal do
+    createCmd OffTakerBook with principal; operator; wallets = []
+  submitMustFail operator do
+    exerciseCmd empty SendToOffTaker with
+      offTaker = "Supplier A"; asset = "USDT"; network = "TRC20"
+      toAddress = "TNewSupplierWallet"; amount = 10.0; expectedNaira = 12500.0
+  filled <- submit principal do
+    exerciseCmd empty ApproveOffTakerWallet with
+      offTaker = "Supplier A"; asset = "USDT"; network = "TRC20"
+      address = "TNewSupplierWallet"
+  _ <- submit operator do
+    exerciseCmd filled SendToOffTaker with
+      offTaker = "Supplier A"; asset = "USDT"; network = "TRC20"
+      toAddress = "TNewSupplierWallet"; amount = 10.0; expectedNaira = 12500.0
+  pure ()

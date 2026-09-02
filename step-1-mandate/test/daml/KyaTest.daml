@@ -352,3 +352,34 @@ testAdjustBelowSpentRefused = script do
                 ("new cap below what is already spent" `isInfixOf` fs.message)
     Left _ -> assertMsg "refused by something other than an assertion" False
     Right _ -> assertMsg "CAP WAS LOWERED BELOW WHAT IS ALREADY SPENT" False
+
+-- Reject had no test. A proposal the spender declines must leave nothing
+-- behind: an un-rejected proposal sitting on the ledger is a mandate waiting
+-- to be accepted later, by whoever still holds that contract id.
+testSpenderCanRejectAProposal : Script ()
+testSpenderCanRejectAProposal = script do
+  owner   <- allocateParty "Principal"
+  spender <- allocateParty "Operator"
+  payee   <- allocateParty "VerifiedRecipient"
+  now <- getTime
+  prop <- submit owner do
+    createCmd KyaMandateProposal with
+      owner; spender; cap = 100.0
+      expiresAt = addRelTime now (hours 24)
+      allowed = [payee]; periodLimit = None; periodLength = None
+  submit spender do exerciseCmd prop Reject
+  -- Consuming: the proposal is gone, so it cannot be accepted afterwards.
+  submitMustFail spender do exerciseCmd prop Accept
+
+testOwnerCannotRejectOnTheSpendersBehalf : Script ()
+testOwnerCannotRejectOnTheSpendersBehalf = script do
+  owner   <- allocateParty "Principal"
+  spender <- allocateParty "Operator"
+  payee   <- allocateParty "VerifiedRecipient"
+  now <- getTime
+  prop <- submit owner do
+    createCmd KyaMandateProposal with
+      owner; spender; cap = 100.0
+      expiresAt = addRelTime now (hours 24)
+      allowed = [payee]; periodLimit = None; periodLength = None
+  submitMustFail owner do exerciseCmd prop Reject

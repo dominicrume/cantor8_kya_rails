@@ -286,3 +286,46 @@ testOperatorCannotAppointTheBankFeed = script do
   feed <- allocateParty "SomethingTheOperatorControls"
   submitMustFail d.operator do
     exerciseCmd b SetBankFeed with feed = Some feed
+
+-- ApproveNairaAccount had no test. It is the naira-side twin of the off-taker
+-- list: whoever can add an account to it can add their own, and then every
+-- other fence in this file is pointing at the wrong place.
+testOperatorCannotApproveANairaAccount : Script ()
+testOperatorCannotApproveANairaAccount = script do
+  principal <- allocateParty "Principal"
+  operator  <- allocateParty "Operator"
+  book <- submit principal do
+    createCmd NairaBook with
+      principal
+      operator
+      accounts = ["GTB 0011223344 / VOREM LTD"]
+      canSend = [("USDT", "TRC20")]
+      rateFloor = 1000.0
+      rateCeiling = 1500.0
+      bankFeed = None
+  submitMustFail operator do
+    exerciseCmd book ApproveNairaAccount with account = "ZENITH 9988776655 / OPERATOR"
+
+testApprovingANairaAccountAddsItAndKeepsTheRest : Script ()
+testApprovingANairaAccountAddsItAndKeepsTheRest = script do
+  -- The other direction, so this cannot pass by the choice doing nothing --
+  -- and it checks the existing account survives, because an "approve" that
+  -- replaced the list would quietly deauthorise every account already on it.
+  principal <- allocateParty "Principal"
+  operator  <- allocateParty "Operator"
+  book <- submit principal do
+    createCmd NairaBook with
+      principal
+      operator
+      accounts = ["GTB 0011223344 / VOREM LTD"]
+      canSend = [("USDT", "TRC20")]
+      rateFloor = 1000.0
+      rateCeiling = 1500.0
+      bankFeed = None
+  book2 <- submit principal do
+    exerciseCmd book ApproveNairaAccount with account = "UBA 2233445566 / VOREM LTD"
+  Some b <- queryContractId principal book2
+  assertMsg "the new account is on the list"
+    ("UBA 2233445566 / VOREM LTD" `elem` b.accounts)
+  assertMsg "and the one already there was not dropped"
+    ("GTB 0011223344 / VOREM LTD" `elem` b.accounts)
