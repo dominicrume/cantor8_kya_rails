@@ -6,7 +6,7 @@ this exercises the same endpoints the phone does.
 
 Run: python3 tests/operator_smoke.py
 """
-import json, os, subprocess, sys, time, urllib.error, urllib.request
+import json, os, subprocess, sys, tempfile, time, urllib.error, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SERVER = os.path.join(HERE, "..", "step-5-operator", "server.py")
@@ -31,8 +31,15 @@ def call(path, body=None):
     return json.loads(urllib.request.urlopen(req, timeout=10).read())
 
 
-env = dict(os.environ, KYA_PORT=PORT)
-proc = subprocess.Popen([sys.executable, SERVER], env=env,
+# --ephemeral, and a KYA_STORE pointed somewhere harmless as a second line of
+# defence. Persistence is the server's default, so a test that spawns it
+# without saying otherwise writes into the operator's real desk journal --
+# which is exactly what happened once and is why both are here. What this
+# file tests is whether the fences reach the screen; tests/store_smoke.py
+# tests persistence.
+env = dict(os.environ, KYA_PORT=PORT,
+           KYA_STORE=os.path.join(tempfile.mkdtemp(), "never-used.db"))
+proc = subprocess.Popen([sys.executable, SERVER, "--ephemeral"], env=env,
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 fails = []
 

@@ -19,10 +19,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "step-2-agent"))
 sys.path.insert(0, os.path.join(HERE, "..", "step-6-whatsapp"))
 sys.path.insert(0, os.path.join(HERE, "..", "step-7-providers"))
+sys.path.insert(0, os.path.join(HERE, "..", "step-8-store"))
 from kya_chain import Chain, NonAsciiInReceipt
 from bot import Conversation, GREETING
 from meta import MetaAdapter, MAX_BODY
 from breet import BreetAdapter
+from store import Store, Tampered
 
 # Meta's webhook, if and only if it is fully configured. A half-configured
 # webhook endpoint is an open one, so all three values must be present or the
@@ -37,6 +39,18 @@ META_PATH = "/webhook/meta"
 BREET = None
 BREET_PATH = "/webhook/breet"
 BREET_TRUST_PROXY = False
+
+
+def build_store(argv):
+    """Persistent unless --ephemeral.
+
+    The safe mode is the default and the dangerous one takes a flag. Nobody
+    loses a payout binding because they forgot to type --store.
+    """
+    if "--ephemeral" in argv:
+        return None
+    path = os.environ.get("KYA_STORE") or os.path.join(HERE, "..", "kya-desk.db")
+    return Store(path)
 
 
 def build_breet(rail):
@@ -239,9 +253,15 @@ class QuoteDesk:
 
 
 class Rail:
-    """One mandate, one chain, for the life of the process."""
+    """One mandate, one chain. Persistent unless told otherwise.
 
-    def __init__(self, argv):
+    This class used to say "for the life of the process", and meant it: the
+    payout account bound at 10:02 did not survive the laptop sleeping before
+    the 13:20 deposit. Persistence is therefore the DEFAULT and --ephemeral is
+    the flag, because forgetting a flag should not be able to cost money.
+    """
+
+    def __init__(self, argv, store=None):
         if "--devnet" in argv:
             from devnet_ledger import DevNetLedger
             self.ledger = DevNetLedger(move_coin="--move-coin" in argv)
@@ -258,6 +278,65 @@ class Rail:
         self.cap = 5.0
         self.period_limit = None
         self.opened = False
+        self.store = store
+        self._msgs = 0          # how much of the transcript is already on disk
+        self._receipts = 0
+        self.restored = self.reload()
+
+    # -- persistence -------------------------------------------------------
+    def desk_state(self):
+        """Everything that must survive a restart, and nothing that must not.
+
+        No secrets, no LAN token, no ledger handle: this file sits on a laptop
+        and is copied around, so it holds the desk's working state and its
+        audit trail only.
+        """
+        return {"deals": self.cycle.deals, "dealSeq": self.cycle.seq,
+                "quotes": self.desk.quotes, "quoteSeq": self.desk.seq,
+                "approved": self.desk.approved, "rate": self.rate,
+                "band": list(self.band), "cap": self.cap,
+                "periodLimit": self.period_limit, "opened": self.opened}
+
+    def persist(self):
+        """Called after anything that could have changed the desk.
+
+        One choke point rather than a call in each handler: a persistence
+        layer you have to remember to invoke is one you will forget to invoke
+        on exactly the path that mattered.
+        """
+        if self.store is None:
+            return
+        for entry in self.transcript[self._msgs:]:
+            self.store.message(entry)
+        self._msgs = len(self.transcript)
+        for receipt in self.chain.receipts[self._receipts:]:
+            self.store.receipt(receipt)
+        self._receipts = len(self.chain.receipts)
+        self.store.snapshot(self.desk_state())
+
+    def reload(self):
+        """Bring back what was on disk. Returns the number of open deals."""
+        if self.store is None:
+            return 0
+        state, messages, receipts = self.store.restore()
+        self.transcript = list(messages)
+        self.chain.receipts = list(receipts)
+        self._msgs, self._receipts = len(messages), len(receipts)
+        if state:
+            self._apply(state)
+        return len(self.cycle.deals)
+
+    def _apply(self, state):
+        self.cycle.deals = state.get("deals", {})
+        self.cycle.seq = state.get("dealSeq", 0)
+        self.desk.quotes = state.get("quotes", {})
+        self.desk.seq = state.get("quoteSeq", 0)
+        self.desk.approved = state.get("approved", self.desk.approved)
+        self.rate = state.get("rate", self.rate)
+        self.band = tuple(state.get("band", self.band))
+        self.cap = state.get("cap", self.cap)
+        self.period_limit = state.get("periodLimit")
+        self.opened = state.get("opened", False)
 
     def thread(self, wa_id):
         if wa_id not in self.threads:
@@ -283,6 +362,25 @@ class Rail:
         self.cap, self.period_limit, self.opened = cap, period_limit, True
         return self.state()
 
+    def storage_state(self):
+        """What the operator needs to know before they trust this screen.
+
+        Whether an open deal will still be here after the laptop sleeps is not
+        a detail: it is the difference between a quote that binds a payout
+        account and a sticky note. So it goes on the screen, not just in the
+        terminal banner nobody is looking at.
+        """
+        if self.store is None:
+            return {"mode": "EPHEMERAL", "intact": True, "restored": 0,
+                    "warning": "Deals are NOT saved. Closing this server "
+                               "loses every open deal and the receipt chain."}
+        return {"mode": "SAVED", "intact": self.store.intact,
+                "restored": self.restored,
+                "entries": self.store.journal.n,
+                "warning": "" if self.store.intact else
+                           "The journal does not follow from itself. Do not "
+                           "trust this record; check the ledger."}
+
     def state(self):
         spent = sum(float(r["amount"]) for r in self.chain.receipts
                     if r["outcome"] == "ACCEPTED")
@@ -290,6 +388,7 @@ class Rail:
                 "remaining": max(self.cap - spent, 0.0),
                 "period_limit": self.period_limit,
                 "ledger": self.ledger.label,
+                "storage": self.storage_state(),
                 "recipients": [{"key": k, "name": self.ledger.name(k)}
                                for k in ("customer", "partner")],
                 "receipts": self.chain.receipts,
@@ -546,6 +645,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except json.JSONDecodeError:
             body = None
         code, out = BREET.handle(dict(self.headers), self._client_ip(), body)
+        RAIL.persist()
         return self._json(out, code)
 
     def _meta_post(self):
@@ -555,6 +655,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if n > MAX_BODY:
             return self._json({"error": "body too large"}, 413)
         code, body = META.handle(dict(self.headers), self.rfile.read(n))
+        RAIL.persist()
         return self._json(body, code)
 
     def _webhook(self):
@@ -585,7 +686,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         route = POST_ROUTES.get(self.path)
         if route is None:
             return self._json({"error": "unknown endpoint"}, 404)
-        return self._json(route(body))
+        out = route(body)
+        RAIL.persist()
+        return self._json(out)
+
+
+def print_store_status():
+    if RAIL.store is None:
+        print("Storage: EPHEMERAL (--ephemeral). Deals, conversations and the")
+        print("         receipt chain are lost when this process stops.")
+        return
+    print("Storage: %s" % os.path.relpath(RAIL.store.journal.path))
+    print("         restored %d open deal(s), %d message(s), %d receipt(s);"
+          % (RAIL.restored, len(RAIL.transcript), len(RAIL.chain.receipts)))
+    print("         journal verified: history has not been edited.")
 
 
 def print_provider_status():
@@ -612,7 +726,15 @@ def print_provider_status():
 
 def main(argv):
     global RAIL, LAN_TOKEN, META, BREET
-    RAIL = Rail(argv)
+    try:
+        store = build_store(argv)
+    except Tampered as e:
+        print("REFUSING TO START.")
+        print(" ", e)
+        print("  The journal is the desk's audit trail. Investigate it before")
+        print("  running anything: python3 tests/store_check.py <path>")
+        sys.exit(3)
+    RAIL = Rail(argv, store=store)
     META = build_meta(RAIL)
     BREET = build_breet(RAIL)
 
@@ -644,6 +766,7 @@ def main(argv):
             print("  in plain HTTP. Do not expose this beyond a network you own.")
         print("ledger:", RAIL.ledger.label)
         print_provider_status()
+        print_store_status()
         httpd.serve_forever()
 
 

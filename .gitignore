@@ -22,3 +22,9 @@ __pycache__/
 .auditor/cache/
 .auditor/sessions/
 .auditor/*.db
+
+# The desk's working state and audit trail. Never committed: it is
+# operational data, and on a real desk it holds customer names.
+kya-desk.db
+kya-desk.db-wal
+kya-desk.db-shm

@@ -372,6 +372,38 @@ unconditionally, both turn named tests red.
 the demo on a laptop — a bearer token in a header is the only check. That is
 stated on the banner rather than being a quiet default.
 
+## T22 — The desk's own record is edited
+
+Until persistence existed this threat could not be stated, because there was
+nothing to edit: the desk held everything in memory and lost it on restart.
+That was not safety. It meant the payout account bound at 10:02 was gone by
+12:40 if the laptop slept, and the 14:05 stranger with a screenshot met a desk
+with no record to contradict them — T9, reintroduced by a process restart.
+
+The journal is now a SQLite file on the operator's laptop, which is a thing
+they can open and change.
+
+**Defence:** the journal is append-only and seal-chained with the same
+canonicalisation as the receipt chain — `canonical()` and `seal()` are imported
+from `kya_chain`, not reimplemented, because two implementations of one hash is
+how you get two answers. Editing any entry breaks every seal after it.
+`Journal.verify()` names the first entry that does not follow, the server
+**refuses to start** on a broken journal rather than quietly trusting it, and
+`tests/store_check.py` says what happened. The operator screen shows the state
+in red when the record cannot be trusted.
+
+**Residual, and it is real: appending still works.** Someone holding the file
+can add a correctly sealed entry saying whatever they like, and it will
+verify. `tests/store_smoke.py` proves this rather than claiming otherwise —
+the test forges an appended payout account and asserts the desk loads it. The
+chain makes *rewriting history* detectable; it does nothing about *adding to
+it*. What stops an appended payout is the same thing that stopped it before
+any of this existed: the quote is on the ledger, and the desk does not get to
+decide what the ledger says.
+
+This is the same shape as T5. A hash chain proves internal consistency, never
+origin.
+
 ---
 
 ## What is not in scope
@@ -410,3 +442,6 @@ amount of Daml addresses it.
 | 9 | Another account's traffic (T20) | **defended** |
 | 2 | Breet header secret stolen (T21 residual) | not defended by the secret alone; the IP allowlist is the second lock |
 | 9 | X-Forwarded-For spoofing (T21) | **defended** — socket peer by default, last hop only when a proxy is declared |
+| 3 | The journal is appended to (T22 residual) | **not defended** — proved by a test, not denied; the ledger is what holds |
+| 9 | The journal is edited or truncated (T22) | **defended** — seal-chained, and the server refuses to start |
+| 1 | Deals lost on restart (was: everything in memory) | **fixed** — this was T9 reintroduced by a laptop lid |
