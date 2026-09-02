@@ -67,6 +67,14 @@ class LedgerUnreachable(RuntimeError):
     """We never reached the ledger. NOT a refusal, and never stamped as one."""
 
 
+# Markers that mean Canton looked at the command and said no.
+LEDGER_ANSWERED = (
+    "CONTRACT_NOT_ACTIVE", "NOT_FOUND", "uthoriz", "INVALID_ARGUMENT",
+    "DAML_AUTHORIZATION_ERROR", "DAML_FAILURE", "User failure",
+    "NOT_VALID_UPGRADE_PACKAGE",
+)
+
+
 def _is_ledger_answer(m):
     """Did Canton decide, or did the network eat it?
 
@@ -74,15 +82,11 @@ def _is_ledger_answer(m):
     else -- TLS timeouts, DNS, token failures, 5xx -- is us failing to ask,
     and recording that as REFUSED would put a lie inside a sealed receipt.
     """
-    return (bool(RULES.search(m)) or "CONTRACT_NOT_ACTIVE" in m
-            or "NOT_FOUND" in m or "uthoriz" in m
-            or "INVALID_ARGUMENT" in m or "DAML_AUTHORIZATION_ERROR" in m
-            # DAML_FAILURE is an assertion in the choice body firing. That is
-            # the ledger deciding, not the network failing, and treating it as
-            # retryable meant a real refusal was retried eight times and then
-            # reported as "the ledger never answered".
-            or "DAML_FAILURE" in m or "User failure" in m
-            or "NOT_VALID_UPGRADE_PACKAGE" in m)
+    # DAML_FAILURE is an assertion in the choice body firing. That is the
+    # ledger deciding, not the network failing, and treating it as retryable
+    # meant a real refusal was retried eight times and then reported as "the
+    # ledger never answered".
+    return bool(RULES.search(m)) or any(marker in m for marker in LEDGER_ANSWERED)
 
 
 def _retry(fn, tries=8):
@@ -184,22 +188,33 @@ def _active_mandates(expires_at=None):
     the wrong one and every charge comes back "mandate expired" against a
     mandate we never created. expiresAt is minted per run and identifies it.
     """
-    def query():
-        body = {"filter": {"filtersByParty": {PARTY["agent"]: {"cumulative": [
-                    {"identifierFilter": {"TemplateFilter": {"value": {
-                        "templateId": TPL_BY_NAME,
-                        "includeCreatedEventBlob": False}}}}]}}},
-                "verbose": True, "activeAtOffset": c8lab.ledger_end(sub=USER)}
-        return c8lab.call("/v2/state/active-contracts", body, sub=USER)
-
     try:
-        ok, res = _retry(query, tries=4)
+        ok, res = _retry(_query_active_mandates, tries=4)
     except LedgerUnreachable:
         return None          # cannot see the ledger: decline to guess
     if not ok:
         return None
+    return _pick_mandates(res, expires_at)
+
+
+def _query_active_mandates():
+    body = {"filter": {"filtersByParty": {PARTY["agent"]: {"cumulative": [
+                {"identifierFilter": {"TemplateFilter": {"value": {
+                    "templateId": TPL_BY_NAME,
+                    "includeCreatedEventBlob": False}}}}]}}},
+            "verbose": True, "activeAtOffset": c8lab.ledger_end(sub=USER)}
+    return c8lab.call("/v2/state/active-contracts", body, sub=USER)
+
+
+def _is_gone(err):
+    """The ledger says this contract id is not there -- said two ways."""
+    text = str(err)
+    return "NOT_FOUND" in text or "CONTRACT_NOT_ACTIVE" in text
+
+
+def _pick_mandates(items, expires_at):
     out = []
-    for item in res:
+    for item in items:
         ev = item.get("contractEntry", {}).get("JsActiveContract", {}).get("createdEvent", {})
         if not ev.get("contractId"):
             continue
@@ -303,18 +318,8 @@ class DevNetLedger:
                 act_as=PARTY["agent"])
 
         ok, r = attempt()
-        # If WE revoked it, NOT_FOUND is the right answer and reconciling would
-        # go hunting for some other live mandate and charge that instead --
-        # stamping "expired" on what was really a revoke. Only an UNEXPLAINED
-        # disappearance is ambiguous.
-        if not ok and not self.revoked \
-           and ("NOT_FOUND" in str(r) or "CONTRACT_NOT_ACTIVE" in str(r)):
-            # Either the mandate really is gone, or our cid is stale after a
-            # lost response. The ledger knows which; ask it before recording.
-            live = (_active_mandates(self.exp) or [None])[0]
-            if live and live != self.cid:
-                self.cid = live
-                ok, r = attempt()
+        if not ok and self._should_reconcile(r):
+            ok, r = attempt()
         if not ok:
             return "REFUSED", _rule(str(r))
         self.cid = _created(r, "KyaMandate") or self.cid
@@ -331,6 +336,23 @@ class DevNetLedger:
         if moved:
             return "ACCEPTED", "authorised by the mandate and settled on DevNet: " + detail
         return "ACCEPTED", "AUTHORISED but NOT SETTLED: " + detail
+
+    def _should_reconcile(self, err):  # noqa: D401
+        """Was the mandate really gone, or is our cached id just stale?
+
+        If WE revoked it, NOT_FOUND is the right answer and reconciling would
+        go hunting for some other live mandate and charge that instead --
+        stamping "expired" on what was really a revoke. Only an UNEXPLAINED
+        disappearance is ambiguous. Returns True if the cid was refreshed and
+        the charge is worth retrying.
+        """
+        if self.revoked or not _is_gone(err):
+            return False
+        live = (_active_mandates(self.exp) or [None])[0]
+        if live and live != self.cid:
+            self.cid = live
+            return True
+        return False
 
     def _settle(self, amount, receiver):
         """Move Amulet for a charge the mandate has already authorised."""

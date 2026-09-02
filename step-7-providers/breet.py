@@ -87,52 +87,66 @@ class BreetAdapter:
             return 200, {"received": True, "acted": False, "reason": str(e)}
 
     def _apply(self, body, entry):
+        """Authenticated. Now: is this an event we act on, and whose is it?"""
         if not isinstance(body, dict):
             raise Refused("body is not an object")
+        self._gate_event(body, entry)
+        deal = self._match_deal(body)
+        self._match_fields(body, deal)
 
-        event = body.get("event")
-        event_id = body.get("id")
+        self.seen.add((body["id"], body.get("event")))
+        self.desk.confirm_deposit(deal["reference"])
+        deal["txReference"] = body["txHash"]
+        return {"received": True, "acted": True,
+                "reference": deal["reference"], "txHash": body["txHash"]}
+
+    def _gate_event(self, body, entry):
+        """Is this an event that confirms anything at all?"""
+        event, event_id = body.get("event"), body.get("id")
         if not event_id:
             raise Refused("no id on the event, so it cannot be deduplicated")
         entry["id"] = event_id
-
-        key = (event_id, event)
-        if key in self.seen:
+        if (event_id, event) in self.seen:
             raise Refused("duplicate delivery of %s" % event)
-
-        # Only a completed deposit confirms anything. Pending is not money,
-        # and flagged is the provider telling you not to.
+        # Pending is not money, and flagged is the provider telling you not to.
         if event != DEPOSIT_COMPLETED:
-            self.seen.add(key)
+            self.seen.add((event_id, event))
             raise Refused("event %r is not a completed deposit" % event)
-
         if body.get("isWrongAssetDeposit"):
-            self.seen.add(key)
+            self.seen.add((event_id, event))
             raise Refused("provider flagged a wrong-asset deposit")
 
+    @staticmethod
+    def _awaiting_at(deal, address):
+        """One deal, quoted and still waiting for money at exactly this address."""
+        return deal["depositAddress"] == address and deal["state"] == "QUOTED"
+
+    def _match_deal(self, body):
+        """Find OUR deal by the address we issued.
+
+        The webhook does not get to tell us which deal it is. It tells us where
+        money landed, and we match that against what we already hold.
+        """
         address = body.get("destinationAddress")
         if not address:
             raise Refused("no destinationAddress on the event")
-
-        # Find OUR deal by the address we issued. The webhook does not get to
-        # tell us which deal it is; it tells us where money landed, and we
-        # match that against what we already hold.
-        deals = [d for d in self.desk.deals.values()
-                 if d["depositAddress"] == address and d["state"] == "QUOTED"]
+        deals = [d for d in self.desk.deals.values() if self._awaiting_at(d, address)]
         if not deals:
             raise Refused("no open deal is expecting a deposit at that address")
         if len(deals) > 1:
-            # Ambiguous by construction. A unique address per deal removes
-            # this entirely and is worth asking the provider for.
+            # Ambiguous by construction. A unique address per deal removes this
+            # entirely and is worth asking the provider for.
             raise Refused("%d open deals share that address; cannot attribute"
                           % len(deals))
-        deal = deals[0]
+        return deals[0]
 
+    @staticmethod
+    def _match_fields(body, deal):
+        """Every field must agree with the deal we already hold."""
         asset = body.get("asset")
         if asset and str(asset).upper() != deal["asset"].upper():
             raise Refused("deposit asset %s does not match the deal's %s"
                           % (asset, deal["asset"]))
-
         try:
             amount = float(body.get("cryptoAmount"))
         except (TypeError, ValueError):
@@ -140,13 +154,5 @@ class BreetAdapter:
         if abs(amount - float(deal["amount"])) > 1e-9:
             raise Refused("deposit of %s does not match the quoted %s"
                           % (amount, deal["amount"]))
-
-        tx = body.get("txHash")
-        if not tx:
+        if not body.get("txHash"):
             raise Refused("no txHash; a confirmation must point at something checkable")
-
-        self.seen.add(key)
-        self.desk.confirm_deposit(deal["reference"])
-        deal["txReference"] = tx
-        return {"received": True, "acted": True,
-                "reference": deal["reference"], "txHash": tx}

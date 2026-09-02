@@ -283,6 +283,112 @@ class Rail:
 RAIL = None
 
 
+
+# ---------------------------------------------------------------------------
+# Routes. A dispatch table rather than an if/elif ladder: each endpoint is a
+# named function that can be read, tested and found on its own, and adding one
+# does not make the router harder to follow.
+# ---------------------------------------------------------------------------
+
+def r_open(body):
+    pl = body.get("period_limit")
+    return RAIL.open(float(body.get("cap", 5.0)),
+                     None if pl in (None, "") else float(pl),
+                     body.get("period_seconds") or None)
+
+
+def r_request(body):
+    return RAIL.request(float(body.get("amount", 0)), body.get("payee", ""),
+                        body.get("what", ""))
+
+
+def r_revoke(body):
+    return RAIL.revoke()
+
+
+def r_quote(body):
+    return RAIL.desk.issue(body.get("customer", ""), float(body.get("rate", 0)),
+                           float(body.get("amount", 0)), body.get("payout_account", ""))
+
+
+def _stamp(res, body, authority="quote issued by Principal + Operator"):
+    """A payout attempt is a receipt whether or not it was allowed."""
+    try:
+        res["receipt"] = RAIL.chain.stamp(
+            body.get("what") or ("payout for " + body.get("reference", "")),
+            float(body.get("amount", 0)), body.get("claimed_account", "")[:60],
+            res["rule"], "ACCEPTED" if res["outcome"] in ("PAID",) else "REFUSED",
+            authority, RAIL.ledger.label, RAIL.ledger.currency, RAIL.ledger.instrument)
+    except NonAsciiInReceipt as e:
+        res["error"] = str(e)
+    return res
+
+
+def r_fulfil(body):
+    res = RAIL.desk.fulfil(body.get("reference", ""), float(body.get("amount", 0)),
+                           body.get("claimed_account", ""))
+    if res.get("outcome") == "PAID":
+        res["outcome"] = "PAID"
+    return _stamp(res, body)
+
+
+def r_approve(body):
+    return {"approved": RAIL.desk.approve(body.get("account", ""))}
+
+
+def r_deal(body):
+    return RAIL.cycle.open_deal(
+        body.get("customer", ""), body.get("asset", ""), body.get("network", ""),
+        float(body.get("amount", 0)), float(body.get("rate", 0)),
+        body.get("payout_account", ""), body.get("memo") or None,
+        RAIL.desk.approved)
+
+
+def r_deposit_confirmed(body):
+    return RAIL.cycle.confirm_deposit(body.get("reference", ""))
+
+
+def r_offtaker(body):
+    return RAIL.cycle.send_to_offtaker(body.get("reference", ""),
+                                       body.get("offtaker", ""), body.get("address", ""))
+
+
+def r_naira(body):
+    return RAIL.cycle.confirm_naira(body.get("reference", ""),
+                                    float(body.get("received", 0)))
+
+
+def r_pay(body):
+    return _stamp(RAIL.cycle.pay(body.get("reference", ""),
+                                 body.get("claimed_account", ""),
+                                 float(body.get("amount", 0))), body)
+
+
+def r_wa(body):
+    return {"reply": RAIL.on_message(body.get("from") or "sim", body.get("text", ""))}
+
+
+def r_rate(body):
+    r = float(body.get("rate", 0))
+    lo, hi = RAIL.band
+    if not (lo <= r <= hi):
+        return {"error": "rate is outside the band %s-%s" % (lo, hi)}
+    RAIL.rate = r
+    return {"rate": r}
+
+
+POST_ROUTES = {
+    "/api/open": r_open, "/api/request": r_request, "/api/revoke": r_revoke,
+    "/api/quote": r_quote, "/api/fulfil": r_fulfil, "/api/approve": r_approve,
+    "/api/deal": r_deal, "/api/deposit-confirmed": r_deposit_confirmed,
+    "/api/offtaker": r_offtaker, "/api/naira": r_naira, "/api/pay": r_pay,
+    "/api/wa": r_wa, "/api/rate": r_rate,
+}
+
+# Static pages, and the short forms that survive being pasted into a chat.
+GET_PAGES = {"/": "/operator.html", "/bot": "/bot.html", "/c": "/customer.html"}
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=HERE, **kw)
@@ -310,44 +416,44 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if not self.authorised():
             return self._json({"error": "unauthorised"}, 401)
-        if self.path == "/":
-            self.path = "/operator.html"
-        if self.path == "/api/state":
+        path = urllib.parse.urlparse(self.path).path
+
+        if path == "/api/state":
             return self._json(RAIL.state())
-        if self.path.startswith("/api/customer"):
-            # The customer's view. Deliberately narrow: what they must do, what
-            # was agreed, where it is up to, and their receipt. Nothing about
-            # the desk's float, its other deals, its off-takers or its margin.
-            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-            ref = (q.get("ref") or [""])[0]
-            d = RAIL.cycle.deals.get(ref)
-            if not d:
-                return self._json({"error": "no such deal"}, 404)
-            receipt = next((r for r in reversed(RAIL.chain.receipts)
-                            if ref in r["what"] and r["outcome"] == "ACCEPTED"), None)
-            return self._json({
-                "reference": d["reference"], "state": d["state"],
-                "asset": d["asset"], "network": d["network"],
-                "amount": d["amount"], "rate": d["rate"], "naira": d["naira"],
-                "depositAddress": d["depositAddress"], "memo": d["memo"],
-                "payoutAccount": d["payoutAccount"],
-                "receipt": receipt})
-        if self.path == "/bot":
-            self.path = "/bot.html"
-        if self.path == "/c":
-            self.path = "/customer.html"
-        if self.path.startswith("/c/"):
-            # /c/KYA-7001 -- the shape that survives being pasted into WhatsApp
-            ref = self.path[3:].split("?")[0]
-            body = ('<meta http-equiv="refresh" content="0;url=/customer.html?ref='
-                    + urllib.parse.quote(ref) + '">').encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-            return
+        if path == "/api/customer":
+            return self._customer()
+        if path.startswith("/c/"):
+            return self._short_link(path[3:])
+        self.path = GET_PAGES.get(path, self.path)
         return super().do_GET()
+
+    def _customer(self):
+        """The customer's view. Deliberately narrow: what they must do, what
+        was agreed, where it is up to, and their receipt. Nothing about the
+        desk's float, its other deals, its off-takers or its margin."""
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        ref = (q.get("ref") or [""])[0]
+        d = RAIL.cycle.deals.get(ref)
+        if not d:
+            return self._json({"error": "no such deal"}, 404)
+        receipt = next((r for r in reversed(RAIL.chain.receipts)
+                        if ref in r["what"] and r["outcome"] == "ACCEPTED"), None)
+        return self._json({
+            "reference": d["reference"], "state": d["state"],
+            "asset": d["asset"], "network": d["network"],
+            "amount": d["amount"], "rate": d["rate"], "naira": d["naira"],
+            "depositAddress": d["depositAddress"], "memo": d["memo"],
+            "payoutAccount": d["payoutAccount"], "receipt": receipt})
+
+    def _short_link(self, ref):
+        """/c/KYA-7001 -- the shape that survives being pasted into WhatsApp."""
+        body = ('<meta http-equiv="refresh" content="0;url=/customer.html?ref='
+                + urllib.parse.quote(ref) + '">').encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self):
         if not self.authorised():
@@ -357,84 +463,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             body = json.loads(self.rfile.read(n) or b"{}")
         except json.JSONDecodeError:
             return self._json({"error": "bad request"}, 400)
-        if self.path == "/api/open":
-            pl = body.get("period_limit")
-            return self._json(RAIL.open(
-                float(body.get("cap", 5.0)),
-                None if pl in (None, "") else float(pl),
-                body.get("period_seconds") or None))
-        if self.path == "/api/request":
-            return self._json(RAIL.request(float(body.get("amount", 0)),
-                                           body.get("payee", ""),
-                                           body.get("what", "")))
-        if self.path == "/api/revoke":
-            return self._json(RAIL.revoke())
-        if self.path == "/api/quote":
-            return self._json(RAIL.desk.issue(
-                body.get("customer", ""), float(body.get("rate", 0)),
-                float(body.get("amount", 0)), body.get("payout_account", "")))
-        if self.path == "/api/fulfil":
-            res = RAIL.desk.fulfil(body.get("reference", ""),
-                                   float(body.get("amount", 0)),
-                                   body.get("claimed_account", ""))
-            # A payout attempt is a receipt whether or not it was allowed.
-            try:
-                r = RAIL.chain.stamp(
-                    body.get("what") or ("payout against " + body.get("reference", "")),
-                    float(body.get("amount", 0)), body.get("claimed_account", "")[:60],
-                    res["rule"], "ACCEPTED" if res["outcome"] == "PAID" else "REFUSED",
-                    "quote issued by Principal + Operator", RAIL.ledger.label,
-                    RAIL.ledger.currency, RAIL.ledger.instrument)
-                res["receipt"] = r
-            except NonAsciiInReceipt as e:
-                res["error"] = str(e)
-            return self._json(res)
-        if self.path == "/api/deal":
-            return self._json(RAIL.cycle.open_deal(
-                body.get("customer", ""), body.get("asset", ""), body.get("network", ""),
-                float(body.get("amount", 0)), float(body.get("rate", 0)),
-                body.get("payout_account", ""), body.get("memo") or None,
-                RAIL.desk.approved))
-        if self.path == "/api/deposit-confirmed":
-            return self._json(RAIL.cycle.confirm_deposit(body.get("reference", "")))
-        if self.path == "/api/offtaker":
-            return self._json(RAIL.cycle.send_to_offtaker(
-                body.get("reference", ""), body.get("offtaker", ""),
-                body.get("address", "")))
-        if self.path == "/api/naira":
-            return self._json(RAIL.cycle.confirm_naira(
-                body.get("reference", ""), float(body.get("received", 0))))
-        if self.path == "/api/pay":
-            res = RAIL.cycle.pay(body.get("reference", ""),
-                                 body.get("claimed_account", ""),
-                                 float(body.get("amount", 0)))
-            try:
-                r = RAIL.chain.stamp(
-                    body.get("what") or ("payout for " + body.get("reference", "")),
-                    float(body.get("amount", 0)), body.get("claimed_account", "")[:60],
-                    res["rule"], "ACCEPTED" if res["outcome"] == "PAID" else "REFUSED",
-                    "quote issued by Principal + Operator", RAIL.ledger.label,
-                    RAIL.ledger.currency, RAIL.ledger.instrument)
-                res["receipt"] = r
-            except NonAsciiInReceipt as e:
-                res["error"] = str(e)
-            return self._json(res)
-        if self.path == "/api/wa":
-            # One inbound message. The local simulator posts here, and so does
-            # the WhatsApp webhook adapter once credentials exist.
-            wa_id = body.get("from") or "sim"
-            return self._json({"reply": RAIL.on_message(wa_id, body.get("text", ""))})
-        if self.path == "/api/rate":
-            # Only the desk sets the rate, and only inside its own band.
-            r = float(body.get("rate", 0))
-            lo, hi = RAIL.band
-            if not (lo <= r <= hi):
-                return self._json({"error": "rate is outside the band %s-%s" % (lo, hi)})
-            RAIL.rate = r
-            return self._json({"rate": r})
-        if self.path == "/api/approve":
-            return self._json({"approved": RAIL.desk.approve(body.get("account", ""))})
-        return self._json({"error": "unknown endpoint"}, 404)
+        route = POST_ROUTES.get(self.path)
+        if route is None:
+            return self._json({"error": "unknown endpoint"}, 404)
+        return self._json(route(body))
 
 
 def main(argv):

@@ -57,90 +57,103 @@ class Conversation:
         self.step, self.d, self.ref = "start", {}, None
 
     # -- the machine --------------------------------------------------------
+    #
+    # One method per step, dispatched by name. A state machine written as a
+    # single if/elif ladder hides the states inside the control flow; written
+    # like this the states ARE the methods, and adding one cannot make the
+    # others harder to read.
+
     def handle(self, text, rate, band):
         t = norm(text)
         if t in ("cancel", "stop", "restart"):
-            self.reset(); return "Cancelled. " + GREETING
+            self.reset()
+            return "Cancelled. " + GREETING
         if t in ("help", "?"):
             return HELP
-
-        if self.step == "start":
-            if t in ("sell", "s"):
-                self.d["side"] = "sell"; self.step = "asset"
-                return ("Selling. Which coin?\n\n" +
-                        "\n".join("• *%s*" % a for a in self._assets()))
-            if t in ("buy", "b"):
-                self.d["side"] = "buy"; self.step = "asset"
-                return ("Buying. Which coin do you want?\n\n" +
-                        "\n".join("• *%s*" % a for a in self._assets()))
+        step = getattr(self, "_step_" + self.step, None)
+        if step is None:
             return GREETING
+        return step(t, rate, band)
 
-        if self.step == "asset":
-            match = [a for a in self._assets() if a.lower() == t]
-            if not match:
-                return ("I don't trade that. Choose one:\n\n" +
-                        "\n".join("• *%s*" % a for a in self._assets()))
-            self.d["asset"] = match[0]; self.step = "network"
-            nets = self._networks_for(match[0])
-            return ("Which network? This matters — sending on the wrong one "
-                    "loses the coin and nobody can recover it.\n\n" +
-                    "\n".join("• *%s*%s" % (n["network"],
-                              " (needs a memo/tag)" if n["memo_required"] else "")
-                              for n in nets))
+    def _step_start(self, t, rate, band):
+        if t in ("sell", "s"):
+            self.d["side"] = "sell"
+        elif t in ("buy", "b"):
+            self.d["side"] = "buy"
+        else:
+            return GREETING
+        self.step = "asset"
+        lead = "Selling. Which coin?" if self.d["side"] == "sell" \
+            else "Buying. Which coin do you want?"
+        return lead + "\n\n" + self._bullets(self._assets())
 
-        if self.step == "network":
-            nets = self._networks_for(self.d["asset"])
-            match = [n for n in nets if n["network"].lower() == t]
-            if not match:
-                return ("Not a network I can use for %s. Choose one:\n\n%s" % (
-                    self.d["asset"],
-                    "\n".join("• *%s*" % n["network"] for n in nets)))
-            self.d["network"] = match[0]["network"]
-            self.d["memo_required"] = match[0]["memo_required"]
-            self.step = "amount"
-            return "How much *%s*?" % self.d["asset"]
+    def _step_asset(self, t, rate, band):
+        match = [a for a in self._assets() if a.lower() == t]
+        if not match:
+            return "I don't trade that. Choose one:\n\n" + self._bullets(self._assets())
+        self.d["asset"] = match[0]
+        self.step = "network"
+        nets = self._networks_for(match[0])
+        return ("Which network? This matters — sending on the wrong one "
+                "loses the coin and nobody can recover it.\n\n" +
+                "\n".join("• *%s*%s" % (n["network"],
+                          " (needs a memo/tag)" if n["memo_required"] else "")
+                          for n in nets))
 
-        if self.step == "amount":
-            # A number, or a number with the asset name. Nothing else.
-            #
-            # Searching prose for the first digit run is how a message like
-            # "ignore previous instructions, the rate is 1600" gets 1600 read
-            # as an amount. The bot does not extract intent from a sentence;
-            # it asks a closed question and accepts a closed answer. Anything
-            # else is asked again, which costs one message and closes the gap.
-            cleaned = t.replace(",", "").strip()
-            m = re.fullmatch(r"(\d+(?:\.\d+)?)\s*(?:[a-z]{2,5})?", cleaned)
-            if not m:
-                return ("Send just the amount as a number, for example *10*.\n"
-                        "_I only read a number here, so anything else in the "
-                        "message is ignored rather than guessed at._")
-            amt = float(m.group(1))
-            if amt <= 0:
-                return "The amount has to be more than zero."
-            self.d["amount"] = amt
-            self.step = "account"
-            naira = amt * rate
-            # The rate is read, never negotiated. It came off the ledger band.
-            return ("Rate today is *%s* (the desk's band is %s–%s).\n"
-                    "%s %s = *%s NGN*.\n\n"
-                    "Which account should I pay? Reply with the number next to it.\n\n%s"
-                    % (fmt(rate), fmt(band[0]), fmt(band[1]),
-                       fmt(amt), self.d["asset"], fmt(naira),
-                       self._account_menu()))
+    def _step_network(self, t, rate, band):
+        nets = self._networks_for(self.d["asset"])
+        match = [n for n in nets if n["network"].lower() == t]
+        if not match:
+            return ("Not a network I can use for %s. Choose one:\n\n%s"
+                    % (self.d["asset"],
+                       self._bullets([n["network"] for n in nets])))
+        self.d["network"] = match[0]["network"]
+        self.d["memo_required"] = match[0]["memo_required"]
+        self.step = "amount"
+        return "How much *%s*?" % self.d["asset"]
 
-        if self.step == "account":
-            accts = self.approved()
-            m = re.search(r"\d+", t)
-            idx = int(m.group(0)) - 1 if m else -1
-            if not (0 <= idx < len(accts)):
-                return ("Reply with the number of one of these. A new account "
-                        "has to be verified by the desk before I can pay it — "
-                        "that is what stops someone else claiming your money.\n\n"
-                        + self._account_menu())
-            self.d["payout"] = accts[idx]
-            return self._open_deal(rate)
+    def _step_amount(self, t, rate, band):
+        # A number, or a number with the asset name. Nothing else.
+        #
+        # Searching prose for the first digit run is how a message like
+        # "ignore previous instructions, the rate is 1600" gets 1600 read as
+        # an amount. The bot does not extract intent from a sentence; it asks
+        # a closed question and accepts a closed answer.
+        m = re.fullmatch(r"(\d+(?:\.\d+)?)\s*(?:[a-z]{2,5})?", t.replace(",", "").strip())
+        if not m:
+            return ("Send just the amount as a number, for example *10*.\n"
+                    "_I only read a number here, so anything else in the "
+                    "message is ignored rather than guessed at._")
+        amt = float(m.group(1))
+        if amt <= 0:
+            return "The amount has to be more than zero."
+        self.d["amount"] = amt
+        self.step = "account"
+        return ("Rate today is *%s* (the desk's band is %s–%s).\n"
+                "%s %s = *%s NGN*.\n\n"
+                "Which account should I pay? Reply with the number next to it.\n\n%s"
+                % (fmt(rate), fmt(band[0]), fmt(band[1]),
+                   fmt(amt), self.d["asset"], fmt(amt * rate), self._account_menu()))
 
-        return GREETING
+    def _step_account(self, t, rate, band):
+        accts = self.approved()
+        m = re.search(r"\d+", t)
+        idx = int(m.group(0)) - 1 if m else -1
+        if not (0 <= idx < len(accts)):
+            return ("Reply with the number of one of these. A new account "
+                    "has to be verified by the desk before I can pay it — "
+                    "that is what stops someone else claiming your money.\n\n"
+                    + self._account_menu())
+        self.d["payout"] = accts[idx]
+        return self._open_deal(rate)
+
+    def _step_awaiting_deposit(self, t, rate, band):
+        return ("I'm watching for your deposit against *%s*. Reply *CANCEL* to "
+                "start again." % self.ref)
+
+    @staticmethod
+    def _bullets(items):
+        return "\n".join("• *%s*" % i for i in items)
 
     def _account_menu(self):
         accts = self.approved()

@@ -47,6 +47,11 @@ class MockLedger:
         return None, "mock"
 
     def charge(self, amount, payee):
+        # Deliberately a flat chain of guards, one per assertion in
+        # KyaMandate.daml, in the same order. It scores as complex and the
+        # complexity is the point: the correspondence to the contract is what
+        # makes this a mirror rather than an approximation, and restructuring
+        # it into something tidier would break the one property it has.
         m = self.m
         if m["revoked"]:  return "REFUSED", "Revoke: mandate no longer active on the ledger"
         if m["expired"]:  return "REFUSED", "mandate expired"

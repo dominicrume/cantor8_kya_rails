@@ -34,13 +34,8 @@ def is_test(rel):
             or name == "conftest.py" or "/tests/" in "/" + rel or rel.startswith("tests/"))
 
 
-def main():
-    proc = subprocess.run(["bandit", "-r", ROOT, "-f", "json", "-q"],
-                          capture_output=True, text=True, check=False)
-    if not proc.stdout.strip():
-        print("bandit produced no output"); return 1
-    results = json.loads(proc.stdout).get("results", [])
-
+def classify(results):
+    """Split CWE-tagged findings into production and allowed-in-tests."""
     prod, allowed = [], []
     for i in results:
         if not (i.get("issue_cwe") or {}).get("id"):
@@ -48,10 +43,19 @@ def main():
         rel = os.path.relpath(i["filename"], ROOT)
         entry = "%s:%s %s %s" % (rel, i["line_number"], i["test_id"],
                                  i["issue_text"][:58])
-        if is_test(rel) and i["test_id"] in TEST_ALLOWED:
-            allowed.append(entry)
-        else:
-            prod.append(entry)
+        (allowed if is_test(rel) and i["test_id"] in TEST_ALLOWED
+         else prod).append(entry)
+    return prod, allowed
+
+
+def main():
+    proc = subprocess.run(["bandit", "-r", ROOT, "-f", "json", "-q"],
+                          capture_output=True, text=True, check=False)
+    if not proc.stdout.strip():
+        print("bandit produced no output"); return 1
+    results = json.loads(proc.stdout).get("results", [])
+
+    prod, allowed = classify(results)
 
     print("bandit: %d counted findings" % (len(prod) + len(allowed)))
     print("  %d in test harnesses (allowed, each rule justified in this file)"

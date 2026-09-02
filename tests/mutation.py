@@ -12,7 +12,7 @@ distinguishes it.
 
 Run: python3 tests/mutation.py        (slow: one daml test run per fence)
 """
-import os, re, shutil, subprocess, sys, tempfile
+import contextlib, os, re, shutil, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PKG = os.path.join(HERE, "..", "step-1-mandate")
@@ -98,56 +98,110 @@ def guard_is_ambiguous(guard):
     return found if len(found) > 1 else []
 
 
-def main():
-    only = sys.argv[1] if len(sys.argv) > 1 else None
+def check_fence(path, fence, guard):
+    """Delete one fence and require its named guard test to go red.
+
+    Returns a list of failures, empty when the fence is properly covered.
+    """
+    if not delete_line(path, fence):
+        print("  SKIP  %-38s (assertion not found)" % fence[:38])
+        return ["%s: assertion text not present" % fence]
+    out = run_suite()
+    if guard + ": ok" in out:
+        print("  BLIND %-38s -> %s still passes" % (fence[:38], guard))
+        return ["%s is not covered: %s stays green without it" % (fence, guard)]
+    if guard not in out:
+        # The module stopped compiling, so every test vanished rather than one
+        # going red. That reads as "not covered" and is really "not testable".
+        print("  ????  %-38s -> %s did not run" % (fence[:38], guard))
+        return ["%s: guard test %s did not run" % (fence, guard)]
+    print("  ok    %-38s -> %s goes red" % (fence[:38], guard))
+    return []
+
+
+def refuse_if_ambiguous():
+    """A guard name defined in two modules can mask a mutation. Stop rather
+    than report a fence as covered when it may not be."""
     ambiguous = {g: mods for _, _, g in FENCES
                  for mods in [guard_is_ambiguous(g)] if mods}
-    if ambiguous:
-        print("guard test names are ambiguous across modules; a mutation could")
-        print("be masked by a same-named test elsewhere:")
-        for g, mods in ambiguous.items():
-            print("  %s -> %s" % (g, ", ".join(mods)))
-        sys.exit(1)
-    # mkstemp, not mktemp: mktemp returns a path and leaves a window in which
-    # anything can create it first. These hold the only copies of the contracts
-    # while a fence is deleted, so losing that race loses the source.
-    backups = {}
-    for _p in (MANDATE, QUOTE, CYCLE, INBOUND):
-        fd, path = tempfile.mkstemp(suffix=".daml")
-        os.close(fd)
-        backups[_p] = path
-    for p, b in backups.items():
-        shutil.copy(p, b)
-    failures = []
-    try:
-        baseline = run_suite()
-        n = len(re.findall(r"^daml/KyaTest.*: ok", baseline, re.M))
-        print("baseline: %d scripts green\n" % n)
+    if not ambiguous:
+        return
+    print("guard test names are ambiguous across modules; a mutation could")
+    print("be masked by a same-named test elsewhere:")
+    for g, mods in ambiguous.items():
+        print("  %s -> %s" % (g, ", ".join(mods)))
+    sys.exit(1)
 
+
+@contextlib.contextmanager
+def preserved(paths):
+    """Hold the only copies of the contracts while fences are deleted.
+
+    mkstemp, not mktemp: mktemp returns a path and leaves a window in which
+    anything can create it first, and losing that race loses the source.
+    Restores on the way out however we leave -- including Ctrl-C.
+    """
+    backups = {}
+    for path in paths:
+        fd, tmp = tempfile.mkstemp(suffix=".daml")
+        os.close(fd)
+        shutil.copy(path, tmp)
+        backups[path] = tmp
+    try:
+        yield lambda: [shutil.copy(b, p) for p, b in backups.items()]
+    finally:
+        for path, tmp in backups.items():
+            shutil.copy(tmp, path)
+            os.unlink(tmp)
+        rebuild_or_destroy()
+
+
+def rebuild_or_destroy():
+    """Restoring the source is not enough: the DAR is the artefact.
+
+    A mutation run leaves .daml/dist holding a package built from source with
+    a fence deleted. The source comes back; the artefact does not. Anything
+    that then uses that DAR -- a manual upload-dar, a test package resolving
+    its data-dependency -- is using a contract with a hole in it, and the
+    suite goes red for a reason that is nowhere in the source. This was found
+    by running the harness and watching testAfterExpiryRefused fail against
+    clean source.
+
+    Rebuild from the restored source. If that fails for any reason, delete the
+    DAR outright: no artefact is safe, a stale one is not.
+    """
+    built = subprocess.run(["daml", "build", "--no-legacy-assistant-warning"],
+                           cwd=PKG, capture_output=True, text=True)
+    if built.returncode == 0:
+        print("  (rebuilt the DAR from restored source)")
+        return
+    dist = os.path.join(PKG, ".daml", "dist")
+    killed = [f for f in os.listdir(dist) if f.endswith(".dar")] if os.path.isdir(dist) else []
+    for f in killed:
+        os.unlink(os.path.join(dist, f))
+    print("  REBUILD FAILED after restore; deleted %d DAR(s) rather than leave a\n"
+          "  mutated artefact on disk. Run `daml build` in step-1-mandate." % len(killed))
+
+
+def main():
+    only = sys.argv[1] if len(sys.argv) > 1 else None
+    refuse_if_ambiguous()
+    failures = []
+    with preserved((MANDATE, QUOTE, CYCLE, INBOUND)) as restore:
+        baseline = run_suite()
+        # Every test module, not just KyaTest: the suite grew to four and the
+        # old pattern silently reported a third of the real baseline.
+        n = len(re.findall(r"^daml/Kya\w*Test\.daml:.*: ok", baseline, re.M))
+        print("baseline: %d scripts green\n" % n)
         for path, fence, guard in FENCES:
             if only and only not in fence:
                 continue
-            for p, b in backups.items():
-                shutil.copy(b, p)
-            if not delete_line(path, fence):
-                print("  SKIP  %-38s (assertion not found)" % fence[:38])
-                failures.append("%s: assertion text not present" % fence)
-                continue
-            out = run_suite()
-            if guard + ": ok" in out:
-                print("  BLIND %-38s -> %s still passes" % (fence[:38], guard))
-                failures.append("%s is not covered: %s stays green without it"
-                                % (fence, guard))
-            elif guard not in out:
-                print("  ????  %-38s -> %s did not run" % (fence[:38], guard))
-                failures.append("%s: guard test %s did not run" % (fence, guard))
-            else:
-                print("  ok    %-38s -> %s goes red" % (fence[:38], guard))
-    finally:
-        for p, b in backups.items():
-            shutil.copy(b, p)
-            os.unlink(b)
+            restore()
+            failures.extend(check_fence(path, fence, guard))
+    report(failures)
 
+
+def report(failures):
     print()
     if failures:
         print("MUTATION TESTING FAILED - %d fence(s) not covered:" % len(failures))
