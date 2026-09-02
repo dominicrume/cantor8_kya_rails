@@ -342,6 +342,36 @@ account pointed at it would deliver its customers' messages into this desk.
 **Defence:** `metadata.phone_number_id` must match the desk's own, compared in
 constant time. Everything else is refused before it reaches the bot.
 
+## T21 — The IP allowlist is defeated by a header
+
+Breet authenticates with a shared header secret plus a fixed IP allowlist.
+The secret is a bearer credential: anyone who obtains it can forge a deposit
+confirmation, so the allowlist is the second lock. Putting the server behind
+a reverse proxy breaks it — every request now arrives from the proxy — and
+the usual fix is to read the caller out of `X-Forwarded-For`.
+
+That fix is the vulnerability. `X-Forwarded-For` is a client-supplied header.
+Reading it with no known proxy in front turns the provider's allowlist into a
+value the attacker sets, and the second lock is gone while still appearing to
+be there.
+
+**Defence:** the source address is the socket peer, which cannot be forged.
+`X-Forwarded-For` is read only when `KYA_BREET_TRUST_PROXY=1` is set
+deliberately, and then only its **last** entry — the one a trusted proxy
+appended. Everything to the left is whatever the caller sent. The startup
+banner says when this is on, and that the IP check is then only as good as
+the proxy.
+
+`tests/breet_wire_smoke.py` covers all three: a spoofed header with trust off
+changes nothing; with trust on, an attacker-supplied first hop is ignored; a
+genuine proxy's last hop is accepted. Each was confirmed by mutation —
+switching `rsplit(...)[-1]` to `split(...)[0]`, and trusting the header
+unconditionally, both turn named tests red.
+
+**Residual:** with `KYA_BREET_REQUIRE_IP=0` — the documented mode for running
+the demo on a laptop — a bearer token in a header is the only check. That is
+stated on the banner rather than being a quiet default.
+
 ---
 
 ## What is not in scope
@@ -378,3 +408,5 @@ amount of Daml addresses it.
 | 9 | Delivery report as input (T18) | **defended** |
 | 9 | Display-name injection (T19) | **defended** — no code path reads it |
 | 9 | Another account's traffic (T20) | **defended** |
+| 2 | Breet header secret stolen (T21 residual) | not defended by the secret alone; the IP allowlist is the second lock |
+| 9 | X-Forwarded-For spoofing (T21) | **defended** — socket peer by default, last hop only when a proxy is declared |
