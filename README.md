@@ -76,6 +76,7 @@ country and deciding whether to trust the person who produced it.
 | Attack suite green | **73 / 73** `daml test` scripts, both directions of the cycle |
 | The cycle holds at every join | 15 checks over HTTP, in the order a desk works it |
 | Every fence mutation-tested | all **27** in the Daml, and all **29** refusals in the two webhook adapters: delete any one and a named test goes red — enforced in CI |
+| The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **27** checks, including a forged journal entry that proves the limit |
 | The deposit door | **30** attacks on the adapter + **15** over a real socket, including the X-Forwarded-For spoof that defeats a naive IP allowlist |
 | The WhatsApp door | **54** attacks on the adapter + **14** over a real socket: unsigned, wrongly signed, signed-for-another-body, replayed, day-old, another business account, delivery reports, hostile display names |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
@@ -184,6 +185,41 @@ allowlist into a value the attacker sets; that is T21 in the threat model, and
 `KYA_BREET_REQUIRE_IP=0` turns the allowlist off for a laptop demo. It leaves
 a header secret as the only check, so the startup banner says so out loud.
 
+### The desk survives the laptop closing
+
+`step-8-store/store.py`. This was the largest hole in the build and it was not
+a missing feature — it was the fraud coming back in through the side door.
+
+`Rail` used to say so in its own docstring: *"one mandate, one chain, for the
+life of the process."* Every open deal lived in a Python dict. A desk quotes at
+10:02 and the deposit lands at 13:20; if the laptop slept in between, the
+payout account bound at quote time was **gone**, and the 14:05 stranger with a
+screenshot met a desk with nothing to contradict them. That is T9 exactly,
+reintroduced by a process restart.
+
+Deals, quotes, conversations and the receipt chain are now written to a SQLite
+journal as they happen. **Persistence is the default; `--ephemeral` is the
+flag** — forgetting to type something should not be able to cost money.
+
+```bash
+python3 step-5-operator/server.py               # saved to kya-desk.db
+python3 step-5-operator/server.py --ephemeral   # demos and training runs
+python3 tests/store_check.py                    # is the journal intact?
+```
+
+The journal is append-only and seal-chained **with the receipt chain's own
+`canonical()` and `seal()`**, imported rather than reimplemented, because two
+implementations of one hash is how you get two answers. Editing any entry
+breaks every seal after it; the server refuses to start on a broken journal
+and the operator screen turns red rather than quietly showing numbers it
+cannot stand behind.
+
+What it does **not** stop is appending. Someone holding the file can add a
+correctly sealed entry saying anything, and `tests/store_smoke.py` proves that
+by forging one rather than pretending otherwise. It makes rewriting history
+detectable, not adding to it — the same limit as the receipt chain, for the
+same reason. The quote on the ledger is what actually holds.
+
 ### The operator's screen
 
 The person on the ground, on a phone, under pressure from a customer who is
@@ -271,6 +307,7 @@ python3 tests/mutation_py.py     # same, for every refusal in the webhook adapte
 python3 tests/meta_smoke.py      # attack the WhatsApp webhook adapter
 python3 tests/meta_wire_smoke.py # and again over a real socket, through the server
 python3 tests/breet_wire_smoke.py # the deposit webhook, and its IP allowlist
+python3 tests/store_smoke.py     # the quote outlives the process; history is tamper-evident
 python3 tests/complexity_lint.py # no function over the ceiling without a written reason
 cd step-1-mandate && daml build && cd test && daml test   # 73 scripts
 ```

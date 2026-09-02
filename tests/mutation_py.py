@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Delete each refusal in the webhook adapters and prove a test goes red.
+"""Delete each refusal at the edges and prove a test goes red.
 
-tests/mutation.py does this for the fences in the Daml. These two files are
-the other place a refusal is the whole product: they are the endpoints on the
-public internet, and every `raise Refused(...)` in them is a door being held
-shut. A green smoke suite says the code passes its tests. It does not say the
+tests/mutation.py does this for the fences in the Daml. These files are the
+other place a refusal is the whole product: two endpoints on the public
+internet, and the store that decides whether to trust the desk's own history.
+Every refusal in them is a door being held shut. A green smoke suite says the code passes its tests. It does not say the
 tests would notice if a door were left open.
 
 The mutation: replace one `raise Refused(...)` with `pass`, so the guard
@@ -26,18 +26,23 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TARGETS = [
     ("step-7-providers/meta.py",  "tests/meta_smoke.py"),
     ("step-7-providers/breet.py", "tests/breet_smoke.py"),
+    ("step-8-store/store.py",     "tests/store_smoke.py"),
 ]
+
+# The refusal each file raises when it will not act. Different names, same
+# job: a door being held shut.
+GUARDS = ("Refused", "Tampered")
 
 
 def refusals(path):
-    """Every `raise Refused(...)`, as (first_line, last_line, message)."""
+    """Every refusal raise, as (first_line, last_line, message)."""
     tree = ast.parse(open(path).read())
     out = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Raise) or not isinstance(node.exc, ast.Call):
             continue
         func = node.exc.func
-        if getattr(func, "id", None) != "Refused":
+        if getattr(func, "id", None) not in GUARDS:
             continue
         out.append((node.lineno, node.end_lineno, describe(node.exc)))
     return sorted(out)
@@ -64,8 +69,18 @@ def neutralise(path, first, last):
 
 
 def run(suite):
+    """Run a smoke suite against whatever is currently on disk.
+
+    PYTHONDONTWRITEBYTECODE is not tidiness. This harness rewrites a source
+    file and immediately runs it; macOS mtime has one-second granularity, so
+    a .pyc written by the previous iteration can still look current and the
+    subprocess silently executes the PREVIOUS mutation. Every verdict here
+    would then be attached to the wrong line. Found the hard way: a restored
+    file kept failing until __pycache__ was cleared.
+    """
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
     r = subprocess.run([sys.executable, os.path.join(ROOT, suite)],
-                       capture_output=True, text=True, cwd=ROOT)
+                       capture_output=True, text=True, cwd=ROOT, env=env)
     return r.returncode, (r.stdout + r.stderr)
 
 
@@ -124,8 +139,7 @@ def main():
         for b in blind:
             print("  -", b)
         return 1
-    print("every refusal in the webhook adapters is covered: delete one and a "
-          "test goes red.")
+    print("every refusal at the edges is covered: delete one and a test goes red.")
     return 0
 
 
