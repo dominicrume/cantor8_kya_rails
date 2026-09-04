@@ -1,0 +1,37 @@
+# Packaging for PyPI. The library is the receipt format and nothing else --
+# not the Daml, not the desk, not the webhooks. Someone who wants a verifiable
+# append-only record should be able to depend on that without inheriting an
+# OTC desk.
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kya-receipt-chain"
+version = "1.0.0"
+description = "A tamper-evident receipt chain that records refusals, not just successes. Zero dependencies."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Rume Dominic (O'Rume Dominic Uririe)" }]
+keywords = ["audit", "receipts", "hash-chain", "tamper-evident", "canton", "daml"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Security :: Cryptography",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+# Deliberately empty, and it is a feature rather than an omission. The whole
+# format is the standard library's json and hashlib. A dependency here would
+# be a dependency in everyone's audit trail.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/dominicrume/cantor8_kya_rails"
+Specification = "https://github.com/dominicrume/cantor8_kya_rails/blob/main/SPEC.md"
+Source = "https://github.com/dominicrume/cantor8_kya_rails"
+
+[tool.setuptools.package-data]
+kya_receipt_chain = ["vectors.json"]
