@@ -372,6 +372,19 @@ paste angle brackets, and `<` is a redirect in zsh — you get
 echoed to the screen and nothing lands in your shell history, which is where a
 secret typed on a command line lives forever.
 
+If you are reviewing this rather than building on it, there is one command:
+
+```bash
+read -rs "C8_CLIENT_SECRET?paste your DevNet secret: "; export C8_CLIENT_SECRET
+python3 tests/prove.py
+```
+
+It uses **your** credentials on **your** validator, asks Canton to break its own
+rules four ways, checks the receipt chain that produced against the ledger, then
+forges a chain in front of you — one that verifies perfectly green — and shows
+the ledger naming it as not ours. It writes a mandate and an anchor; it moves no
+coin unless you add `--move-coin`. Everything else is a read.
+
 Run the preflight first. Everything else about DevNet is already defaulted in
 `devnet_ledger.py` — the secret is the only thing you supply — and when it is
 wrong the failure used to surface three layers down as *"cannot find the
