@@ -73,6 +73,11 @@ jobs:
       - name: the whole OTC cycle holds at every join
         run: python3 tests/cycle_smoke.py
 
+      - name: the published package and the repository are the same format
+        run: |
+          python3 tests/package_smoke.py
+          cd pkg && PYTHONPATH=src python3 -m kya_receipt_chain
+
       - name: any implementation can be graded through a pipe
         run: python3 tests/conformance_any.py -- python3 impl/pipe/reference.py
 
