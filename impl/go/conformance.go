@@ -65,6 +65,19 @@ func main() {
 			continue
 		}
 		switch c.Kind {
+		case "canonical":
+			// Canonical form only. The body carries characters above 0x7E,
+			// which SPEC.md section 5 rejects before sealing -- the case
+			// exists so implementations agree on the escaping anyway, per
+			// section 4. encoding/json would escape < > and & here as well,
+			// which is why this package writes its own serialiser.
+			got, err := Canonical(c.Body)
+			if err != nil {
+				check(false, c.Name, c.Kind, err.Error())
+				continue
+			}
+			check(got == c.Canonical, c.Name, c.Kind,
+				"canonical mismatch\n      want "+c.Canonical+"\n      got  "+got)
 		case "seal":
 			got, err := Canonical(c.Body)
 			if err != nil {

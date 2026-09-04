@@ -3479,6 +3479,95 @@
         "prev": "GENESIS"
       },
       "offending_field": "rule"
+    },
+    {
+      "name": "canonical-escapes-non-ascii",
+      "kind": "canonical",
+      "why": "a naira sign, an em dash and a curly apostrophe must each become \\uXXXX. This body would be REJECTED before sealing -- the case exists so implementations agree on the canonical form anyway",
+      "body": {
+        "n": 1,
+        "what": "Pay supplier \u20a6500 \u2014 the desk\u2019s limit",
+        "amount": "1.0",
+        "currency": "CC",
+        "instrument": "Amulet",
+        "payee": "Alice",
+        "rule": "allowed",
+        "outcome": "ACCEPTED",
+        "approved_by": "owner+agent",
+        "ledger": "TESTVECTOR",
+        "at": "2026-01-01T00:00:00Z",
+        "prev": "GENESIS"
+      },
+      "canonical": "{\"amount\":\"1.0\",\"approved_by\":\"owner+agent\",\"at\":\"2026-01-01T00:00:00Z\",\"currency\":\"CC\",\"instrument\":\"Amulet\",\"ledger\":\"TESTVECTOR\",\"n\":1,\"outcome\":\"ACCEPTED\",\"payee\":\"Alice\",\"prev\":\"GENESIS\",\"rule\":\"allowed\",\"what\":\"Pay supplier \\u20a6500 \\u2014 the desk\\u2019s limit\"}"
+    },
+    {
+      "name": "prev-field-lies-while-seal-fits",
+      "kind": "chain",
+      "why": "receipt 3's seal is computed over the true running prev, so the seal check passes; only comparing the prev FIELD catches it. SPEC.md section 7 requires both and nothing tested the second",
+      "receipts": [
+        {
+          "n": 1,
+          "what": "first",
+          "amount": "1.0",
+          "currency": "CC",
+          "instrument": "Amulet",
+          "payee": "Alice",
+          "rule": "allowed",
+          "outcome": "ACCEPTED",
+          "approved_by": "owner+agent",
+          "ledger": "TESTVECTOR",
+          "at": "2026-01-01T00:00:01Z",
+          "prev": "GENESIS",
+          "seal": "b45775c4ff73f691dfd566ae64d9c76cbbf67ef2258b925e51c4b2288f528595"
+        },
+        {
+          "n": 2,
+          "what": "second",
+          "amount": "1.0",
+          "currency": "CC",
+          "instrument": "Amulet",
+          "payee": "Alice",
+          "rule": "allowed",
+          "outcome": "ACCEPTED",
+          "approved_by": "owner+agent",
+          "ledger": "TESTVECTOR",
+          "at": "2026-01-01T00:00:02Z",
+          "prev": "b45775c4ff73f691dfd566ae64d9c76cbbf67ef2258b925e51c4b2288f528595",
+          "seal": "c1de08de3701374f1d98e8ce16fd55c7eafbcd283a034f4cd2aae68a0218b5a8"
+        },
+        {
+          "n": 3,
+          "what": "third",
+          "amount": "1.0",
+          "currency": "CC",
+          "instrument": "Amulet",
+          "payee": "Alice",
+          "rule": "over the cap",
+          "outcome": "REFUSED",
+          "approved_by": "owner+agent",
+          "ledger": "TESTVECTOR",
+          "at": "2026-01-01T00:00:03Z",
+          "prev": "GENESIS",
+          "seal": "87383102601f106d2c59e7f3056d6ce77d6087c41461592766e6104b75ed6bab"
+        },
+        {
+          "n": 4,
+          "what": "fourth",
+          "amount": "1.0",
+          "currency": "CC",
+          "instrument": "Amulet",
+          "payee": "Alice",
+          "rule": "allowed",
+          "outcome": "ACCEPTED",
+          "approved_by": "owner+agent",
+          "ledger": "TESTVECTOR",
+          "at": "2026-01-01T00:00:04Z",
+          "prev": "87383102601f106d2c59e7f3056d6ce77d6087c41461592766e6104b75ed6bab",
+          "seal": "0748661db2346fd10b8880bb0851434e6d5a6c0fff78af2e6aab25b27cd05aad"
+        }
+      ],
+      "verdict": "FAIL",
+      "fail_at": 3
     }
   ]
 }

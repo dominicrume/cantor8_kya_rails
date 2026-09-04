@@ -35,7 +35,14 @@ def verify(receipts):
 
 print("KYA Receipt Chain %s - Python conformance" % V["spec_version"])
 for c in V["cases"]:
-    if c["kind"] == "seal":
+    if c["kind"] == "canonical":
+        # Canonical form only. The body carries characters above 0x7E, which
+        # SPEC.md section 5 rejects before sealing -- the case exists so that
+        # implementations agree on the escaping anyway, per section 4.
+        got_c = canonical(c["body"])
+        check(got_c == c["canonical"], c,
+              "canonical mismatch: want %s got %s" % (c["canonical"], got_c))
+    elif c["kind"] == "seal":
         got_c = canonical(c["body"])
         if got_c != c["canonical"]:
             check(False, c, "canonical mismatch: want %s got %s" % (c["canonical"], got_c))
