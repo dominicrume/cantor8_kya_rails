@@ -211,6 +211,71 @@ cases.append({
     "offending_field": "rule",
 })
 
+# Two holes found by tests/conformance_any.py, which grades an implementation
+# through a pipe and made it cheap to ask "which mistakes do the vectors NOT
+# catch?". Both of these let a wrong implementation pass all fourteen.
+
+# 1. Section 4 writes out the escape table for characters above 0x7E so that
+#    implementations agree on what they WOULD have produced, even though such
+#    a receipt is rejected before sealing. Nothing tested it, so an
+#    implementation emitting raw UTF-8 -- which JavaScript's JSON.stringify
+#    does by default, and Go's encoding/json does differently again -- passed.
+#    A canonical-only case, because sealing this body is not a legal operation.
+b_esc = body(n=1, what="Pay supplier \u20a6500 \u2014 the desk\u2019s limit",
+             amount="1.0", currency="CC", instrument="Amulet", payee="Alice",
+             rule="allowed", outcome="ACCEPTED", approved_by="owner+agent",
+             ledger="TESTVECTOR", at="2026-01-01T00:00:00Z", prev="GENESIS")
+cases.append({
+    "name": "canonical-escapes-non-ascii",
+    "kind": "canonical",
+    "why": "a naira sign, an em dash and a curly apostrophe must each become "
+           "\\uXXXX. This body would be REJECTED before sealing -- the case "
+           "exists so implementations agree on the canonical form anyway",
+    "body": b_esc,
+    "canonical": canonical(b_esc),
+})
+
+# 2. misaligned-prev-link does not test what its name says. Its receipt 3 has a
+#    wrong prev AND a seal that does not fit, so the seal check alone catches
+#    it, and an implementation that never compares the prev FIELD passed.
+#    Here receipt 3's seal is computed over the RUNNING prev while its prev
+#    field lies, so only comparing that field catches it.
+def _chain(rows):
+    out, prev = [], "GENESIS"
+    for i, (what, outcome, rule) in enumerate(rows, 1):
+        r = body(n=i, what=what, amount="1.0", currency="CC", instrument="Amulet",
+                 payee="Alice", rule=rule, outcome=outcome,
+                 approved_by="owner+agent", ledger="TESTVECTOR",
+                 at="2026-01-01T00:00:0%dZ" % i, prev=prev)
+        r["seal"] = seal(r, prev)
+        prev = r["seal"]
+        out.append(r)
+    return out
+
+liar = _chain([("first", "ACCEPTED", "allowed"),
+               ("second", "ACCEPTED", "allowed"),
+               ("third", "REFUSED", "over the cap"),
+               ("fourth", "ACCEPTED", "allowed")])
+# Rewrite receipt 3's prev to a lie, then re-seal it over the TRUE running prev
+# so the seal still fits. Receipt 4 keeps chaining from receipt 3's new seal,
+# so the only thing wrong in the whole file is one prev field.
+running_prev_at_3 = liar[1]["seal"]
+liar[2]["prev"] = "GENESIS"
+liar[2]["seal"] = seal({k: v for k, v in liar[2].items() if k != "seal"},
+                       running_prev_at_3)
+liar[3]["prev"] = liar[2]["seal"]
+liar[3]["seal"] = seal({k: v for k, v in liar[3].items() if k != "seal"},
+                       liar[2]["seal"])
+cases.append({
+    "name": "prev-field-lies-while-seal-fits",
+    "kind": "chain",
+    "why": "receipt 3's seal is computed over the true running prev, so the "
+           "seal check passes; only comparing the prev FIELD catches it. "
+           "SPEC.md section 7 requires both and nothing tested the second",
+    "receipts": liar,
+    "verdict": "FAIL", "fail_at": 3,
+})
+
 out = {
     "spec": "KYA Receipt Chain",
     "spec_version": "1.0",

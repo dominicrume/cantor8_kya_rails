@@ -53,7 +53,14 @@ function check(ok, c, detail) {
 
 console.log('KYA Receipt Chain ' + V.spec_version + ' - JavaScript conformance');
 for (const c of V.cases) {
-  if (c.kind === 'seal') {
+  if (c.kind === 'canonical') {
+    // Canonical form only. The body carries characters above 0x7E, which
+    // SPEC.md section 5 rejects before sealing -- the case exists so that
+    // implementations agree on the escaping anyway, per section 4. This is
+    // the case JSON.stringify fails by default.
+    const gotC = stableStringify(c.body);
+    check(gotC === c.canonical, c, 'canonical mismatch: want ' + c.canonical + ' got ' + gotC);
+  } else if (c.kind === 'seal') {
     const gotC = stableStringify(c.body);
     if (gotC !== c.canonical) {
       check(false, c, 'canonical mismatch: want ' + c.canonical + ' got ' + gotC);

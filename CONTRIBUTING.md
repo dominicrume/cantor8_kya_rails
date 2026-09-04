@@ -4,40 +4,68 @@ The most useful thing you can do here is **implement the receipt seal in
 another language and prove it matches.**
 
 Read [SPEC.md](SPEC.md). It is written so that a working implementation can be
-produced from the text alone. Then check yourself against
-[`tests/vectors.json`](tests/vectors.json) — 9 cases covering the base seal, key
-ordering, refusals, decimal handling, two kinds of tamper, and the two non-ASCII
-rejections.
+produced from the text alone. It is roughly **forty lines of code** in most
+languages — see [`impl/pipe/reference.py`](impl/pipe/reference.py), which is the
+whole thing.
 
-If your implementation reproduces all 9, open a pull request. If it does not,
-open an issue with the case that failed and the bytes you produced — a
-disagreement between two implementations is the most valuable bug this project
-can receive, because it means the spec is ambiguous.
+**You do not have to write a test harness.** That used to be the tax: the Go
+runner is 115 lines, nearly as much work as the format, all of it paid before
+you could find out whether you were right. Instead, read one JSON object per
+line from stdin and write one per line to stdout:
+
+```
+{"op":"canonical","body":{...}}          ->  {"out":"<the canonical string>"}
+{"op":"seal","body":{...},"prev":"..."}  ->  {"out":"<64 lowercase hex>"}
+{"op":"verify","receipts":[...]}         ->  {"out":<0, or the n that failed>}
+{"op":"reject","body":{...}}             ->  {"out":"<field>"} or {"out":null}
+```
+
+Anything you have not written yet: answer `{"skip":true}`. It is reported, not
+counted as a pass.
+
+```bash
+python3 tests/conformance_any.py -- ./your-implementation
+```
+
+That grades you against all 16 vectors in
+[`tests/vectors.json`](tests/vectors.json) and tells you which case disagreed
+and what it wanted. When it says CONFORMANT, open a pull request.
+
+If it does not, open an issue with the case that failed and the bytes you
+produced — a disagreement between two implementations is the most valuable bug
+this project can receive, because it means the spec is ambiguous, and that has
+already happened twice.
 
 ## Run the checks
 
 ```bash
 python3 tests/conformance.py     # reference implementation, Python
 node    tests/conformance.js     # reference implementation, JavaScript
-cd step-1-mandate && daml test   # the on-ledger fences, 10 scripts
+cd impl/go && go run .           # third implementation, written from the spec
+python3 tests/conformance_any.py -- python3 impl/pipe/reference.py
+cd step-1-mandate/test && daml test   # the on-ledger fences, 89 scripts
 ```
 
-All three run in CI on every pull request.
+All of these run in CI on every pull request.
 
 ## Good first contributions
 
 - **A fourth implementation** — Rust, TypeScript, Java, C#. Put it in
-  `impl/<language>/` with a runner that consumes `tests/vectors.json`.
+  `impl/<language>/`. No runner needed: speak the pipe protocol above and
+  `tests/conformance_any.py` grades it.
   [`impl/go/`](impl/go/) is the worked example: written from SPEC.md alone,
   and it earned its place by finding a real gap — the spec did not state the
   JSON escapes for quote, backslash and control characters, so the author had
   to infer them from RFC 8259. Section 4 says them now, and
   `escapes-quote-backslash-tab` is the vector that removes the guess. That is
   what a new implementation is for.
-- **A vector we do not have.** Empty strings, very long fields, a chain of one
-  thousand receipts, a `prev` that points at the wrong earlier seal. If you can
-  think of a case where two honest implementations might diverge, that case
-  belongs in the file.
+- **A vector we do not have.** This is worth as much as an implementation.
+  Two of the sixteen exist because someone asked *which wrong implementations
+  still pass?* and found that two did: one emitting raw UTF-8 rather than
+  `\uXXXX`, and one that checked every seal but never compared the `prev`
+  field. Both passed all fourteen earlier vectors. If you can think of a case
+  where two honest implementations might diverge, that case belongs in the
+  file — add it to `tests/make_vectors.py`, which generates them.
 - **An MCP server** so a language model can hold a mandate directly. The
   interesting part is that the model *feels* the refusal.
 - **A calendar-aligned period option.** The current window is rolling: the

@@ -75,6 +75,7 @@ country and deciding whether to trust the person who produced it.
 | --- | --- |
 | Attack suite green | **89 / 89** `daml test` scripts, both directions of the cycle, every choice exercised |
 | The cycle holds at every join | 15 checks over HTTP, in the order a desk works it |
+| Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
 | Every fence mutation-tested | all **30** in the Daml, and all **30** refusals at the edges — both webhook adapters and the store: delete any one and a named test goes red — enforced in CI |
 | The chain is bound to its origin | the head is published on Canton — a **fully forged** chain verifies green in all three implementations, and the ledger answers `NOT ANCHORED` |
 | The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **27** checks, including a forged journal entry that proves the limit |
@@ -396,6 +397,7 @@ the docs, and a real secret that has expired.
 The checks, all three of which run in CI:
 
 ```bash
+python3 tests/conformance_any.py -- ./your-implementation   # grade ANY language
 python3 tests/conformance.py     # seal format, Python
 node    tests/conformance.js     # seal format, JavaScript
 cd impl/go && go run .           # seal format, Go
