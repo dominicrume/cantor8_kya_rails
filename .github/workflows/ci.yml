@@ -76,7 +76,7 @@ jobs:
       - name: the published package and the repository are the same format
         run: |
           python3 tests/package_smoke.py
-          cd pkg && PYTHONPATH=src python3 -m kya_receipt_chain
+          cd pkg && PYTHONPATH=src python3 -m knowyouragenticai_receipts
 
       - name: any implementation can be graded through a pipe
         run: python3 tests/conformance_any.py -- python3 impl/pipe/reference.py
@@ -125,7 +125,7 @@ jobs:
   # nothing to install and nothing to cache -- if it imports and self-tests on
   # a version, that version is supported.
   package-python-versions:
-    name: kya-receipt-chain on every Python it claims
+    name: knowyouragenticai-receipts on every Python it claims
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -136,11 +136,11 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '${{ matrix.python-version }}' }
       - name: the package self-tests against the shipped vectors
-        run: cd pkg && PYTHONPATH=src python3 -m kya_receipt_chain
+        run: cd pkg && PYTHONPATH=src python3 -m knowyouragenticai_receipts
       - name: and its command-line verifier works
         run: |
           cd pkg
-          PYTHONPATH=src python3 -m kya_receipt_chain verify ../step-3-verify/receipts.js
+          PYTHONPATH=src python3 -m knowyouragenticai_receipts verify ../step-3-verify/receipts.js
 
   daml:
     # The fences themselves. Slower, and it needs the SDK, so it runs beside

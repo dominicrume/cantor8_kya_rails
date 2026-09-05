@@ -1,8 +1,8 @@
 """Check a receipt chain, or prove this build implements the specification.
 
-    python -m kya_receipt_chain verify receipts.json
-    python -m kya_receipt_chain verify -            # read from stdin
-    python -m kya_receipt_chain selftest            # against the shipped vectors
+    python -m knowyouragenticai_receipts verify receipts.json
+    python -m knowyouragenticai_receipts verify -            # read from stdin
+    python -m knowyouragenticai_receipts selftest            # against the shipped vectors
 
 `verify` exists because holding a receipts file and having to write code to
 check it is a barrier at exactly the wrong moment -- the person checking is
@@ -116,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_selftest()
     if args[0] == "verify":
         if len(args) < 2:
-            print("usage: python -m kya_receipt_chain verify <file|->")
+            print("usage: python -m knowyouragenticai_receipts verify <file|->")
             return 2
         return cmd_verify(args[1])
     if args[0] in ("-h", "--help", "help"):

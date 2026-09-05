@@ -6,7 +6,7 @@ log written by the party being checked can be edited afterwards, so each entry
 here is sealed to the one before it. Change any entry and every seal after it
 breaks.
 
-    from kya_receipt_chain import Chain
+    from knowyouragenticai_receipts import Chain
 
     chain = Chain()
     chain.stamp(what="payout to supplier", amount="10.0", payee="Chidi",
@@ -21,8 +21,8 @@ breaks.
 
 Check a file without writing any code:
 
-    python -m kya_receipt_chain verify receipts.json
-    python -m kya_receipt_chain selftest      # prove this build matches the spec
+    python -m knowyouragenticai_receipts verify receipts.json
+    python -m knowyouragenticai_receipts selftest      # prove this build matches the spec
 
 The format is specified in full in SPEC.md, in about a page, and is roughly
 twenty lines to implement in any language.

@@ -1,24 +1,30 @@
-# kya-receipt-chain
+# knowyouragenticai-receipts
 
-**A tamper-evident receipt chain that records refusals, not only successes.**
-Zero dependencies.
+**Let an AI agent pay, and prove what it couldn't.**
 
-Most audit logs record what happened. The artefact anyone checking your system
-actually asks for is the opposite: **what was attempted and stopped.** A log
-that only contains successes cannot answer "did you try to pay someone you
-shouldn't have?" — and it is written by the party being checked, so it can be
-edited afterwards.
+A tamper-evident record of every payment attempt — including the refusals — for
+agent-operated wallets. Built for Canton Network; works anywhere. Zero
+dependencies.
 
-This is a small format that fixes the second problem and makes the first one
-natural. Every entry is sealed to the one before it, so editing any receipt
-breaks every seal after it.
+---
+
+If you let software spend money on your behalf, someone will eventually ask you
+a question your logs cannot answer: **"what did it try to do that you stopped?"**
+
+Ordinary logs record what succeeded. That is the wrong half. The half that
+matters to an auditor, a regulator, or the person whose money it was, is the
+attempt that was refused — and whether anyone could have quietly removed it
+afterwards.
+
+This keeps both. Every attempt gets an entry, allowed or refused, and each entry
+is sealed to the one before it. Change any entry and every seal after it breaks.
 
 ```bash
-pip install kya-receipt-chain
+pip install knowyouragenticai-receipts
 ```
 
 ```python
-from kya_receipt_chain import Chain
+from knowyouragenticai_receipts import Chain
 
 chain = Chain()
 chain.stamp(what="payout to supplier", amount="10.0", payee="Chidi",
@@ -44,7 +50,7 @@ chain.verify()      # (False, 1)  -- and every seal after it is broken too
 The conformance vectors ship inside the package, so this works offline:
 
 ```bash
-python -m kya_receipt_chain
+python -m knowyouragenticai_receipts
 # CONFORMANT: 16/16 cases. This build implements the specification.
 ```
 
