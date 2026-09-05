@@ -87,6 +87,11 @@ jobs:
       - name: the verifier answers the origin question on the page
         run: node tests/origin_smoke.js
 
+      - name: the hosted page is regenerated, never hand-edited
+        run: |
+          python3 step-3-verify/build-standalone.py --pages
+          git diff --exit-code docs/index.html
+
       - name: the handed-out standalone file is self-contained and current
         run: python3 tests/standalone_smoke.py
 

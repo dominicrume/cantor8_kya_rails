@@ -44,12 +44,30 @@ def as_fragment(page):
 
 def main():
     page = build()
+    if "--pages" in sys.argv:
+        return write(hosted(page), os.path.join(HERE, "..", "docs", "index.html"))
     fragment = "--fragment" in sys.argv
     name = "kya-rails-fragment.html" if fragment else "kya-rails-standalone.html"
-    out = as_fragment(page) if fragment else page
-    path = os.path.join(HERE, name)
+    return write(as_fragment(page) if fragment else page, os.path.join(HERE, name))
+
+
+def hosted(page):
+    """The same page, titled for someone arriving from a link rather than
+    being handed a file. Generated, never hand-edited: a hosted copy that
+    drifted from the handed-out one would show two different chains under one
+    name, which is worse than having no hosted copy."""
+    return page.replace(
+        "<title>KYA Rails. Pay out abroad, prove it at home.</title>",
+        "<title>Check a payment record | KYA Rails</title>\n"
+        "<meta name=\"description\" content=\"Drop a receipts file and see "
+        "whether it was edited. Runs entirely in your browser: nothing is "
+        "uploaded, nothing is stored, works offline.\">")
+
+
+def write(out, path):
     open(path, "w").write(out)
-    print("wrote %s (%s bytes, no external files)" % (path, format(len(out), ",")))
+    print("wrote %s (%s bytes, no external files)"
+          % (os.path.relpath(path), format(len(out), ",")))
 
 
 if __name__ == "__main__":
