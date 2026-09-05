@@ -120,6 +120,28 @@ jobs:
           print("offline run: 6 receipts, 4 refusals, all labelled, all ASCII")
           PY
 
+  # requires-python = ">=3.8" was an untested claim in published metadata.
+  # This is what makes it a tested one. The package is stdlib-only, so there is
+  # nothing to install and nothing to cache -- if it imports and self-tests on
+  # a version, that version is supported.
+  package-python-versions:
+    name: kya-receipt-chain on every Python it claims
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '${{ matrix.python-version }}' }
+      - name: the package self-tests against the shipped vectors
+        run: cd pkg && PYTHONPATH=src python3 -m kya_receipt_chain
+      - name: and its command-line verifier works
+        run: |
+          cd pkg
+          PYTHONPATH=src python3 -m kya_receipt_chain verify ../step-3-verify/receipts.js
+
   daml:
     # The fences themselves. Slower, and it needs the SDK, so it runs beside
     # conformance rather than gating it.
