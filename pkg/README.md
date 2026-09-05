@@ -26,16 +26,29 @@ pip install knowyouragenticai-receipts
 ```python
 from knowyouragenticai_receipts import Chain
 
-chain = Chain()
-chain.stamp(what="payout to supplier", amount="10.0", payee="Chidi",
-            rule="inside the cap", outcome="ACCEPTED",
-            approved_by="principal", ledger="production")
-chain.stamp(what="payout to an unknown account", amount="5.0", payee="Stranger",
-            rule="payee is not on the allow-list", outcome="REFUSED",
-            approved_by="principal", ledger="production")
+chain = Chain(approved_by="finance", ledger="stripe")
+
+chain.allowed(what="invoice 41", amount="250.00", currency="USD",
+              payee="Acme Ltd", rule="under the cap")
+
+chain.refused(what="invoice 42", amount="9000.00", currency="USD",
+              payee="Unknown Co", rule="payee is not on the allow-list")
 
 chain.verify()      # (True, 0)
 chain.head          # the one value that stands for the whole chain
+```
+
+`allowed()` and `refused()` are the two things you do. Who authorised the
+payments and which rail they ran on describe the desk, not the payment, so they
+are set once when the chain is made. `stamp()` is there when you need full
+control.
+
+There is a runnable version of the whole idea in
+[`example.py`](example.py) — an agent with a spending limit, four attempts, two
+stopped, and the record being tampered with and caught:
+
+```bash
+python3 example.py
 ```
 
 Change any field of any receipt and:
@@ -44,6 +57,31 @@ Change any field of any receipt and:
 chain.receipts[0]["amount"] = "9999.0"
 chain.verify()      # (False, 1)  -- and every seal after it is broken too
 ```
+
+## Checking a file with nothing installed
+
+The person who most needs to check a payment record is the least likely to have
+a terminal open. **Drag the file onto
+[`verifier.html`](../step-3-verify/verifier.html)** — it is read in your own
+browser, nothing is uploaded, and it works with no network.
+
+Or from a shell:
+
+```bash
+python -m knowyouragenticai_receipts verify receipts.json
+```
+
+Both give three answers, and the third one matters:
+
+| | exit | |
+| --- | --- | --- |
+| **holds** | 0 | every seal recomputed; nothing was edited |
+| **BROKEN at N** | 1 | that entry or one before it was changed after the fact |
+| **not a receipt chain** | 2 | valid JSON, different kind of file — **not** an accusation |
+
+Calling an ordinary export "tampered" is a false accusation of the most serious
+kind this format makes. A wrapped chain (`{"receipts": [...]}`) is found and
+checked; a config file is told apart from a forgery.
 
 ## Prove this build implements the specification
 
