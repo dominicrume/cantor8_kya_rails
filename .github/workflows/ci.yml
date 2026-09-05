@@ -81,6 +81,9 @@ jobs:
       - name: any implementation can be graded through a pipe
         run: python3 tests/conformance_any.py -- python3 impl/pipe/reference.py
 
+      - name: anyone can check a file by dropping it on the page
+        run: node tests/checker_smoke.js
+
       - name: the verifier answers the origin question on the page
         run: node tests/origin_smoke.js
 
