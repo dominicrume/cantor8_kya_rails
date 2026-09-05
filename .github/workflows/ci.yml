@@ -110,6 +110,9 @@ jobs:
       - name: the quote outlives the process, and its history is tamper-evident
         run: python3 tests/store_smoke.py
 
+      - name: breaking a real thing makes a suite go red
+        run: python3 tests/mutation_suite.py
+
       - name: every refusal at the edges is covered by a test
         run: python3 tests/mutation_py.py
 
