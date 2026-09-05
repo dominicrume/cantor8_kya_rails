@@ -76,7 +76,7 @@ anything.
 | Conformance vectors | 9, generated from the reference implementation |
 | Daml attack suite | 11 scripts, every one named for the attack it proves |
 | Mutation tested | yes — deleting the cap assertion turns a test red |
-| Deployed on Cantor8 DevNet | package `6d13f9948206…`, vetted |
+| Deployed on Cantor8 DevNet | package `df5a02e88a68…`, vetted |
 | Refusals returned by DevNet itself | over-cap, non-allow-listed payee, expired, revoked, agent-only cap raise |
 | CI | conformance in both languages, vector reproducibility, MCP fences, Daml suite |
 | Licence | MIT |

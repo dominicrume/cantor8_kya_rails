@@ -143,13 +143,46 @@ try:
     # only place the address appears. A QR that encodes the wrong string looks
     # exactly like one that does not, and the loss is permanent.
     page = urllib.request.urlopen(BASE + "/customer.html", timeout=10).read().decode()
+
+    def body_of(fn):
+        """The whole function, by brace matching.
+
+        These checks used to read page.split("function drawQR")[1].split("}")[0]
+        -- everything up to the FIRST closing brace, which is 163 characters of
+        signature and guard. The encoder call was never in the slice, so
+        rewriting `text` to 'tron:ADDRESS?amount=999' immediately before
+        q.addData(text) passed all four of them.
+        """
+        i = page.index("function " + fn)
+        depth = 0
+        for j in range(i, len(page)):
+            if page[j] == "{":
+                depth += 1
+            elif page[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    return page[i:j + 1]
+        raise AssertionError("function %s is not closed" % fn)
+
+    qr = body_of("drawQR")
     check("drawQR(d.depositAddress)" in page,
           "the QR is handed the deposit address itself, not a derived string")
-    check("q.addData(text)" in page and "amount" not in page.split("function drawQR")[1].split("}")[0],
-          "the QR encodes the address alone -- no amount, no scheme, no extras")
-    check(page.count("copyBtn(d.depositAddress") == 1 and "class=\"val\"" in page,
-          "the address stays visible and copyable, so the QR is never the only path")
-    check("host.parentElement.style.display = 'none'" in page,
+    # What reaches the encoder, from the whole function body this time. A
+    # scheme prefix or an amount here is a payment request the customer did
+    # not agree to, scanned without being read.
+    check("q.addData(text)" in qr, "the encoder is given `text` and nothing built from it")
+    for bad in ("amount", "tron:", "bitcoin:", "ethereum:", "?", "+ text", "text +"):
+        check(bad not in qr,
+              "nothing in drawQR adds %r to what gets encoded" % bad)
+    # The address must be on screen as text, not only inside the QR image.
+    # `class="val"` alone was true of the payout account and the memo too.
+    check(page.count("copyBtn(d.depositAddress") == 1
+          and "esc(d.depositAddress)" in page,
+          "the address is rendered as text and is copyable, so the QR is never the only path")
+    # The guard, in the branch that actually guards -- this string also appears
+    # in the catch, so its mere presence proved nothing.
+    check("typeof qrcode !== 'function'" in qr
+          and "host.parentElement.style.display = 'none'" in qr,
           "if the encoder is unavailable the QR block hides rather than showing a wrong one")
 
     short = urllib.request.urlopen(BASE + "/c/" + ref, timeout=10).read().decode()

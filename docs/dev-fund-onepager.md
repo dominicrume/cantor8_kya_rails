@@ -26,9 +26,9 @@ cannot rewrite.**
 
 | | |
 | --- | --- |
-| **89** | Daml test scripts; every choice in every module exercised |
+| **92** | Daml test scripts; every choice we wrote is exercised |
 | **30** | spending fences mutation-tested — delete one, a named test goes red |
-| **3** | independent implementations of the format, conformant on 14 shared vectors |
+| **3** | independent implementations of the format, conformant on 16 shared vectors |
 | **22** | threats documented, including six the design does not defend |
 
 - **Deployed and vetted on Cantor8 DevNet.** Package `kya-rails-mandate` 1.1.0

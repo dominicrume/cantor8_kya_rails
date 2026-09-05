@@ -75,8 +75,12 @@ check(by_id[1]["result"]["serverInfo"]["name"] == "kya-rails", "initialize hands
 names = [t["name"] for t in by_id[2]["result"]["tools"]]
 check(set(names) == {"open_mandate", "charge", "revoke_mandate", "get_statement"},
       "tools/list exposes exactly the four tools")
-check("raise_cap" not in names and "set_cap" not in names,
-      "no tool exists that would let the model widen its own limit")
+# A denylist of two spellings could not see a tool called
+# `increase_spending_limit`. Assert the WHOLE set: a new tool has to be added
+# here deliberately, which is the point at which someone asks what it does.
+EXPECTED_TOOLS = {"open_mandate", "charge", "revoke_mandate", "get_statement"}
+check(set(names) == EXPECTED_TOOLS,
+      "the model is offered exactly the tools we intend, and no others")
 
 check(payload(4)["outcome"] == "ACCEPTED", "charge inside the mandate is accepted")
 check(payload(5)["outcome"] == "ACCEPTED", "second leg inside the mandate is accepted")
@@ -91,9 +95,12 @@ after = payload(9)
 check(after["outcome"] == "REFUSED", "charge after revoke REFUSED")
 
 st = payload(10)
+# The count first. This passed with stamp() appending nothing at all: an
+# empty chain verifies trivially and all([]) is True.
+check(len(st["receipts"]) >= 3, "the run actually produced receipts to verify")
 check(st["chain_verifies"] is True, "receipt chain verifies end to end")
 check(st["refused"] == 3, "all three refusals were sealed as receipts (got %s)" % st["refused"])
-check(all(r.get("ledger") for r in st["receipts"]),
+check(st["receipts"] and all(r.get("ledger") for r in st["receipts"]),
       "every receipt names the ledger that produced it")
 
 within = payload(12)

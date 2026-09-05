@@ -80,8 +80,16 @@ check("just the amount" in out, "the bot asks again rather than acting on prose"
 r = fresh()
 out = say(r, "hi", "sell", "USDT", "TRC20", "10")
 check("1250" in out and "12500" in out, "a plain number is accepted and priced")
-out = say(r, "10 usdt")   # a unit is fine
-check(True, "a number with its unit is accepted")
+# A FRESH conversation. This was `check(True, ...)` -- it asserted nothing, and
+# it passed with the unit group deleted from the bot's amount pattern. Writing
+# a real assertion revealed why it had been written that way: by this point the
+# thread has already been given an amount and moved on to choosing an account,
+# so "10 usdt" was being read as an account choice, not an amount. The bot was
+# always right; the test was in the wrong state and the tautology hid it.
+r2 = fresh()
+out = say(r2, "hi", "sell", "USDT", "TRC20", "10 usdt")
+check("1250" in out and "12500" in out,
+      "an amount given with its unit is accepted and priced")
 
 # --- the account ------------------------------------------------------------
 r = fresh()

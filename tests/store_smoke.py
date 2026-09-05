@@ -55,7 +55,12 @@ deal = rail.cycle.open_deal("Chidi", "USDT", "TRC20", 10.0, 1250.0, ACCT,
 ref, addr = deal["reference"], deal["depositAddress"]
 rail.on_message("2348012345678", "hi")
 rail.persist()
-check(os.path.exists(db), "10:02 the quote is written to disk as it is issued")
+# os.path.exists was true the moment sqlite3.connect() ran, before anything
+# was recorded -- it passed with Rail.persist() returning immediately. Count
+# the rows instead.
+import sqlite3 as _sq
+_n = _sq.connect(db).execute("SELECT COUNT(*) FROM journal").fetchone()[0]
+check(_n > 0, "10:02 the quote is written to disk as it is issued (%d entries)" % _n)
 
 _m2, back = rail_on(db)                       # 12:40 the laptop sleeps
 check(back.restored == 1, "12:40 after a restart the desk still holds 1 open deal")
@@ -67,8 +72,13 @@ check(back.cycle.deals[ref]["depositAddress"] == addr,
 check(len(back.transcript) == 2, "the conversation survived too")
 
 # The stranger. The desk can now contradict them, which is the entire point.
+# `held != THIEF` compared the value against a string that is never written
+# anywhere, so it survived the account being wiped to "". Assert what the
+# quote actually still says, and that the desk refuses the stranger's claim.
 held = back.cycle.deals[ref]["payoutAccount"]
-check(held != THIEF, "a stranger naming their own account does not match the quote")
+check(held == ACCT, "the account on the restored quote is the one issued at 10:02")
+check(back.cycle.pay(ref, THIEF, 10.0)["outcome"] == "REFUSED",
+      "and the desk refuses a stranger naming their own account")
 
 # --- the receipt chain survives and still verifies --------------------------
 _m3, r3 = rail_on(db)

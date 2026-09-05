@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 /* The drop-a-file checker, exercised as the code that actually ships.
  *
- * This pulls the `checker` IIFE out of verifier.html and runs it against a
- * stub DOM, so what is tested is the bytes a reader's browser executes rather
- * than a re-implementation that could pass while the page does otherwise.
+ * This pulls the `checker` IIFE out of verifier.html AND the verification it
+ * depends on -- stableStringify, sha256, badFrom, esc -- so what runs is the
+ * page's own code.
+ *
+ * It did not always. The first version injected its own stableStringify,
+ * sha256 and badFrom into the VM, so the checker resolved them from the test
+ * rather than from the page: with the page's badFrom stubbed to `return 0`,
+ * every one of these checks still passed, including "a tampered chain is
+ * BROKEN". A test that supplies the thing it is testing tests nothing, and
+ * this file said in its own header that it did the opposite.
  *
  * The case that matters most is the one that used to be wrong: a file that is
  * NOT a receipt chain must never be reported as a BROKEN one. "Broken" says
@@ -20,18 +27,21 @@ const page = fs.readFileSync(path.join(ROOT, 'step-3-verify/verifier.html'), 'ut
 const rjs = fs.readFileSync(path.join(ROOT, 'step-3-verify/receipts.js'), 'utf8');
 const REAL = JSON.parse(rjs.slice(rjs.indexOf('['), rjs.lastIndexOf(']') + 1));
 
-const start = page.indexOf('(function checker(){');
-if (start < 0) { console.log('FAIL: the checker block is not in verifier.html'); process.exit(1); }
-const source = page.slice(start, page.indexOf('\n})();', start) + 6);
+function fromPage(start, end) {
+  const a = page.indexOf(start);
+  if (a < 0) throw new Error('verifier.html no longer contains: ' + start);
+  const b = page.indexOf(end, a);
+  if (b < 0) throw new Error('could not find the end of: ' + start);
+  return page.slice(a, b + end.length);
+}
+
+const source = fromPage('(function checker(){', '\n})();');
 
 const fails = [];
 function check(ok, what) {
   console.log('  ' + (ok ? 'PASS' : 'FAIL') + ' ' + what);
   if (!ok) fails.push(what);
 }
-
-// Built from escapes so this file stays pure ASCII.
-const HIGH = new RegExp('[\\u0080-\\uffff]', 'g');
 
 // A DOM just big enough for the shipped block to run against.
 function harness() {
@@ -41,28 +51,22 @@ function harness() {
   const nodes = {cDrop: node(), cFile: node(), cVerdict: node(), cPrompt: node()};
   const ctx = {
     document: {getElementById: id => nodes[id] || null, addEventListener(){}},
-    esc: s => String(s).replace(/[&<>"']/g, c =>
-      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
-    stableStringify: o => {
-      const e = s => s.replace(HIGH,
-        c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
-      const ss = v => (v === null || typeof v !== 'object') ? e(JSON.stringify(v))
-        : Array.isArray(v) ? '[' + v.map(ss).join(',') + ']'
-        : '{' + Object.keys(v).sort().map(k => e(JSON.stringify(k)) + ':' + ss(v[k])).join(',') + '}';
-      return ss(o);
-    },
-    sha256: async s => crypto.createHash('sha256').update(s, 'utf8').digest('hex'),
     setTimeout, console,
+    // Node has no WebCrypto under this name in every version; the page uses
+    // crypto.subtle.digest. This is the ONE thing supplied, because it is the
+    // platform, not the page's logic.
+    crypto: {subtle: {digest: async (_alg, buf) =>
+      crypto.createHash('sha256').update(Buffer.from(buf)).digest().buffer}},
+    TextEncoder,
   };
-  ctx.badFrom = async rs => {
-    let prev = 'GENESIS';
-    for (const r of rs) {
-      const body = {}; for (const k in r) if (k !== 'seal') body[k] = r[k];
-      if (r.prev !== prev || await ctx.sha256(ctx.stableStringify(body) + prev) !== r.seal) return r.n;
-      prev = r.seal;
-    }
-    return 0;
-  };
+  vm.createContext(ctx);
+  // The page's own canonicalisation, hashing, chain check and escaping. If
+  // verifier.html stops defining any of them this throws, rather than quietly
+  // falling back to a copy that would hide the difference.
+  vm.runInContext(fromPage('function escapeNonAscii', "+'}'; }"), ctx);
+  vm.runInContext(fromPage('async function sha256', "join(''); }"), ctx);
+  vm.runInContext(fromPage('async function badFrom', 'return 0; }'), ctx);
+  vm.runInContext(fromPage('const esc =', "[c]));"), ctx);
   ctx.FileReader = class {
     readAsText(f) { this.result = f._text; setTimeout(() => this.onload && this.onload(), 0); }
   };

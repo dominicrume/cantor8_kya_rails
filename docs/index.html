@@ -160,91 +160,91 @@ const RECEIPTS = [
     "n": 1,
     "what": "Payout to a verified recipient",
     "amount": "0.2",
-    "payee": "VerifiedRecipient (kya-customer-1)",
+    "payee": "VerifiedRecipient",
     "currency": "CC",
-    "instrument": "Amulet (recorded, not transferred)",
-    "rule": "cap and allow-list satisfied, committed on DevNet",
+    "instrument": "Amulet (MOCKED, no coin moves)",
+    "rule": "cap 0.5, spent 0.2, payee on allow-list",
     "outcome": "ACCEPTED",
     "approved_by": "mandate signed by Principal + Operator",
-    "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-04T15:20:41Z",
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-09-05T14:06:57Z",
     "prev": "GENESIS",
-    "seal": "7fb940551896b44ae111e234fac7abb2126bc83f7b070730cf8716e53bace6f1"
+    "seal": "6c01490e4e14f2e2ad87be74def8c8bb76e2d41f441e6f79931b1576abaf7f55"
   },
   {
     "n": 2,
     "what": "Settle with the liquidity partner",
     "amount": "0.1",
-    "payee": "SettlementPartner (kya-partner-1)",
+    "payee": "SettlementPartner",
     "currency": "CC",
-    "instrument": "Amulet (recorded, not transferred)",
-    "rule": "cap and allow-list satisfied, committed on DevNet",
+    "instrument": "Amulet (MOCKED, no coin moves)",
+    "rule": "cap 0.5, spent 0.3, payee on allow-list",
     "outcome": "ACCEPTED",
     "approved_by": "mandate signed by Principal + Operator",
-    "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-04T15:20:46Z",
-    "prev": "7fb940551896b44ae111e234fac7abb2126bc83f7b070730cf8716e53bace6f1",
-    "seal": "46606815f7d6e35488b9f117225b95e15dba3e69e62eff7b09dbf721ee79e62e"
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-09-05T14:06:57Z",
+    "prev": "6c01490e4e14f2e2ad87be74def8c8bb76e2d41f441e6f79931b1576abaf7f55",
+    "seal": "3273bb8aaeb86b92ca49ab85fe511c727282355d36628926fd56802d08be1900"
   },
   {
     "n": 3,
     "what": "ATTACK: operator exceeds the float",
     "amount": "0.3",
-    "payee": "VerifiedRecipient (kya-customer-1)",
+    "payee": "VerifiedRecipient",
     "currency": "CC",
-    "instrument": "Amulet (recorded, not transferred)",
+    "instrument": "Amulet (MOCKED, no coin moves)",
     "rule": "charge would exceed the cap",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by Principal + Operator",
-    "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-04T15:20:46Z",
-    "prev": "46606815f7d6e35488b9f117225b95e15dba3e69e62eff7b09dbf721ee79e62e",
-    "seal": "24de12dd030b050cdc10316cfce4de65fb9e1b961191d0b5eb5bdb481aa233ec"
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-09-05T14:06:57Z",
+    "prev": "3273bb8aaeb86b92ca49ab85fe511c727282355d36628926fd56802d08be1900",
+    "seal": "07f50f282341b51661036527c369fe71f2fbf754ac45678db83d4522a2914cfb"
   },
   {
     "n": 4,
     "what": "ATTACK: change of account, send here",
     "amount": "0.1",
-    "payee": "UnverifiedAccount (kya-unverified-1)",
+    "payee": "UnverifiedAccount",
     "currency": "CC",
-    "instrument": "Amulet (recorded, not transferred)",
+    "instrument": "Amulet (MOCKED, no coin moves)",
     "rule": "payee is not on the allow-list",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by Principal + Operator",
-    "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-04T15:20:46Z",
-    "prev": "24de12dd030b050cdc10316cfce4de65fb9e1b961191d0b5eb5bdb481aa233ec",
-    "seal": "b0d0195379f5611c844c70c861001eedbeb540d33541948eb6b420dc2027ef69"
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-09-05T14:06:57Z",
+    "prev": "07f50f282341b51661036527c369fe71f2fbf754ac45678db83d4522a2914cfb",
+    "seal": "94f0edb0134c69de0921233bff4c8577e0210dd307732332c9c095db6292c4f1"
   },
   {
     "n": 5,
     "what": "ATTACK: payout after the mandate expired",
     "amount": "0.1",
-    "payee": "VerifiedRecipient (kya-customer-1)",
+    "payee": "VerifiedRecipient",
     "currency": "CC",
-    "instrument": "Amulet (recorded, not transferred)",
+    "instrument": "Amulet (MOCKED, no coin moves)",
     "rule": "mandate expired",
     "outcome": "REFUSED",
     "approved_by": "mandate signed by Principal + Operator, clock past expiresAt",
-    "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-04T15:20:54Z",
-    "prev": "b0d0195379f5611c844c70c861001eedbeb540d33541948eb6b420dc2027ef69",
-    "seal": "9ba945ecb33811322899012a9c36a1be5a83e3f8a5ef8c758cf8a0ee0d9f365b"
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-09-05T14:06:57Z",
+    "prev": "94f0edb0134c69de0921233bff4c8577e0210dd307732332c9c095db6292c4f1",
+    "seal": "743661ed55d5ffd794a86c3cebe94112c569129b8e9c661c22658774d0652153"
   },
   {
     "n": 6,
     "what": "ATTACK: payout after the principal revoked",
     "amount": "0.1",
-    "payee": "VerifiedRecipient (kya-customer-1)",
+    "payee": "VerifiedRecipient",
     "currency": "CC",
-    "instrument": "Amulet (recorded, not transferred)",
+    "instrument": "Amulet (MOCKED, no coin moves)",
     "rule": "Revoke: mandate no longer active on the ledger",
     "outcome": "REFUSED",
     "approved_by": "principal exercised Revoke",
-    "ledger": "DevNet (real Canton, package df5a02e88a68)",
-    "at": "2026-09-04T15:21:06Z",
-    "prev": "9ba945ecb33811322899012a9c36a1be5a83e3f8a5ef8c758cf8a0ee0d9f365b",
-    "seal": "54767e0222b75f988cd49eec1da8159649a3c04721118f3a4f1905c15e299b9e"
+    "ledger": "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)",
+    "at": "2026-09-05T14:06:57Z",
+    "prev": "743661ed55d5ffd794a86c3cebe94112c569129b8e9c661c22658774d0652153",
+    "seal": "c7191d74d679f8897dd71b67e20e95fd55aaf017963b4f4885727f3dd940c36a"
   }
 ];
 </script>
@@ -275,9 +275,20 @@ let shownReceipts = 0, playing = false;
 const SYMBOL = {CC:'\u20b5', USD:'$', GBP:'\u00a3', EUR:'\u20ac'};
 const money = r => (SYMBOL[r.currency]||'') + r.amount + ' ' + (r.currency||'CC');
 
-function stableStringify(o){ if(o===null||typeof o!=='object') return JSON.stringify(o);
+// SPEC.md section 4: non-ASCII MUST be escaped to \uXXXX. JSON.stringify emits
+// the raw character, so a page relying on it seals the same receipt to a
+// different hash than Python does -- the chain verifies in one and goes red in
+// the other. This page shipped without it: it failed the
+// canonical-escapes-non-ascii vector, which exists precisely to catch this,
+// and tests/conformance.js did not notice because it carried its OWN copy of
+// this function with the escaping already in it.
+function escapeNonAscii(s){
+  return s.replace(/[\u0080-\uffff]/g,
+    c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+}
+function stableStringify(o){ if(o===null||typeof o!=='object') return escapeNonAscii(JSON.stringify(o));
   if(Array.isArray(o)) return '['+o.map(stableStringify).join(',')+']';
-  return '{'+Object.keys(o).sort().map(k=>JSON.stringify(k)+':'+stableStringify(o[k])).join(',')+'}'; }
+  return '{'+Object.keys(o).sort().map(k=>escapeNonAscii(JSON.stringify(k))+':'+stableStringify(o[k])).join(',')+'}'; }
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
   return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''); }
 async function badFrom(rs){ let prev='GENESIS';

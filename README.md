@@ -8,8 +8,8 @@ Two parts, and the second one is not about Canton:
 
 1. **[SPEC.md](SPEC.md)** — an open format for tamper-evident receipts of agent
    actions, **including the actions that were refused**. Stdlib-only, no
-   signatures, no network to verify. Two independent implementations and
-   [14 conformance vectors](tests/vectors.json). Three independent
+   signatures, no network to verify. Three independent implementations and
+   [16 conformance vectors](tests/vectors.json). Three independent
    implementations agree.
 2. **A reference application** — the spend-limited wallet D1 asks for, with the
    limits enforced in a Daml choice body.
@@ -73,17 +73,17 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **89 / 89** `daml test` scripts, both directions of the cycle, every choice exercised |
-| The cycle holds at every join | 15 checks over HTTP, in the order a desk works it |
+| Attack suite green | **92 / 92** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 28 of 42 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered |
+| The cycle holds at every join | 26 checks over HTTP, in the order a desk works it |
 | Installable | `pip install knowyouragenticai-receipts` — the format alone, zero dependencies, with the vectors inside it so `python -m knowyouragenticai_receipts` self-tests offline |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
-| Every fence mutation-tested | all **30** in the Daml, and all **30** refusals at the edges — both webhook adapters and the store: delete any one and a named test goes red — enforced in CI |
+| Every fence mutation-tested | all **30** in the Daml, and **24 of the 30** refusals at the edges by a named test — the other six are load-bearing but fail as a traceback, which `tests/mutation_py.py` now says out loud instead of counting as coverage |
 | The chain is bound to its origin | the head is published on Canton — a **fully forged** chain verifies green in all three implementations, and the ledger answers `NOT ANCHORED` |
-| The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **27** checks, including a forged journal entry that proves the limit |
+| The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **35** checks, including a forged journal entry that proves the limit |
 | The deposit door | **30** attacks on the adapter + **15** over a real socket, including the X-Forwarded-For spoof that defeats a naive IP allowlist |
-| The WhatsApp door | **54** attacks on the adapter + **14** over a real socket: unsigned, wrongly signed, signed-for-another-body, replayed, day-old, another business account, delivery reports, hostile display names |
+| The WhatsApp door | **54** attacks on the adapter + **15** over a real socket: unsigned, wrongly signed, signed-for-another-body, replayed, day-old, another business account, delivery reports, hostile display names |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
-| Deployed on Cantor8 DevNet | `kya-rails-mandate` 1.0.0, package `df5a02e88a68…`, vetted |
+| Deployed on Cantor8 DevNet | `kya-rails-mandate` 1.1.0, vetted as an upgrade of 1.0.0. The mandate templates carry package `df5a02e88a68…` from 1.0.0; `KyaAnchor` arrived in 1.1.0 as `fd3f43a273be…`, and both are vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
 | Receipt chain | 6 receipts, 2 accepted, 4 refused, chain verifies end to end |
 | Tamper evident | edit one receipt, every later seal breaks |
@@ -431,7 +431,7 @@ when the problem is your token. The preflight separates the three cases that
 look identical from the outside: no secret, the `...` placeholder pasted from
 the docs, and a real secret that has expired.
 
-The checks, all three of which run in CI:
+The checks, all of which run in CI:
 
 ```bash
 python3 tests/conformance_any.py -- ./your-implementation   # grade ANY language
@@ -448,7 +448,7 @@ python3 tests/store_smoke.py     # the quote outlives the process; history is ta
 python3 tests/anchor_smoke.py    # the agent anchors the chain it wrote, or says it did not
 python3 tests/standalone_smoke.py # the handed-out file is self-contained and current
 python3 tests/complexity_lint.py # no function over the ceiling without a written reason
-cd step-1-mandate && daml build && cd test && daml test   # 89 scripts
+cd step-1-mandate && daml build && cd test && daml test   # 92 scripts
 ```
 
 ---
@@ -545,16 +545,16 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [step-1-mandate/daml/KyaQuote.daml](step-1-mandate/daml/KyaQuote.daml) | the quote. Binds a payout account to the person who asked, **before the deposit exists**. |
 | [step-1-mandate/daml/KyaCycle.daml](step-1-mandate/daml/KyaCycle.daml) | crypto in, naira out: the deposit instruction and the off-taker leg. |
 | [step-1-mandate/daml/KyaInbound.daml](step-1-mandate/daml/KyaInbound.daml) | naira in, crypto out: the fake-alert fence and the outbound network. |
-| [step-1-mandate/daml/KyaTest.daml](step-1-mandate/daml/KyaTest.daml) | every test is named after the attack it proves |
+| [step-1-mandate/test/daml/KyaTest.daml](step-1-mandate/test/daml/KyaTest.daml) | every test is named after the attack it proves |
 | [step-2-agent/DEVNET-PARTIES.md](step-2-agent/DEVNET-PARTIES.md) | DevNet parties, rights, and the traps that cost us hours |
 | [SPEC.md](SPEC.md) | the receipt format, written to be implemented from the text alone |
-| [docs/threat-model.md](docs/threat-model.md) | fourteen threats, several undefended and said so |
+| [docs/threat-model.md](docs/threat-model.md) | twenty-two threats, several undefended and said so |
 | [docs/privacy-matrix.md](docs/privacy-matrix.md) | who sees what, who is excluded — generated from the Daml, checked in CI |
 | [docs/upgrade-path.md](docs/upgrade-path.md) | how we failed Canton's upgrade check, and the rules that came out of it |
 | [docs/wallet-providers.md](docs/wallet-providers.md) | where the addresses would come from, and what to ask a provider |
 | [docs/dev-fund-onepager.md](docs/dev-fund-onepager.md) | the Canton Development Fund ask in one page, including what it does not claim |
 | [docs/complexity.md](docs/complexity.md) | the one function allowed to be complicated, and the reason it is |
-| [tests/vectors.json](tests/vectors.json) | 9 conformance vectors. Where the spec and a vector disagree, the vector wins. |
+| [tests/vectors.json](tests/vectors.json) | 16 conformance vectors. Where the spec and a vector disagree, the vector wins. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | start here — the most useful contribution is a third implementation |
 
 ---

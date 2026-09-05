@@ -11,12 +11,29 @@ def canonical(d):
     # browser. Proven: "\u20a6" seals 89e828df..., "N" raw seals 71e44b13...
     return json.dumps(d, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
+def _non_ascii_anywhere(value):
+    """Is there a character above 0x7E anywhere in here, however deeply nested?
+
+    SPEC.md section 5 says ANY field, and this only looked at the top level:
+    {"what": "Pay \u20a6500"} was refused and {"what": {"note": "Pay
+    \u20a6500"}} sailed through. The fix reached pkg/ and never reached here --
+    the implementation the specification actually names.
+    """
+    if isinstance(value, str):
+        return not value.isascii()
+    if isinstance(value, dict):
+        return any(_non_ascii_anywhere(k) or _non_ascii_anywhere(v)
+                   for k, v in value.items())
+    if isinstance(value, (list, tuple)):
+        return any(_non_ascii_anywhere(v) for v in value)
+    return False
+
+
 def _first_non_ascii(d):
     """The first field carrying a character outside ASCII, or (None, None)."""
     for k, v in d.items():
-        for text in (k, v):
-            if isinstance(text, str) and not text.isascii():
-                return k, text
+        if _non_ascii_anywhere(k) or _non_ascii_anywhere(v):
+            return k, v if isinstance(v, str) else canonical(v)
     return None, None
 
 

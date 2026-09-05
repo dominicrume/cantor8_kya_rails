@@ -1,28 +1,39 @@
 #!/usr/bin/env node
-/* Prove the JavaScript implementation conforms to SPEC.md.
+/* Prove the JavaScript that SHIPS conforms to SPEC.md.
  *
- * This is the implementation that ships in verifier.html, extracted so CI can
- * run it. If this and conformance.py ever disagree, the receipt chain is
- * broken across languages and the format is worthless -- which is exactly the
- * failure this file exists to catch.
+ * It now reads stableStringify out of verifier.html rather than carrying a
+ * copy. That distinction is not pedantry: this file used to have its own copy
+ * WITH the non-ASCII escaping, while the page shipped a version WITHOUT it. So
+ * "CONFORMANT: 16/16 cases" was true of this file and false of the page, for
+ * as long as the two differed -- and canonical-escapes-non-ascii, the vector
+ * written specifically to catch that class of bug, could never see it.
+ *
+ * A test that re-implements its subject tests nothing. checker_smoke.js and
+ * origin_smoke.js already read the page; this one did not, and the one that
+ * did not is the one that was wrong.
  *
  * Run: node tests/conformance.js
  */
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const V = JSON.parse(fs.readFileSync(path.join(__dirname, 'vectors.json'), 'utf8'));
 
-// SPEC.md section 4. JSON.stringify neither sorts keys nor escapes non-ASCII,
-// so neither can be relied on: both are done explicitly here.
-function escapeNonAscii(s) {
-  return s.replace(/[\u0080-\uffff]/g,
-    c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+// Lifted out of the page itself. If verifier.html stops defining these, this
+// throws rather than silently falling back to a local copy -- a fallback would
+// reintroduce exactly the blindness this replaced.
+const PAGE = fs.readFileSync(
+  path.join(__dirname, '..', 'step-3-verify', 'verifier.html'), 'utf8');
+
+function fromPage(start, end) {
+  const a = PAGE.indexOf(start);
+  if (a < 0) throw new Error('verifier.html no longer contains: ' + start);
+  const b = PAGE.indexOf(end, a);
+  if (b < 0) throw new Error('could not find the end of: ' + start);
+  return PAGE.slice(a, b + end.length);
 }
-function stableStringify(o) {
-  if (o === null || typeof o !== 'object') return escapeNonAscii(JSON.stringify(o));
-  if (Array.isArray(o)) return '[' + o.map(stableStringify).join(',') + ']';
-  return '{' + Object.keys(o).sort().map(
-    k => escapeNonAscii(JSON.stringify(k)) + ':' + stableStringify(o[k])).join(',') + '}';
-}
+
+const { escapeNonAscii, stableStringify } = new Function(
+  fromPage('function escapeNonAscii', "+'}'; }")
+  + '; return { escapeNonAscii, stableStringify };')();
 const sha256 = s => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
 const seal = (body, prev) => sha256(stableStringify(body) + prev);
 

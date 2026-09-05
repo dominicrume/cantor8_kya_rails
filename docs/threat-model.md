@@ -83,7 +83,7 @@ detectable event; we do not do this yet.
 
 A chain verifying on the server and failing in the browser destroys the
 guarantee, and the failure is silent until someone checks.
-**Defence:** one specification, ten conformance vectors, three independent
+**Defence:** one specification, sixteen conformance vectors, three independent
 implementations, all in CI. `assert_ascii` refuses to seal what a verifier
 could not reproduce.
 **Residual risk:** the vectors cover what we thought to test. The Go
@@ -413,9 +413,14 @@ the ledger, sanctions and AML screening of counterparties, and the legal
 question of who may move money where. The last is a licensing matter and no
 amount of Daml addresses it.
 
-## Ranked, honestly
+## Grouped by what is left, honestly
 
-| | Risk | Status |
+The first column is a severity BAND, not a rank: several threats share a band
+and the rows are not in order within one. It was headed as a ranking, and a
+ranking whose numbers repeat twelve times and do not ascend is not a ranking --
+it just looks like one, which is worse than an honest grouping.
+
+| Band | Risk | Status |
 | --- | --- | --- |
 | 1 | Principal's key stolen (T4) | not defended; out of scope, and the biggest hole |
 | 2 | Chain not bound to origin (T5) | **defended** — the head is anchored on Canton; a forged chain verifies green and the ledger says NOT ANCHORED |

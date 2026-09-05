@@ -123,8 +123,9 @@ def check_file(rel, suite, only):
 
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
-    blind, crashed = [], []
+    blind, crashed, total = [], [], 0
     for rel, suite in TARGETS:
+        total += len(refusals(os.path.join(ROOT, rel)))
         b, c = check_file(rel, suite, only)
         blind += b
         crashed += c
@@ -134,11 +135,28 @@ def main():
         for c in crashed:
             print("  -", c)
         print()
+        print("These are load-bearing -- deleting them breaks something -- but a")
+        print("traceback is not a named test going red, and this file's own")
+        print("docstring says so. Until each has an assertion that names it,")
+        print("coverage is %d of %d, not all of them."
+              % (total - len(crashed) - len(blind), total))
     if blind:
         print("MUTATION TESTING FAILED - %d refusal(s) not covered:" % len(blind))
         for b in blind:
             print("  -", b)
         return 1
+    named = total - len(crashed) - len(blind)
+    if crashed:
+        # Deliberately not a failure. A crash proves the refusal is
+        # load-bearing -- delete it and something breaks -- which is weaker
+        # than a named test but is not nothing, and it cannot be improved:
+        # removing the guard makes the code after it raise, so no assertion
+        # can run to name it. What was wrong was printing "every refusal is
+        # covered" over the top of this and letting README.md repeat it.
+        print("%d of %d refusals are covered by a NAMED test; the %d above are"
+              % (named, total, len(crashed)))
+        print("load-bearing but fail as a traceback. None are uncovered.")
+        return 0
     print("every refusal at the edges is covered: delete one and a test goes red.")
     return 0
 
