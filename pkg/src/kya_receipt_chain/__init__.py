@@ -1,8 +1,10 @@
-"""A tamper-evident receipt chain that records refusals, not only successes.
+"""A tamper-evident record of what an agent was refused, not only what it did.
 
-Most audit logs record what happened. This records what was *attempted and
-stopped*, which is the artefact anyone checking your system actually asks for
--- and it seals each entry to the one before, so editing history is detectable.
+Most audit logs record what happened. The artefact anyone checking your system
+actually asks for is the opposite: **what was attempted and stopped.** And a
+log written by the party being checked can be edited afterwards, so each entry
+here is sealed to the one before it. Change any entry and every seal after it
+breaks.
 
     from kya_receipt_chain import Chain
 
@@ -14,15 +16,18 @@ stopped*, which is the artefact anyone checking your system actually asks for
                 payee="Stranger", rule="payee is not on the allow-list",
                 outcome="REFUSED", approved_by="principal", ledger="production")
 
-    ok, first_bad = chain.verify()      # (True, 0)
+    chain.verify()          # (True, 0)
+    chain.head              # the one value that stands for the whole chain
 
-The format is specified in full at SPEC.md in the repository, in about a page.
-It is roughly twenty lines to implement, and there are conformance vectors so a
-new implementation can prove itself:
+Check a file without writing any code:
 
-    python -m kya_receipt_chain          # self-test against the shipped vectors
+    python -m kya_receipt_chain verify receipts.json
+    python -m kya_receipt_chain selftest      # prove this build matches the spec
 
-WHAT THIS DOES NOT DO, stated here because a format that oversells itself is
+The format is specified in full in SPEC.md, in about a page, and is roughly
+twenty lines to implement in any language.
+
+WHAT THIS DOES NOT DO, said here because a format that oversells itself is
 worse than none:
 
   * It is not signed. It proves internal consistency, not origin -- anyone can
@@ -30,18 +35,23 @@ worse than none:
     final seal to something you do not control if origin matters. The reference
     application publishes it on a Canton ledger.
   * It does not prove a rule was enforced. `rule` is a string. The guarantee
-    comes from wherever the decision was made.
-  * It makes editing detectable, not deletion. Publish the final seal somewhere
-    else if discarding the whole chain matters.
+    comes from wherever the decision was actually made.
+  * It makes editing detectable, not deletion. Publish the head somewhere else
+    if discarding the whole chain matters.
 
-Zero dependencies, by design: the whole format is `json` and `hashlib`. A
-dependency here would be a dependency in everyone's audit trail.
+Zero dependencies: the whole format is `json` and `hashlib`. A dependency here
+would be a dependency in everyone's audit trail.
 """
-import hashlib, json, time
+from __future__ import annotations
+
+import hashlib
+import json
+import time
+from typing import Any, Iterable, Mapping, Sequence
 
 __version__ = "1.0.0"
 __all__ = ["canonical", "seal", "verify", "assert_ascii", "Chain",
-           "NonAsciiInReceipt", "GENESIS"]
+           "NonAsciiInReceipt", "BrokenChain", "GENESIS"]
 
 GENESIS = "GENESIS"
 
@@ -56,12 +66,21 @@ class NonAsciiInReceipt(ValueError):
     """
 
 
-def canonical(obj):
+class BrokenChain(ValueError):
+    """Refusing to append to a chain that does not verify.
+
+    Extending a chain whose history has been altered produces more entries that
+    look correct on their own while resting on something that is not. The break
+    must be dealt with, not built on.
+    """
+
+
+def canonical(obj: Any) -> str:
     """The exact bytes that get hashed: sorted keys, no spaces, ASCII-escaped."""
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
-def seal(body, prev):
+def seal(body: Mapping[str, Any], prev: str) -> str:
     """sha256(canonical(body) + prev), lowercase hex.
 
     `body` is the receipt without its own `seal` key. `prev` is the previous
@@ -70,19 +89,37 @@ def seal(body, prev):
     return hashlib.sha256((canonical(body) + prev).encode()).hexdigest()
 
 
-def _first_non_ascii(d):
+def _non_ascii_field(value: Any) -> bool:
+    """Is there a character above 0x7E anywhere in here, however deeply nested?
+
+    Nested values used to be skipped, so {"what": "Pay \\u20a6500"} was rejected
+    and {"what": {"note": "Pay \\u20a6500"}} was not. Every implementation
+    escapes nested strings consistently, so nothing sealed wrongly -- but the
+    rule did not do what its own name said.
+    """
+    if isinstance(value, str):
+        return not value.isascii()
+    if isinstance(value, Mapping):
+        return any(_non_ascii_field(k) or _non_ascii_field(v)
+                   for k, v in value.items())
+    if isinstance(value, (list, tuple)):
+        return any(_non_ascii_field(v) for v in value)
+    return False
+
+
+def _first_non_ascii(d: Mapping[str, Any]) -> tuple[str | None, Any]:
     for key, value in d.items():
-        for text in (key, value):
-            if isinstance(text, str) and not text.isascii():
-                return key, text
+        if _non_ascii_field(key) or _non_ascii_field(value):
+            return key, value
     return None, None
 
 
-def assert_ascii(d):
-    """Raise NonAsciiInReceipt if any key or string value is not ASCII."""
-    field, text = _first_non_ascii(d)
+def assert_ascii(d: Mapping[str, Any]) -> None:
+    """Raise NonAsciiInReceipt if any key or value, at any depth, is not ASCII."""
+    field, value = _first_non_ascii(d)
     if field is None:
         return
+    text = value if isinstance(value, str) else canonical(value)
     bad = [c for c in text if not c.isascii()]
     raise NonAsciiInReceipt(
         "field %r contains %s, which would seal differently in another "
@@ -90,17 +127,39 @@ def assert_ascii(d):
         % (field, ", ".join(repr(c) for c in bad[:3])))
 
 
-def verify(receipts):
-    """(True, 0) if the chain holds, else (False, n of the first bad receipt).
+def _position(r: Any, index: int) -> int:
+    """Where a receipt is, for reporting: its own `n` when that is usable, and
+    otherwise its 1-based place in the list. A receipt too damaged to carry a
+    number still has to be locatable."""
+    if isinstance(r, Mapping) and isinstance(r.get("n"), int):
+        return r["n"]
+    return index
 
-    Both the seal and the `prev` link are checked. A chain whose seals all
-    recompute but whose links do not line up is not a chain.
+
+def verify(receipts: Sequence[Any]) -> tuple[bool, int]:
+    """(True, 0) if the chain holds, else (False, where it first fails).
+
+    NEVER RAISES. This is the function you point at a file someone else gave
+    you, so malformed input is an answer, not an exception: a list of nulls, a
+    list of strings, a receipt missing its seal, all come back as a verdict.
+    It used to raise AttributeError on any of those.
+
+    The position is the receipt's own `n` when that is a usable integer, and
+    otherwise its 1-based place in the list -- so a receipt too damaged to
+    carry a number still gets located.
     """
     prev = GENESIS
-    for r in receipts:
+    for index, r in enumerate(receipts, start=1):
+        where = _position(r, index)
+        if not isinstance(r, Mapping):
+            return False, where
         body = {k: v for k, v in r.items() if k != "seal"}
-        if r.get("prev") != prev or seal(body, prev) != r.get("seal"):
-            return False, r.get("n")
+        try:
+            expected = seal(body, prev)
+        except (TypeError, ValueError):
+            return False, where          # unserialisable content is not a receipt
+        if r.get("prev") != prev or r.get("seal") != expected:
+            return False, where
         prev = r["seal"]
     return True, 0
 
@@ -108,35 +167,61 @@ def verify(receipts):
 class Chain:
     """An append-only list of sealed receipts."""
 
-    def __init__(self, receipts=None):
-        self.receipts = list(receipts or [])
+    def __init__(self, receipts: Iterable[Mapping[str, Any]] | None = None) -> None:
+        self.receipts: list[dict[str, Any]] = [dict(r) for r in (receipts or [])]
 
-    def stamp(self, what, amount, payee, rule, outcome, approved_by, ledger,
-              currency="CC", instrument="", at=None):
+    def stamp(self, what: str, amount: str, payee: str, rule: str, outcome: str,
+              approved_by: str, ledger: str, currency: str = "CC",
+              instrument: str = "", at: str | None = None) -> dict[str, Any]:
         """Append one receipt and return it.
 
-        `amount` is a string on purpose. A float that survives one language's
-        JSON encoder is not a float that survives all of them, and a seal
-        computed over "1.0" is not the seal computed over "1".
+        `amount` must be a STRING. A float that survives one language's JSON
+        encoder is not a float that survives all of them, and the seal computed
+        over "1.0" is not the seal computed over "1". Passing 1/3 used to be
+        accepted and silently stored as "0.3333333333333333".
+
+        Refuses to append to a chain that does not verify (BrokenChain). That
+        costs a full verification per stamp -- about 10ms per 2000 receipts --
+        and the alternative is writing new entries on top of a broken history.
         """
-        r = {"n": len(self.receipts) + 1, "what": what, "amount": str(amount),
-             "payee": payee, "currency": currency, "instrument": instrument,
-             "rule": rule, "outcome": outcome, "approved_by": approved_by,
-             "ledger": ledger,
-             "at": at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-             "prev": self.receipts[-1]["seal"] if self.receipts else GENESIS}
+        if not isinstance(amount, str):
+            raise TypeError(
+                "amount must be a string, got %s. A number here would be "
+                "re-formatted differently by different JSON encoders and the "
+                "seal would not survive the trip. Pass \"%s\"."
+                % (type(amount).__name__, amount))
+        ok, bad = self.verify()
+        if not ok:
+            raise BrokenChain(
+                "receipt %s does not verify, so this chain cannot be extended. "
+                "Deal with the break rather than building on it." % bad)
+
+        r: dict[str, Any] = {
+            "n": len(self.receipts) + 1, "what": what, "amount": amount,
+            "payee": payee, "currency": currency, "instrument": instrument,
+            "rule": rule, "outcome": outcome, "approved_by": approved_by,
+            "ledger": ledger,
+            "at": at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "prev": self.receipts[-1]["seal"] if self.receipts else GENESIS,
+        }
         assert_ascii(r)                       # before sealing, never after
         r["seal"] = seal(r, r["prev"])
         self.receipts.append(r)
         return r
 
-    def verify(self):
+    def verify(self) -> tuple[bool, int]:
         return verify(self.receipts)
 
     @property
-    def head(self):
+    def head(self) -> str:
         """The final seal: the one value that stands for the whole chain."""
         return self.receipts[-1]["seal"] if self.receipts else GENESIS
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.receipts)
+
+    def __repr__(self) -> str:
+        ok, bad = self.verify()
+        state = "verified" if ok else "BROKEN at %s" % bad
+        head = self.head[:8] + "..." if self.receipts else GENESIS
+        return "<Chain %d receipts, head %s, %s>" % (len(self.receipts), head, state)

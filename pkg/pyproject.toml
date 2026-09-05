@@ -9,18 +9,20 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "kya-receipt-chain"
 version = "1.0.0"
-description = "A tamper-evident receipt chain that records refusals, not just successes. Zero dependencies."
+description = "Let an AI agent pay, and prove what it could not. A tamper-evident record of every payment attempt, including the refusals. Built for Canton Network; works anywhere. Zero dependencies."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
 authors = [{ name = "Rume Dominic (O'Rume Dominic Uririe)" }]
-keywords = ["audit", "receipts", "hash-chain", "tamper-evident", "canton", "daml"]
+keywords = ["agent-payments", "spend-limits", "audit", "receipts",
+            "tamper-evident", "hash-chain", "canton", "daml", "ai-agents"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Topic :: Security :: Cryptography",
+  "Typing :: Typed",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 # Deliberately empty, and it is a feature rather than an omission. The whole
@@ -34,4 +36,4 @@ Specification = "https://github.com/dominicrume/cantor8_kya_rails/blob/main/SPEC
 Source = "https://github.com/dominicrume/cantor8_kya_rails"
 
 [tool.setuptools.package-data]
-kya_receipt_chain = ["vectors.json"]
+kya_receipt_chain = ["vectors.json", "py.typed"]
