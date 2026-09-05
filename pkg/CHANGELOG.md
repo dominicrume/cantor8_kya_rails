@@ -48,6 +48,27 @@ several are the kind of defect this project exists to argue against.
 - **`repr(chain)`** now reads `<Chain 6 receipts, head 54767e02..., verified>`
   and says `BROKEN at 3` when it is.
 
+### Adoption
+
+Four things found by using the package as a newcomer rather than as its author.
+
+- **`currency` is required.** It defaulted to `"CC"` — Canton Coin — so anyone
+  recording dollars sealed them as Canton Coin, permanently and silently. A
+  currency nobody chose is worse than an argument nobody wanted to type.
+- **`allowed()` and `refused()`.** Recording one payment took seven required
+  arguments in vocabulary a newcomer does not have yet. Who authorised the
+  payments and which rail they ran on describe the desk, not the payment, so
+  they are set once on the `Chain`.
+- **A wrongly-shaped file is no longer called tampered.** `{"receipts": [...]}`
+  and `{"exported_at": ..., "data": [...]}` used to come back as `BROKEN at
+  receipt 1`. They are now found and checked. A file that genuinely is not a
+  chain says so, and never says BROKEN — that word is an accusation that
+  someone edited this, and it must not be made falsely. Exit codes: 0 holds,
+  1 broken, 2 not a chain.
+- **`example.py`** — the whole idea in one runnable file: an agent with a
+  spending limit, four attempts, two stopped, then the record tampered with and
+  caught.
+
 ### Verified
 
 - 16 conformance vectors, in Python, JavaScript and Go.

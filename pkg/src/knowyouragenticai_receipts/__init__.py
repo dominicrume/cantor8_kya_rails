@@ -167,13 +167,44 @@ def verify(receipts: Sequence[Any]) -> tuple[bool, int]:
 class Chain:
     """An append-only list of sealed receipts."""
 
-    def __init__(self, receipts: Iterable[Mapping[str, Any]] | None = None) -> None:
+    def __init__(self, receipts: Iterable[Mapping[str, Any]] | None = None,
+                 approved_by: str = "", ledger: str = "") -> None:
+        """`approved_by` and `ledger` are set once, here, because they describe
+        the desk rather than the payment. Recording ten payments should not
+        mean repeating who authorised them ten times."""
         self.receipts: list[dict[str, Any]] = [dict(r) for r in (receipts or [])]
+        self.approved_by = approved_by
+        self.ledger = ledger
 
-    def stamp(self, what: str, amount: str, payee: str, rule: str, outcome: str,
-              approved_by: str, ledger: str, currency: str = "CC",
-              instrument: str = "", at: str | None = None) -> dict[str, Any]:
+    def allowed(self, what: str, amount: str, currency: str, payee: str,
+                rule: str, **kw: Any) -> dict[str, Any]:
+        """Record a payment that went through, and why it was allowed."""
+        return self.stamp(what=what, amount=amount, currency=currency,
+                          payee=payee, rule=rule, outcome="ACCEPTED", **kw)
+
+    def refused(self, what: str, amount: str, currency: str, payee: str,
+                rule: str, **kw: Any) -> dict[str, Any]:
+        """Record a payment that was STOPPED, and what stopped it.
+
+        This is the half an ordinary log throws away, and the half anyone
+        checking your system actually asks about.
+        """
+        return self.stamp(what=what, amount=amount, currency=currency,
+                          payee=payee, rule=rule, outcome="REFUSED", **kw)
+
+    def stamp(self, what: str, amount: str, currency: str, payee: str,
+              rule: str, outcome: str, approved_by: str | None = None,
+              ledger: str | None = None, instrument: str = "",
+              at: str | None = None) -> dict[str, Any]:
         """Append one receipt and return it.
+
+        Most of the time you want `allowed()` or `refused()` instead; this is
+        the full-control version.
+
+        `currency` is REQUIRED. It used to default to "CC" -- Canton Coin --
+        so anyone recording dollars sealed them as Canton Coin, permanently and
+        silently. A currency nobody chose is worse than an argument nobody
+        wanted to type.
 
         `amount` must be a STRING. A float that survives one language's JSON
         encoder is not a float that survives all of them, and the seal computed
@@ -199,8 +230,9 @@ class Chain:
         r: dict[str, Any] = {
             "n": len(self.receipts) + 1, "what": what, "amount": amount,
             "payee": payee, "currency": currency, "instrument": instrument,
-            "rule": rule, "outcome": outcome, "approved_by": approved_by,
-            "ledger": ledger,
+            "rule": rule, "outcome": outcome,
+            "approved_by": self.approved_by if approved_by is None else approved_by,
+            "ledger": self.ledger if ledger is None else ledger,
             "at": at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "prev": self.receipts[-1]["seal"] if self.receipts else GENESIS,
         }

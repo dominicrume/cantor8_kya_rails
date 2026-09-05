@@ -22,47 +22,94 @@ from . import __version__, canonical, seal, verify, _first_non_ascii
 VECTORS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vectors.json")
 
 
-def _receipts_from(text: str) -> list[Any]:
-    """The receipts in a file, whether it is bare JSON or a JS assignment.
+WRAPPERS = ("receipts", "RECEIPTS", "data", "entries", "chain", "items")
 
-    receipts.js in the reference application is `const RECEIPTS = [...];`, and
-    telling someone their own file is unreadable when the array is right there
-    is not helpful.
+
+def _parsed_forms(text: str) -> list[Any]:
+    """Every way this text might be JSON: the whole thing, and the array inside
+    it. The second is what makes `const RECEIPTS = [...]` readable."""
+    out, t = [], text.strip()
+    bracketed = None
+    start, end = t.find("["), t.rfind("]")
+    if start >= 0 and end > start:
+        bracketed = t[start:end + 1]
+    for candidate in (t, bracketed):
+        if candidate is None:
+            continue
+        try:
+            out.append(json.loads(candidate))
+        except ValueError:
+            pass
+    return out
+
+
+def _receipts_from(text: str) -> tuple[bool, list[Any] | None]:
+    """(was_json, receipts). Reads a bare array, a `const RECEIPTS = [...]`
+    file, or a chain wrapped in an export.
+
+    Returns the two failures separately because they are different things and
+    a reader deserves to be told which: "I cannot read this" is not the same
+    as "this is readable but is not a receipt chain", and neither is the same
+    as "this chain was tampered with".
     """
-    text = text.strip()
-    start, end = text.find("["), text.rfind("]")
-    if start < 0 or end < start:
-        raise ValueError("no JSON array found in the input")
-    return json.loads(text[start:end + 1])
+    candidates = _parsed_forms(text)
+    for parsed in candidates:
+        if isinstance(parsed, list):
+            return True, parsed
+        if isinstance(parsed, dict):
+            for key in WRAPPERS:
+                if isinstance(parsed.get(key), list):
+                    return True, parsed[key]
+    return bool(candidates), None
+
+
+def _looks_like_a_chain(receipts: list[Any]) -> bool:
+    return any(isinstance(r, dict) and "seal" in r and "prev" in r
+               for r in receipts)
 
 
 def cmd_verify(source: str) -> int:
     try:
         text = sys.stdin.read() if source == "-" else open(source).read()
-        receipts = _receipts_from(text)
     except OSError as e:
         print("could not read %s: %s" % (source, e))
         return 2
-    except ValueError as e:
-        print("could not parse %s: %s" % (source, e))
-        return 2
-    if not isinstance(receipts, list):
-        print("that is not a list of receipts")
-        return 2
-
-    ok, bad = verify(receipts)
     where = "-" if source == "-" else source
-    if ok:
-        head = receipts[-1].get("seal", "?") if receipts else "(empty)"
-        print("%s: %d receipts, every seal holds." % (where, len(receipts)))
-        print("head: %s" % head)
-        print()
-        print("This proves nothing was EDITED. It does not prove where the file")
-        print("came from -- a forged chain verifies exactly like this one.")
-        return 0
+    was_json, receipts = _receipts_from(text)
+    if receipts is None or not _looks_like_a_chain(receipts):
+        return _report_not_a_chain(where, was_json)
+    ok, bad = verify(receipts)
+    return _report_holds(where, receipts) if ok else _report_broken(where, bad)
+
+
+def _report_not_a_chain(where: str, was_json: bool) -> int:
+    """Never "BROKEN". Nothing here was tampered with; it was not a receipt
+    chain to begin with, and saying otherwise is an accusation."""
+    print("%s: not a receipt chain." % where)
+    print("It is %s." % ("valid JSON, just a different kind of file"
+                         if was_json else "not JSON this tool can read"))
+    print("A receipt chain is a list of entries, each carrying a `seal` and")
+    print("a `prev`. Nothing here is wrong -- it is a different thing.")
+    return 2
+
+
+def _report_holds(where: str, receipts: list[Any]) -> int:
+    head = receipts[-1].get("seal", "?") if receipts else "(empty)"
+    print("%s: %d receipts, every seal holds." % (where, len(receipts)))
+    print("head: %s" % head)
+    print()
+    print("This proves nothing was EDITED. It does not prove where the file")
+    print("came from -- a forged chain verifies exactly like this one.")
+    return 0
+
+
+def _report_broken(where: str, bad: int) -> int:
     print("%s: BROKEN at receipt %s." % (where, bad))
     print("Everything before it follows; that one does not, so it or something")
     print("earlier was changed. Every seal after it is unreliable too.")
+    print()
+    print("What to do: ask whoever gave you this file for the original, and")
+    print("check its chain head against wherever they published it.")
     return 1
 
 

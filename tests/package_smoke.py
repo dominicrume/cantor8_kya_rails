@@ -100,18 +100,18 @@ for bad, label in ([["a string"], "a list of strings"],
 chain = pkg.Chain()
 for i in range(2):
     chain.stamp(what="x", amount="1.0", payee="a", rule="r", outcome="ACCEPTED",
-                approved_by="p", ledger="l")
+                currency="USD", approved_by="p", ledger="l")
 chain.receipts[0]["amount"] = "9999.0"
 try:
     chain.stamp(what="y", amount="1.0", payee="a", rule="r", outcome="ACCEPTED",
-                approved_by="p", ledger="l")
+                currency="USD", approved_by="p", ledger="l")
     check(False, "stamp() refuses to extend a broken chain")
 except pkg.BrokenChain:
     check(True, "stamp() refuses to extend a broken chain")
 
 try:
-    pkg.Chain().stamp(what="x", amount=1 / 3, payee="a", rule="r",
-                      outcome="ACCEPTED", approved_by="p", ledger="l")
+    pkg.Chain().stamp(what="x", amount=1 / 3, currency="USD", payee="a",
+                      rule="r", outcome="ACCEPTED", approved_by="p", ledger="l")
     check(False, "stamp() refuses a float amount")
 except TypeError:
     check(True, "stamp() refuses a float amount")
@@ -128,8 +128,8 @@ for probe, label in (({"what": {"note": "Pay \u20a6500"}}, "inside a dict"),
         check(True, "non-ASCII %s is rejected" % label)
 
 live = pkg.Chain()
-live.stamp(what="x", amount="1.0", payee="a", rule="r", outcome="ACCEPTED",
-           approved_by="p", ledger="l")
+live.stamp(what="x", amount="1.0", currency="USD", payee="a", rule="r",
+           outcome="ACCEPTED", approved_by="p", ledger="l")
 check("verified" in repr(live) and "1 receipts" in repr(live),
       "repr() shows the count and that it verifies")
 live.receipts[0]["amount"] = "2.0"
@@ -165,6 +165,66 @@ check(r.returncode == 1 and "BROKEN at receipt" in r.stdout,
 check(os.path.exists(os.path.join(ROOT, "pkg", "src", "knowyouragenticai_receipts", "py.typed")),
       "py.typed ships so the package type-checks for dependents")
 check(os.path.exists(os.path.join(ROOT, "pkg", "CHANGELOG.md")), "there is a CHANGELOG")
+
+# --- the four adoption fixes ------------------------------------------------
+print()
+print("  adoption:")
+
+try:
+    pkg.Chain().stamp(what="x", amount="1.0", payee="a", rule="r",
+                      outcome="ACCEPTED", approved_by="p", ledger="l")
+    check(False, "currency is required, not silently defaulted to Canton Coin")
+except TypeError:
+    check(True, "currency is required, not silently defaulted to Canton Coin")
+
+simple = pkg.Chain(approved_by="finance", ledger="stripe")
+simple.allowed(what="invoice 41", amount="250.00", currency="USD",
+               payee="Acme", rule="under the cap")
+simple.refused(what="invoice 42", amount="9000.00", currency="USD",
+               payee="Unknown", rule="not on the allow-list")
+check([r["outcome"] for r in simple.receipts] == ["ACCEPTED", "REFUSED"],
+      "allowed() and refused() set the outcome so the caller does not have to")
+check(simple.receipts[0]["approved_by"] == "finance"
+      and simple.receipts[0]["ledger"] == "stripe",
+      "and the desk's context is set once on the Chain, not per receipt")
+check(simple.receipts[0]["currency"] == "USD", "with the currency actually asked for")
+
+# The CLI must tell three answers apart. A wrongly-shaped file is not tampered.
+def _cli(body, name="f.json"):
+    d = tempfile.mkdtemp()
+    path = os.path.join(d, name)
+    open(path, "w").write(body)
+    r = subprocess.run([sys.executable, "-m", "knowyouragenticai_receipts",
+                        "verify", name], cwd=d, env=env, capture_output=True, text=True)
+    return r.returncode, r.stdout
+
+real = json.loads(open(os.path.join(ROOT, "step-3-verify", "receipts.js")).read()
+                  .split("[", 1)[1].rsplit("]", 1)[0].join("[]"))
+
+code, out = _cli(json.dumps({"receipts": real}))
+check(code == 0 and "every seal holds" in out,
+      "the CLI finds a chain wrapped in an export instead of calling it BROKEN")
+
+code, out = _cli(json.dumps({"setting": True}))
+check(code == 2 and "not a receipt chain" in out and "BROKEN" not in out,
+      "a file that was never a chain is never called BROKEN")
+
+code, out = _cli("hello, not json at all")
+check(code == 2 and "not JSON this tool can read" in out,
+      "and unreadable input is told apart from readable-but-not-a-chain")
+
+broken = json.loads(json.dumps(real)); broken[1]["amount"] = "9999.0"
+code, out = _cli(json.dumps(broken))
+check(code == 1 and "BROKEN at receipt 2" in out,
+      "an actually tampered chain is still BROKEN, and names the receipt")
+check("ask whoever gave you this file" in out,
+      "and says what to do about it")
+
+ex = subprocess.run([sys.executable, "example.py"],
+                    cwd=os.path.join(ROOT, "pkg"), capture_output=True, text=True,
+                    env=dict(os.environ, PYTHONPATH="src", PYTHONDONTWRITEBYTECODE="1"))
+check(ex.returncode == 0 and "BROKEN at 3" in ex.stdout,
+      "the runnable example runs, and shows the tamper being caught")
 
 print()
 if fails:
