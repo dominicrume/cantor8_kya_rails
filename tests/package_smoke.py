@@ -220,11 +220,25 @@ check(code == 1 and "BROKEN at receipt 2" in out,
 check("ask whoever gave you this file" in out,
       "and says what to do about it")
 
-ex = subprocess.run([sys.executable, "example.py"],
-                    cwd=os.path.join(ROOT, "pkg"), capture_output=True, text=True,
-                    env=dict(os.environ, PYTHONPATH="src", PYTHONDONTWRITEBYTECODE="1"))
+ex = subprocess.run([sys.executable, "-m", "knowyouragenticai_receipts", "example"],
+                    cwd=ELSEWHERE, env=env, capture_output=True, text=True)
 check(ex.returncode == 0 and "BROKEN at 3" in ex.stdout,
-      "the runnable example runs, and shows the tamper being caught")
+      "the example runs as a subcommand, and shows the tamper being caught")
+
+# Everything the README promises must survive into the built artefacts. A
+# README that points at a file which does not ship is a broken promise to
+# everyone who installed rather than cloned -- which is most people.
+import glob as _glob, re as _re, tarfile, zipfile
+readme = open(os.path.join(ROOT, "pkg", "README.md")).read()
+rel = [h for _t, h in _re.findall(r"\[([^\]]+)\]\(([^)]+)\)", readme)
+       if not h.startswith("http")]
+check(not rel, "no relative links in the README, which is rendered standalone on PyPI")
+
+for cmd in _re.findall(r"python -m knowyouragenticai_receipts (\w+)", readme):
+    r = subprocess.run([sys.executable, "-m", "knowyouragenticai_receipts", cmd,
+                        *(["--help"] if cmd == "verify" else [])],
+                       cwd=ELSEWHERE, env=env, capture_output=True, text=True)
+    check(r.returncode in (0, 2), "the README's `%s` subcommand exists" % cmd)
 
 print()
 if fails:
