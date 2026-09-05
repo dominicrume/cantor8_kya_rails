@@ -7,9 +7,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kya-receipt-chain"
+name = "knowyouragenticai-receipts"
 version = "1.0.0"
-description = "Let an AI agent pay, and prove what it could not. A tamper-evident record of every payment attempt, including the refusals. Built for Canton Network; works anywhere. Zero dependencies."
+description = "Let an AI agent pay, and prove what it could not. A tamper-evident record of every payment attempt, including the refusals, for agent-operated wallets. Built for Canton Network; works anywhere. Zero dependencies."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
@@ -36,4 +36,4 @@ Specification = "https://github.com/dominicrume/cantor8_kya_rails/blob/main/SPEC
 Source = "https://github.com/dominicrume/cantor8_kya_rails"
 
 [tool.setuptools.package-data]
-kya_receipt_chain = ["vectors.json", "py.typed"]
+knowyouragenticai_receipts = ["vectors.json", "py.typed"]

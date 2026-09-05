@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(ROOT, "step-2-agent"))
 sys.path.insert(0, os.path.join(ROOT, "pkg", "src"))
 
 import kya_chain as repo
-import kya_receipt_chain as pkg
+import knowyouragenticai_receipts as pkg
 
 fails = []
 
@@ -36,7 +36,7 @@ def check(ok, what):
 print("KYA Rails - the package and the repository agree")
 
 vectors = json.load(open(os.path.join(ROOT, "tests", "vectors.json")))
-shipped = json.load(open(os.path.join(ROOT, "pkg", "src", "kya_receipt_chain",
+shipped = json.load(open(os.path.join(ROOT, "pkg", "src", "knowyouragenticai_receipts",
                                       "vectors.json")))
 check(shipped == vectors, "the vectors shipped in the package are the repository's")
 
@@ -141,7 +141,7 @@ import subprocess
 ELSEWHERE = tempfile.mkdtemp()
 env = dict(os.environ, PYTHONPATH=os.path.join(ROOT, "pkg", "src"),
            PYTHONDONTWRITEBYTECODE="1")
-r = subprocess.run([sys.executable, "-m", "kya_receipt_chain", "verify",
+r = subprocess.run([sys.executable, "-m", "knowyouragenticai_receipts", "verify",
                     os.path.join(ROOT, "step-3-verify", "receipts.js")],
                    capture_output=True, text=True, cwd=ELSEWHERE, env=env)
 check(r.returncode == 0 and "every seal holds" in r.stdout,
@@ -157,12 +157,12 @@ forged = _json.loads(open(os.path.join(ROOT, "step-3-verify", "receipts.js")).re
 forged[1]["amount"] = "9999.0"
 tmp = os.path.join(ELSEWHERE, "broken.json")
 open(tmp, "w").write(_json.dumps(forged))
-r = subprocess.run([sys.executable, "-m", "kya_receipt_chain", "verify", tmp],
+r = subprocess.run([sys.executable, "-m", "knowyouragenticai_receipts", "verify", tmp],
                    capture_output=True, text=True, cwd=ELSEWHERE, env=env)
 check(r.returncode == 1 and "BROKEN at receipt" in r.stdout,
       "the CLI exits 1 and names the receipt on a tampered file")
 
-check(os.path.exists(os.path.join(ROOT, "pkg", "src", "kya_receipt_chain", "py.typed")),
+check(os.path.exists(os.path.join(ROOT, "pkg", "src", "knowyouragenticai_receipts", "py.typed")),
       "py.typed ships so the package type-checks for dependents")
 check(os.path.exists(os.path.join(ROOT, "pkg", "CHANGELOG.md")), "there is a CHANGELOG")
 

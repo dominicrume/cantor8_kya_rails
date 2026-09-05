@@ -13,7 +13,7 @@ Hard rules for any AI touching this code:
 - The organisers' toolkit lives at ~/hackathon-toolkit. Read it, call it, never edit it.
 - NOTHING IS PUBLISHED to PyPI, npm, GitHub Pages or any public index unless the
   exact package name and version has been stated and approved in that message.
-  "Publish it" is not approval; "publish kya-receipt-chain 1.0.0" is. This was
+  "Publish it" is not approval; "publish knowyouragenticai-receipts 1.0.0" is. This was
   written after an AI read "we publish the auditor" as authority to cut a release
   of a different project, and did.
 - kya-rails and the AI code auditor are SEPARATE PROJECTS. kya-rails is the

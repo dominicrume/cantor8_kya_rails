@@ -37,11 +37,11 @@ several are the kind of defect this project exists to argue against.
 
 ### Interface
 
-- **`python -m kya_receipt_chain verify <file>`** — check a chain without
+- **`python -m knowyouragenticai_receipts verify <file>`** — check a chain without
   writing any code. Reads bare JSON or a `const RECEIPTS = [...]` assignment,
   and says plainly that a passing check proves nothing was *edited*, not where
   the file came from. Exit 0 holds, 1 broken, 2 unreadable.
-- **`python -m kya_receipt_chain selftest`** — unchanged behaviour, now an
+- **`python -m knowyouragenticai_receipts selftest`** — unchanged behaviour, now an
   explicit subcommand rather than the only thing the module did.
 - **Type hints throughout, and a `py.typed` marker**, so the package type-checks
   for anyone depending on it.
