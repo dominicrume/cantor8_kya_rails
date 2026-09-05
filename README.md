@@ -77,6 +77,7 @@ country and deciding whether to trust the person who produced it.
 | The cycle holds at every join | 26 checks over HTTP, in the order a desk works it |
 | Installable | `pip install knowyouragenticai-receipts` — the format alone, zero dependencies, with the vectors inside it so `python -m knowyouragenticai_receipts` self-tests offline |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
+| The tests are themselves tested | `tests/mutation_suite.py` breaks 14 real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **30** in the Daml, and **24 of the 30** refusals at the edges by a named test — the other six are load-bearing but fail as a traceback, which `tests/mutation_py.py` now says out loud instead of counting as coverage |
 | The chain is bound to its origin | the head is published on Canton — a **fully forged** chain verifies green in all three implementations, and the ledger answers `NOT ANCHORED` |
 | The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **35** checks, including a forged journal entry that proves the limit |
