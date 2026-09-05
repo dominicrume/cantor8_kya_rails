@@ -218,7 +218,32 @@ python3 tests/devnet_anchor.py --check   # does the ledger agree with this file?
 python3 step-2-agent/agent.py --devnet --no-anchor   # publish nothing, and say so
 ```
 
-**And the verifier page answers it too, without a terminal.** It shows the
+### Checking a file, with nothing installed
+
+The person who most needs to verify a payment record — an auditor, a
+counterparty, the customer who was paid — is the least likely to have a
+terminal open. Asking them to install Python is asking for three things that
+have nothing to do with their question.
+
+So `step-3-verify/verifier.html` takes the file instead. **Drag `receipts.json`
+onto the page.** It is read in the reader's own browser: nothing is uploaded,
+nothing is stored, and it works with no network at all. On a phone, tap.
+
+It reads a bare JSON array, a `const RECEIPTS = [...]` file, or a chain wrapped
+in an export (`{"receipts": [...]}`, `{"data": [...]}`) — and it distinguishes
+three answers that are genuinely different:
+
+| | |
+| --- | --- |
+| **holds** | every seal recomputed here; nothing was edited |
+| **BROKEN at entry N** | that entry or something before it was changed after the fact |
+| **not a receipt chain** | valid JSON, but a different kind of file — **not** an accusation |
+
+That third row is the one worth having. Calling an ordinary export "tampered"
+is a false accusation of the most serious kind this format makes, and it is
+what the CLI used to do.
+
+**And the verifier page answers the origin question too, without a terminal.** It shows the
 chain head it is holding, and takes a paste of whatever the ledger returned —
 the whole output of `--check`, or just the seal. It then says `MATCHES`,
 `DIFFERENT`, or that the count disagrees, which is how a truncated chain is

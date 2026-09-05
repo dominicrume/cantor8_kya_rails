@@ -91,6 +91,18 @@
   <h1>KYA RAILS &middot; Know Your AgenticAI</h1>
   <p>Your operator pays out where you are not. The mandate holds where you cannot stand. Screenshots can lie. Sealed receipts cannot.</p>
 </header>
+<div class="checker" id="checker">
+  <div class="c-head">Check a receipts file</div>
+  <p class="c-say">Drop a file here, or tap to choose one. It is read <b>in your
+  browser</b> &mdash; nothing is uploaded, nothing is stored, and this works with
+  no internet connection.</p>
+  <label class="c-drop" id="cDrop">
+    <input type="file" id="cFile" accept=".json,.js,.txt,application/json,text/plain">
+    <span id="cPrompt">Drop <b>receipts.json</b> here &mdash; or tap to choose</span>
+  </label>
+  <div class="c-verdict" id="cVerdict" hidden></div>
+</div>
+
 <div class="origin" id="origin">
   <div class="o-head"><b>Where did this file come from?</b></div>
   <p class="o-say">Every seal verifying proves nothing was <em>edited</em>. It does not
@@ -421,6 +433,104 @@ document.getElementById('tamperBtn').onclick=()=>{
 // matters -- if this page fetched the answer itself, or if the answer were
 // baked into the file at build time, whoever forged the receipts would have
 // forged that too. The reader getting it independently is the entire point.
+// A file someone hands you, checked in your own browser. No install, no
+// terminal, no upload -- the person who most needs to verify a payment record
+// is the least likely to have Python, and asking them to install it is asking
+// them to do three things that have nothing to do with their question.
+(function checker(){
+  const drop=document.getElementById('cDrop'), file=document.getElementById('cFile');
+  const out=document.getElementById('cVerdict'), prompt=document.getElementById('cPrompt');
+  if(!drop) return;
+
+  // The shapes people actually have. A file that is not a receipt chain is NOT
+  // a tampered one, and must never be reported as though it were: "BROKEN" is
+  // an accusation that someone edited this, and a wrapped export has not been
+  // edited, it is simply a different shape.
+  // Returns {json:bool, receipts:array|null}. The two failures are different
+  // things and must be said differently: "this is not JSON I can read" is not
+  // the same as "this is JSON, but it is not a receipt chain", and neither is
+  // the same as "this chain was tampered with".
+  function findReceipts(text){
+    const tries=[], t=text.trim();
+    try{ tries.push(JSON.parse(t)); }catch(e){}
+    const a=t.indexOf('['), b=t.lastIndexOf(']');
+    if(a>=0 && b>a){ try{ tries.push(JSON.parse(t.slice(a,b+1))); }catch(e){} }
+    for(const parsed of tries){
+      if(Array.isArray(parsed)) return {json:true, receipts:parsed};
+      if(parsed && typeof parsed==='object'){
+        for(const k of ['receipts','RECEIPTS','data','entries','chain','items']){
+          if(Array.isArray(parsed[k])) return {json:true, receipts:parsed[k]};
+        }
+      }
+    }
+    return {json:tries.length>0, receipts:null};
+  }
+
+  function looksLikeChain(rs){
+    if(!rs.length) return false;
+    return rs.some(r => r && typeof r==='object' && 'seal' in r && 'prev' in r);
+  }
+
+  function say(kind, html){ out.hidden=false; out.className='c-verdict '+kind; out.innerHTML=html; }
+
+  async function check(name, text){
+    const found = findReceipts(text), rs = found.receipts;
+    if(rs===null){
+      say('unknown','<b>'+esc(name)+'</b> '
+        +(found.json
+            ? 'is valid JSON, but it is <b>not a receipt chain</b> \u2014 there '
+              +'is no list of entries in it. Nothing is wrong with the file; it '
+              +'is a different kind of thing.'
+            : 'is not JSON this page can read. A receipts file is a list of '
+              +'entries, each with a <code>seal</code> and a <code>prev</code>.'));
+      return;
+    }
+    if(!looksLikeChain(rs)){
+      // Deliberately not "broken". Nothing here was tampered with; it was
+      // never a receipt chain in the first place.
+      say('unknown','<b>'+esc(name)+'</b> is valid JSON, but it is <b>not a '
+        +'receipt chain</b> &mdash; no entry has a <code>seal</code> and a '
+        +'<code>prev</code>. Nothing is wrong with the file; it is a different '
+        +'kind of thing.');
+      return;
+    }
+    const bad = await badFrom(rs);
+    if(bad===0){
+      const head = rs[rs.length-1].seal || '';
+      say('good','<b>'+esc(name)+'</b> holds. '+rs.length+' entries, every seal '
+        +'recomputed in this browser.<br>This proves nothing was <b>edited</b>. '
+        +'It does not prove where the file came from &mdash; a forged chain '
+        +'verifies exactly like this.<br>Chain head:<code>'+esc(head)+'</code>');
+    } else {
+      say('bad','<b>'+esc(name)+'</b> is <b>BROKEN at entry '+bad+'</b>. '
+        +'Everything before it follows; that one does not, so it or something '
+        +'earlier was changed after the fact. Every entry after it is '
+        +'unreliable too.<br>What to do: ask whoever gave you this file for the '
+        +'original, and check its chain head against wherever they published it.');
+    }
+  }
+
+  function take(f){
+    if(!f) return;
+    prompt.textContent='Reading '+f.name+'\u2026';
+    const r=new FileReader();
+    r.onload=()=>{ prompt.innerHTML='Drop <b>receipts.json</b> here \u2014 or tap to choose';
+                   check(f.name, String(r.result||'')); };
+    r.onerror=()=>{ prompt.textContent='Could not read that file.'; };
+    r.readAsText(f);
+  }
+
+  file.addEventListener('change', e => take(e.target.files[0]));
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => take(e.dataTransfer.files[0]));
+  // Dropping anywhere on the page, not only on the target -- people miss.
+  ['dragover','drop'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
+  document.addEventListener('drop', e => { if(e.dataTransfer && e.dataTransfer.files[0]) take(e.dataTransfer.files[0]); });
+})();
+
 (function origin(){
   const head = RECEIPTS.length ? RECEIPTS[RECEIPTS.length-1].seal : '';
   const n = RECEIPTS.length;
