@@ -158,26 +158,46 @@ def cmd_selftest() -> int:
     return 0
 
 
+def cmd_example() -> int:
+    from .example import run
+    return run()
+
+
+def cmd_help() -> int:
+    print(__doc__.strip())
+    return 0
+
+
+def cmd_version() -> int:
+    print(__version__)
+    return 0
+
+
+# One row per thing a user can type, including the spellings they will try.
+COMMANDS = {
+    "selftest": lambda a: cmd_selftest(), "--selftest": lambda a: cmd_selftest(),
+    "example": lambda a: cmd_example(),
+    "verify": lambda a: cmd_verify(a[0]) if a else _verify_usage(),
+    "-h": lambda a: cmd_help(), "--help": lambda a: cmd_help(),
+    "help": lambda a: cmd_help(),
+    "-V": lambda a: cmd_version(), "--version": lambda a: cmd_version(),
+}
+
+
+def _verify_usage() -> int:
+    print("usage: python -m knowyouragenticai_receipts verify <file|->")
+    return 2
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
-    if not args or args[0] in ("selftest", "--selftest"):
+    if not args:
         return cmd_selftest()
-    if args[0] == "example":
-        from .example import run
-        return run()
-    if args[0] == "verify":
-        if len(args) < 2:
-            print("usage: python -m knowyouragenticai_receipts verify <file|->")
-            return 2
-        return cmd_verify(args[1])
-    if args[0] in ("-h", "--help", "help"):
-        print(__doc__.strip())
-        return 0
-    if args[0] in ("-V", "--version"):
-        print(__version__)
-        return 0
-    print("unknown command %r. Try --help." % args[0])
-    return 2
+    handler = COMMANDS.get(args[0])
+    if handler is None:
+        print("unknown command %r. Try --help." % args[0])
+        return 2
+    return handler(args[1:])
 
 
 if __name__ == "__main__":

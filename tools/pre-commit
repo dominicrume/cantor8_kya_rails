@@ -1,0 +1,29 @@
+#!/bin/sh
+# Refuse a commit that would ship a contract with a spending rule deleted.
+#
+# tests/mutation.py deletes one fence at a time and restores them at the end,
+# so for most of a long run the working tree holds a contract with a rule
+# missing. `git add -A` during that window stages it, and the diff looks like
+# an innocent one-line deletion in a file nobody was editing.
+#
+# This is not hypothetical. It happened: a commit was made with
+# "charge would exceed the cap" -- the spending limit itself -- deleted from
+# KyaMandate.daml. It was caught before pushing, by the lint that this hook
+# now runs automatically, because running it was a thing to remember and
+# remembering is not a control.
+#
+# Install:  git config core.hooksPath tools
+#
+# Takes well under a second. It reads the fence list out of the mutation
+# harness, so it cannot drift from what that harness tests.
+if ! python3 tests/fence_lint.py; then
+    echo
+    echo "COMMIT REFUSED: a spending rule is missing from a contract."
+    echo
+    echo "If tests/mutation.py is running, wait for it to finish -- it puts them"
+    echo "back. If it is not, a rule has been deleted or reworded and the"
+    echo "harness is no longer testing it."
+    echo
+    echo "To commit anyway, knowing all of that: git commit --no-verify"
+    exit 1
+fi

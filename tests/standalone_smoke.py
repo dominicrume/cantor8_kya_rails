@@ -91,6 +91,21 @@ check("function origin(" in page,
 check("function checker(" in page,
       "and the file checker, which is the only part a non-developer can use")
 
+# --- the hosted copy must be the same page --------------------------------
+# A URL that shows a different chain from the file people are handed is worse
+# than having no URL: two artefacts under one name, and no way to know which
+# one a reader saw.
+PAGES = os.path.join(VERIFY, "..", "docs", "index.html")
+check(os.path.exists(PAGES), "there is a hosted page at docs/index.html")
+if os.path.exists(PAGES):
+    hosted = open(PAGES).read()
+    check(receipts_from(hosted) == receipts_from(page),
+          "the hosted page carries exactly the same chain as the handout")
+    for control in ("cDrop", "cFile", "function checker(", "function origin("):
+        check(control in hosted, "the hosted page kept %s" % control)
+    check(not re.search(r'<(script|link)[^>]+(src|href)=[\'"]https?://', hosted),
+          "and fetches nothing from the network")
+
 print()
 if fails:
     print("STANDALONE SMOKE FAILED - %d:" % len(fails))
