@@ -27,13 +27,21 @@ for rel in PAGES:
         # same line is not a DOM injection, and a lint that says it is gets
         # worked around rather than obeyed.
         rhs = line[line.index("innerHTML"):]
-        for m in re.finditer(r"\+\s*([A-Za-z_][\w.\[\]]*)", rhs):
-            v = m.group(1)
+        # Two ways to build a string, and this used to see only one. A template
+        # literal -- `<span>${f}</span>` -- was completely invisible, so a live
+        # unescaped injection on the operator page passed the lint. The `+`
+        # form of the identical injection was caught, which is worse than being
+        # uniformly blind: it looked like the rule was enforced.
+        found = [(m.group(1), "+") for m in
+                 re.finditer(r"\+\s*([A-Za-z_][\w.\[\]]*)", rhs)]
+        found += [(m.group(1), "${}") for m in
+                  re.finditer(r"\$\{\s*([A-Za-z_][\w.\[\]]*)", rhs)]
+        for v, how in found:
             if v.startswith(SAFE):
                 continue
             if re.search(r"esc\(\s*" + re.escape(v.split(".")[0]), line):
                 continue
-            bad.append("%s:%d interpolates %r unescaped" % (rel, i, v))
+            bad.append("%s:%d interpolates %r unescaped (via %s)" % (rel, i, v, how))
 
 print("XSS lint over %d pages" % len(PAGES))
 for b in bad:
@@ -41,4 +49,4 @@ for b in bad:
 if bad:
     print("\n%d unescaped interpolation(s). Wrap them in esc()." % len(bad))
     sys.exit(1)
-print("  PASS every innerHTML interpolation goes through esc()")
+print("  PASS every innerHTML interpolation goes through esc(), by + or by ${}")

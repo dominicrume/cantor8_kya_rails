@@ -105,7 +105,7 @@ is one page. There are implementations in Python, JavaScript and Go, and a
 grader that will tell you in one command whether yours is right:
 
 ```bash
-python3 tests/conformance_any.py -- ./your-implementation
+python3 tests/conformance_any.py -- ./your-implementation   # from a clone of the repo
 ```
 
 **A new implementation is the most valuable contribution this format can

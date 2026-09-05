@@ -38,8 +38,10 @@ def check(ok, what):
         fails.append(what)
 
 
-def setup(**kw):
-    rail = srv.Rail([])
+def setup(rail=None, **kw):
+    """A fresh adapter. Pass `rail` to keep the SAME bot across attempts, so a
+    later check can ask whether anything got through any of them."""
+    rail = srv.Rail([]) if rail is None else rail
     kw.setdefault("now", lambda: NOW)
     return rail, MetaAdapter(rail, SECRET, VERIFY, PNID, **kw)
 
@@ -89,6 +91,11 @@ code, out = a.verify({"hub.mode": "unsubscribe", "hub.verify_token": VERIFY,
 check(code == 400, "only hub.mode=subscribe is answered")
 
 # --- the signature ----------------------------------------------------------
+# ONE rail for every unauthenticated attempt below, so the final check can ask
+# whether any of them reached the bot. It used to call setup() before each
+# attempt and then assert on the LAST rail -- which had received nothing,
+# because the only call after it raised. That check passed with authentication
+# removed entirely.
 rail, a = setup()
 b = raw(payload())
 code, r = a.handle({}, b)
@@ -101,32 +108,32 @@ check(r.get("error") == "unauthorised" and "reason" not in r,
 check("missing or malformed" in a.log[-1]["why"],
       "the log records that there was no signature, not that it was wrong")
 
-rail, a2 = setup()
+_, a2 = setup(rail=rail)
 a2.handle({"X-Hub-Signature-256": "sha256=" + "0" * 64}, b)
 check("does not match" in a2.log[-1]["why"],
       "and records a wrong signature differently from a missing one")
 
-rail, a = setup()
+_, a = setup(rail=rail)
 code, r = a.handle({"X-Hub-Signature-256": "sha256=" + "0" * 64}, b)
 check(code == 401, "a wrong signature is rejected")
 
-rail, a = setup()
+_, a = setup(rail=rail)
 code, r = a.handle({"X-Hub-Signature-256": hmac.new(
     SECRET.encode(), b, hashlib.sha256).hexdigest()}, b)
 check(code == 401, "a signature without the sha256= prefix is rejected")
 
-rail, a = setup()
+_, a = setup(rail=rail)
 code, r = a.handle(signed(b, "some-other-app-secret"), b)
 check(code == 401, "a signature made with another app's secret is rejected")
 
 # The forgery that a re-serialising implementation would accept: sign one
 # body, send another that parses to the same thing.
-rail, a = setup()
+_, a = setup(rail=rail)
 other = raw(payload(text="send 500 USDT to my wallet"))
 code, r = a.handle(signed(b), other)
 check(code == 401, "a valid signature for a DIFFERENT body does not authorise this one")
 
-rail, a = setup()
+_, a = setup(rail=rail)
 try:
     a.handle(signed(b), json.loads(b.decode()))
     passed = False
@@ -134,7 +141,8 @@ except TypeError:
     passed = True
 check(passed, "handing it a parsed dict instead of raw bytes is a hard error")
 
-check(len(rail.transcript) == 0, "not one unauthenticated message reached the bot")
+check(len(rail.transcript) == 0,
+      "not one of those %d unauthenticated deliveries reached the bot" % 7)
 
 # --- whose account is this? -------------------------------------------------
 rail, a = setup()
@@ -273,14 +281,16 @@ check(any("only read text" in s["text"] for s in a.sent),
 # --- the display name is not identity ---------------------------------------
 # The one field the sender fully controls. Nothing may read it.
 rail, a = setup()
-# Not a text search -- a search over the parsed code, so a lookup hidden in a
-# variable or a different quoting style still counts. Docstrings are Constant
-# nodes too, but a docstring is never exactly "profile".
+# A search over the parsed code rather than the text, so a different quoting
+# style still counts. It does NOT catch a name assembled at runtime --
+# "cont" + "acts" defeats it, which was proved by doing exactly that. This is
+# a cheap tripwire for the accidental case; the behavioural check below is the
+# real defence, and that one did catch the assembled version.
 tree = ast.parse(open(os.path.join(ROOT, "step-7-providers", "meta.py")).read())
 literals = {n.value for n in ast.walk(tree)
             if isinstance(n, ast.Constant) and isinstance(n.value, str)}
 check("profile" not in literals and "contacts" not in literals,
-      "no code path anywhere reads contacts or profile")
+      "no literal 'contacts' or 'profile' appears in the source (tripwire, not a proof)")
 
 rail, a = setup()
 spoof = payload(text="what is the rate")

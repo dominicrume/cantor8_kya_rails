@@ -37,7 +37,7 @@ verified by `daml damlc inspect-dar` finding zero `KyaTest` references.
 
 The `kya-mandate` lineage stayed poisoned regardless — v0.0.2 is vetted on
 DevNet **with** the test types inside it, so no successor can drop them. We
-started a clean lineage: `kya-rails-mandate` 1.0.0, tests excluded from the
+started a clean lineage: `kya-rails-mandate` 1.0.0 (now at 1.1.0), tests excluded from the
 first version rather than the third.
 
 ## Rules for the next change
@@ -61,7 +61,7 @@ first version rather than the third.
 ```bash
 cd step-1-mandate && daml build
 daml damlc inspect-dar .daml/dist/kya-rails-mandate-*.dar | grep -c KyaTest   # must be 0
-cd test && daml build && daml test                                            # 89/89
+cd test && daml build && daml test                                            # 92/92
 ```
 
 Then upload and read the response:

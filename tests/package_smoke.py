@@ -64,8 +64,13 @@ edge_bad = [e for e in edges if repo.canonical(e) != pkg.canonical(e)]
 check(not edge_bad, "canonical() agrees on %d edge inputs no vector covers" % len(edges))
 
 # The rejection rule has to match too, or one of them seals what the other refuses.
+# Nested probes included on purpose. This list used to be top-level only, so
+# when pkg/ learned to see nested values and the repo did not, the check that
+# exists to catch exactly that divergence could not see it.
 for probe in ({"what": "Pay ₦500"}, {"rule": "the desk’s limit"},
-              {"ok": "plain ascii"}, {"é": "key is non-ascii"}):
+              {"ok": "plain ascii"}, {"é": "key is non-ascii"},
+              {"what": {"note": "Pay ₦500"}}, {"what": ["Pay ₦500"]},
+              {"deep": {"a": {"b": "the desk’s limit"}}}):
     r_raised = p_raised = None
     try:
         repo.assert_ascii(probe)
@@ -238,7 +243,10 @@ for cmd in _re.findall(r"python -m knowyouragenticai_receipts (\w+)", readme):
     r = subprocess.run([sys.executable, "-m", "knowyouragenticai_receipts", cmd,
                         *(["--help"] if cmd == "verify" else [])],
                        cwd=ELSEWHERE, env=env, capture_output=True, text=True)
-    check(r.returncode in (0, 2), "the README's `%s` subcommand exists" % cmd)
+    # `r.returncode in (0, 2)` accepted 2 -- which is exactly what an unknown
+    # command returns, so this passed for a subcommand called `totallybogus`.
+    check("unknown command" not in r.stdout,
+          "the README's `%s` subcommand exists" % cmd)
 
 print()
 if fails:

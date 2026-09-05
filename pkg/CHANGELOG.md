@@ -8,7 +8,7 @@ separately in [SPEC.md](../SPEC.md); a change that alters any seal is a new
 
 First release.
 
-Ten things were found and fixed by attacking the package before publishing
+Thirteen things were found and fixed by attacking the package before publishing
 rather than after. Recorded here rather than quietly cleaned up, because
 several are the kind of defect this project exists to argue against.
 
@@ -65,7 +65,7 @@ Four things found by using the package as a newcomer rather than as its author.
   chain says so, and never says BROKEN — that word is an accusation that
   someone edited this, and it must not be made falsely. Exit codes: 0 holds,
   1 broken, 2 not a chain.
-- **`example.py`** — the whole idea in one runnable file: an agent with a
+- **`python -m knowyouragenticai_receipts example`** — the whole idea in one runnable command: an agent with a
   spending limit, four attempts, two stopped, then the record tampered with and
   caught.
 

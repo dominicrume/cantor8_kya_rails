@@ -329,3 +329,25 @@ testApprovingANairaAccountAddsItAndKeepsTheRest = script do
     ("UBA 2233445566 / VOREM LTD" `elem` b.accounts)
   assertMsg "and the one already there was not dropped"
     ("GTB 0011223344 / VOREM LTD" `elem` b.accounts)
+
+-- SetRateBand was only reached through submitMustFail. Moving the band is the
+-- control that makes the rate fence worth having, and nothing proved the
+-- principal could actually move it, or that moving it took effect.
+testPrincipalCanMoveTheRateBand : Script ()
+testPrincipalCanMoveTheRateBand = script do
+  principal <- allocateParty "Principal"
+  operator  <- allocateParty "Operator"
+  book <- submit principal do
+    createCmd NairaBook with
+      principal
+      operator
+      accounts = ["GTB 0011223344 / VOREM LTD"]
+      canSend = [("USDT", "TRC20")]
+      rateFloor = 1000.0
+      rateCeiling = 1500.0
+      bankFeed = None
+  moved <- submit principal do
+    exerciseCmd book SetRateBand with floor = 1200.0; ceiling = 1400.0
+  Some b <- queryContractId principal moved
+  assertMsg "the floor moved" (b.rateFloor == 1200.0)
+  assertMsg "the ceiling moved" (b.rateCeiling == 1400.0)

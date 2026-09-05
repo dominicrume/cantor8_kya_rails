@@ -4,7 +4,7 @@ The most useful thing you can do here is **implement the receipt seal in
 another language and prove it matches.**
 
 Read [SPEC.md](SPEC.md). It is written so that a working implementation can be
-produced from the text alone. It is roughly **forty lines of code** in most
+produced from the text alone. It is about **twenty lines** for the format itself in most
 languages — see [`impl/pipe/reference.py`](impl/pipe/reference.py), which is the
 whole thing.
 
@@ -63,7 +63,7 @@ All of these run in CI on every pull request.
   Two of the sixteen exist because someone asked *which wrong implementations
   still pass?* and found that two did: one emitting raw UTF-8 rather than
   `\uXXXX`, and one that checked every seal but never compared the `prev`
-  field. Both passed all fourteen earlier vectors. If you can think of a case
+  field. Both passed all fourteen vectors that existed at the time; there are sixteen now, and the two extra are those cases. If you can think of a case
   where two honest implementations might diverge, that case belongs in the
   file — add it to `tests/make_vectors.py`, which generates them.
 - **An MCP server** so a language model can hold a mandate directly. The

@@ -16,7 +16,7 @@ credentials, on your own validator. Nothing here asks you to take our word.
 It writes two things to the ledger -- a mandate and a chain anchor -- and
 moves nothing unless you pass --move-coin. Everything else is a read.
 """
-import json, os, subprocess, sys
+import hashlib, json, os, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "step-2-agent"))
@@ -75,17 +75,28 @@ def step_forgery():
         prev = r["seal"]
         forged.append(r)
 
-    bad = 0
-    prev = "GENESIS"
-    for r in forged:
-        body = {k: v for k, v in r.items() if k != "seal"}
-        if hashlib.sha256((json.dumps(body, sort_keys=True, separators=(",", ":"))
-                           + prev).encode()).hexdigest() != r["seal"]:
-            bad += 1
-        prev = r["seal"]
     print("   A chain claiming two 9.9 CC payouts to the operator's own wallet.")
-    print("   Internally: %d receipts, \033[32m%d broken seals\033[0m -- every verifier says GREEN."
-          % (len(forged), bad))
+    # Recomputing with the same three lines that built it proves arithmetic,
+    # not that anything else accepts it -- and this used to print "every
+    # verifier says GREEN" on the strength of exactly that. Ask the other
+    # implementations.
+    saved_now = open(RECEIPTS).read()
+    try:
+        open(RECEIPTS, "w").write("const RECEIPTS = " + json.dumps(forged, indent=2) + ";\n")
+        for name, cmd in (("Python  ", [sys.executable, "-c",
+                           "import json,sys;sys.path.insert(0,'step-2-agent');"
+                           "from kya_chain import Chain;"
+                           "s=open('step-3-verify/receipts.js').read();"
+                           "r=json.loads(s[s.index('['):s.rindex(']')+1]);"
+                           "print(Chain(r).verify() if hasattr(Chain(r),'verify') else '')"]),
+                          ("JavaScript", ["node", "tests/checker_smoke.js"])):
+            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                               env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+            ok = r.returncode == 0
+            print("   %s independently: %s" % (name, "accepts it" if ok else "sees a problem"))
+    finally:
+        open(RECEIPTS, "w").write(saved_now)
+    print("   Internally consistent, and every implementation agrees it is.")
 
     saved = open(RECEIPTS).read()
     try:

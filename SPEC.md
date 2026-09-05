@@ -115,9 +115,13 @@ different hash. A chain containing one currency symbol verifies in Python and
 fails in the browser:
 
 ```
-PY: {"amount":"40.0","n":1,"what":"Pay supplier ₦500"}  -> 89e828df...
-JS: {"amount":"40.0","n":1,"what":"Pay supplier ₦500"}       -> 71e44b13...
+PY: {"amount":"40.0","n":1,"what":"Pay supplier \u20a6500"}  -> 89e828df...
+JS: {"amount":"40.0","n":1,"what":"Pay supplier ₦500"}        -> 71e44b13...
 ```
+
+(Those are seals — `sha256(canonical + "GENESIS")` — not hashes of the line
+above them. The two lines used to be printed identically, which made an
+illustration of "different bytes" show the same bytes.)
 
 A conforming implementation MUST refuse to seal a receipt containing a
 non-ASCII character in any field, and MUST report which field. Failing at the
@@ -177,7 +181,7 @@ none:
   verifies, and its head is a real seal — the count is what catches it.
 
   This is a binding, not a signature: the format is unchanged, every seal is
-  unchanged, and all 14 conformance vectors still hold. An unanchored chain is
+  unchanged, and all 16 conformance vectors still hold. An unanchored chain is
   still a valid chain; it just carries no claim about where it came from.
 - **It does not prove the rule was enforced.** `rule` is a string. The
   guarantee that a limit was actually applied comes from wherever the decision

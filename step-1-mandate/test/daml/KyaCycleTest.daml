@@ -261,3 +261,51 @@ testApprovingAWalletMakesItUsableAndOnlyThen = script do
       offTaker = "Supplier A"; asset = "USDT"; network = "TRC20"
       toAddress = "TNewSupplierWallet"; amount = 10.0; expectedNaira = 12500.0
   pure ()
+
+-- ApproveDepositAddress and WithdrawOffTakerWallet were only ever exercised
+-- inside submitMustFail: the tests proved the OPERATOR cannot use them and
+-- never proved the principal can. `daml test --all --show-coverage` reported
+-- them as never exercised, while plain `daml test` -- the command CONTRIBUTING
+-- tells you to run -- printed 100% and hid it.
+testPrincipalCanApproveADepositAddress : Script ()
+testPrincipalCanApproveADepositAddress = script do
+  principal <- allocateParty "Principal"
+  operator  <- allocateParty "Operator"
+  book <- submit principal do
+    createCmd DepositBook with
+      principal
+      operator
+      addresses = []
+      depositFeed = None
+  filled <- submit principal do
+    exerciseCmd book ApproveDepositAddress with
+      asset = "USDT"; network = "TRC20"
+      address = "TNewDeskWallet"; memoRequired = False
+  Some b <- queryContractId principal filled
+  assertMsg "the address is on the book"
+    (("USDT", "TRC20", "TNewDeskWallet", False) `elem` b.addresses)
+
+testWithdrawingAWalletStopsItBeingUsed : Script ()
+testWithdrawingAWalletStopsItBeingUsed = script do
+  -- Both halves: the principal can withdraw, and the withdrawal actually
+  -- takes the wallet out of use. A Withdraw that removed nothing would have
+  -- passed a test that only checked the principal was allowed to call it.
+  principal <- allocateParty "Principal"
+  operator  <- allocateParty "Operator"
+  book <- submit principal do
+    createCmd OffTakerBook with
+      principal
+      operator
+      wallets = [("Supplier A", "USDT", "TRC20", "TSupplierWallet")]
+  _ <- submit operator do
+    exerciseCmd book SendToOffTaker with
+      offTaker = "Supplier A"; asset = "USDT"; network = "TRC20"
+      toAddress = "TSupplierWallet"; amount = 10.0; expectedNaira = 12500.0
+  emptied <- submit principal do
+    exerciseCmd book WithdrawOffTakerWallet with
+      offTaker = "Supplier A"; asset = "USDT"; network = "TRC20"
+      address = "TSupplierWallet"
+  submitMustFail operator do
+    exerciseCmd emptied SendToOffTaker with
+      offTaker = "Supplier A"; asset = "USDT"; network = "TRC20"
+      toAddress = "TSupplierWallet"; amount = 10.0; expectedNaira = 12500.0

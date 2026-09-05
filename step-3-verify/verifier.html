@@ -181,9 +181,20 @@ let shownReceipts = 0, playing = false;
 const SYMBOL = {CC:'\u20b5', USD:'$', GBP:'\u00a3', EUR:'\u20ac'};
 const money = r => (SYMBOL[r.currency]||'') + r.amount + ' ' + (r.currency||'CC');
 
-function stableStringify(o){ if(o===null||typeof o!=='object') return JSON.stringify(o);
+// SPEC.md section 4: non-ASCII MUST be escaped to \uXXXX. JSON.stringify emits
+// the raw character, so a page relying on it seals the same receipt to a
+// different hash than Python does -- the chain verifies in one and goes red in
+// the other. This page shipped without it: it failed the
+// canonical-escapes-non-ascii vector, which exists precisely to catch this,
+// and tests/conformance.js did not notice because it carried its OWN copy of
+// this function with the escaping already in it.
+function escapeNonAscii(s){
+  return s.replace(/[\u0080-\uffff]/g,
+    c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+}
+function stableStringify(o){ if(o===null||typeof o!=='object') return escapeNonAscii(JSON.stringify(o));
   if(Array.isArray(o)) return '['+o.map(stableStringify).join(',')+']';
-  return '{'+Object.keys(o).sort().map(k=>JSON.stringify(k)+':'+stableStringify(o[k])).join(',')+'}'; }
+  return '{'+Object.keys(o).sort().map(k=>escapeNonAscii(JSON.stringify(k))+':'+stableStringify(o[k])).join(',')+'}'; }
 async function sha256(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
   return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''); }
 async function badFrom(rs){ let prev='GENESIS';
