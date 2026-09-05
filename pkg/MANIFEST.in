@@ -1,0 +1,5 @@
+# Explicit, never a wildcard. A broad include is how a file nobody meant
+# to publish ends up in a public package.
+include CHANGELOG.md
+include LICENSE
+include README.md

@@ -44,11 +44,11 @@ are set once when the chain is made. `stamp()` is there when you need full
 control.
 
 There is a runnable version of the whole idea in
-[`example.py`](example.py) — an agent with a spending limit, four attempts, two
+`python -m knowyouragenticai_receipts example` — an agent with a spending limit, four attempts, two
 stopped, and the record being tampered with and caught:
 
 ```bash
-python3 example.py
+python -m knowyouragenticai_receipts example
 ```
 
 Change any field of any receipt and:
@@ -62,7 +62,7 @@ chain.verify()      # (False, 1)  -- and every seal after it is broken too
 
 The person who most needs to check a payment record is the least likely to have
 a terminal open. **Drag the file onto
-[`verifier.html`](../step-3-verify/verifier.html)** — it is read in your own
+[the verifier page](https://github.com/dominicrume/cantor8_kya_rails/blob/main/step-3-verify/verifier.html)** — it is read in your own
 browser, nothing is uploaded, and it works with no network.
 
 Or from a shell:

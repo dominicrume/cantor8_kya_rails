@@ -2,6 +2,7 @@
 
     python -m knowyouragenticai_receipts verify receipts.json
     python -m knowyouragenticai_receipts verify -            # read from stdin
+    python -m knowyouragenticai_receipts example             # the whole idea, running
     python -m knowyouragenticai_receipts selftest            # against the shipped vectors
 
 `verify` exists because holding a receipts file and having to write code to
@@ -161,6 +162,9 @@ def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if not args or args[0] in ("selftest", "--selftest"):
         return cmd_selftest()
+    if args[0] == "example":
+        from .example import run
+        return run()
     if args[0] == "verify":
         if len(args) < 2:
             print("usage: python -m knowyouragenticai_receipts verify <file|->")
