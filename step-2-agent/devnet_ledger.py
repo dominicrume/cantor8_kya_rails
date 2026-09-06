@@ -288,8 +288,19 @@ class DevNetLedger:
             os.environ["C8_ADMIN_PARTY"] = admin
             self.admin = admin
 
+    @staticmethod
+    def _resolve(allowed):
+        """Desk ids resolved to on-ledger parties.
+
+        An id this node cannot name is dropped rather than invented. Paying a
+        party we had to guess at is not a thing to do quietly, and an allow-list
+        containing a fabricated party would be worse than a short one.
+        """
+        ids = allowed if allowed is not None else ["customer", "partner"]
+        return [PARTY[r] for r in ids if r in PARTY]
+
     def open_mandate(self, cap=5.0, life_seconds=86400,
-                     period_limit=None, period_seconds=None):
+                     period_limit=None, period_seconds=None, allowed=None):
         """Owner proposes, agent accepts. Both signatures, as the template demands.
 
         A negative life_seconds creates a mandate whose expiry has already
@@ -306,7 +317,7 @@ class DevNetLedger:
                 "owner": PARTY["owner"], "spender": PARTY["agent"],
                 "cap": "%.1f" % float(cap),
                 "expiresAt": exp,
-                "allowed": [PARTY["customer"], PARTY["partner"]],
+                "allowed": self._resolve(allowed),
                 "periodLimit": None if period_limit is None else "%.1f" % float(period_limit),
                 "periodLength": None if period_seconds is None
                                 else {"microseconds": str(int(period_seconds) * 1000000)}}}}],

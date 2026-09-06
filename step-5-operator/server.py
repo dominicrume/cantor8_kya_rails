@@ -24,7 +24,9 @@ from kya_chain import Chain, NonAsciiInReceipt
 from bot import Conversation, GREETING
 from meta import MetaAdapter, MAX_BODY
 from breet import BreetAdapter
+sys.path.insert(0, os.path.join(HERE, "..", "step-9-desk"))
 from store import Store, Tampered, Unusable
+from desk_config import load as load_desk, allow_list, describe, BadConfig
 
 # Meta's webhook, if and only if it is fully configured. A half-configured
 # webhook endpoint is an open one, so all three values must be present or the
@@ -39,6 +41,25 @@ META_PATH = "/webhook/meta"
 BREET = None
 BREET_PATH = "/webhook/breet"
 BREET_TRUST_PROXY = False
+
+
+DESK = None            # the desk's settings; loaded in main() before anything binds
+
+
+def build_desk():
+    """Settings, or a refusal that names the field.
+
+    Loaded before the port opens. A desk that cannot understand its own
+    settings must not reach the point where somebody can send it a payment.
+    """
+    try:
+        return load_desk()
+    except BadConfig as e:
+        print("CANNOT START: the desk cannot read its settings.")
+        print(" ", e)
+        print("  Fix that field, or write a fresh file:")
+        print("    python3 step-9-desk/desk_config.py --example > desk.json")
+        sys.exit(5)
 
 
 def build_store(argv):
@@ -273,15 +294,32 @@ class Rail:
         self.cycle = CycleDesk()
         self.threads = {}          # wa_id -> Conversation
         self.transcript = []       # every message in and out, for the operator
-        self.rate = 1250.0
-        self.band = (1000.0, 1500.0)
-        self.cap = 5.0
-        self.period_limit = None
+        # main() loads the settings before the port binds. Anything building a
+        # Rail directly -- a test, or an embedder -- gets its own load rather
+        # than a None. Not a silent default: a bad settings file still raises
+        # here, for the same reason it stops the server.
+        self.config = DESK if DESK is not None else load_desk()
+        self._apply_settings(self.config)
         self.opened = False
         self.store = store
         self._msgs = 0          # how much of the transcript is already on disk
         self._receipts = 0
         self.restored = self.reload()
+
+    def _apply_settings(self, cfg):
+        """Rate, band, cap and period limit, from the desk's own file.
+
+        Hardcoding a rate of 1250 and an allow-list of two role names is right
+        for a demo and useless for an operator with different counterparties
+        and real money. An absent file keeps the demo values, so nothing that
+        worked before stops working.
+        """
+        money = cfg["money"] if cfg["configured"] else None
+        self.rate = money["rate"] if money else 1250.0
+        self.band = tuple(money["band"]) if money else (1000.0, 1500.0)
+        self.cap = money["cap"] if money else 5.0
+        self.period_limit = money["period_limit"] if money else None
+        self.period_seconds = money["period_seconds"] if money else None
 
     # -- persistence -------------------------------------------------------
     def desk_state(self):
@@ -357,8 +395,13 @@ class Rail:
         return reply
 
     def open(self, cap, period_limit=None, period_seconds=None):
+        """The settings become the mandate's parameters, and the mandate does
+        the refusing. This method hands over a cap and an allow-list; it does
+        not consult them. Which counterparty may be paid is decided by an
+        assertMsg in the Daml choice body, on the ledger, every time."""
+        allowed = allow_list(self.config) if self.config["configured"] else None
         self.ledger.open_mandate(cap=cap, period_limit=period_limit,
-                                 period_seconds=period_seconds)
+                                 period_seconds=period_seconds, allowed=allowed)
         self.cap, self.period_limit, self.opened = cap, period_limit, True
         return self.state()
 
@@ -866,7 +909,8 @@ def print_provider_status():
 
 
 def main(argv):
-    global RAIL, LAN_TOKEN, META, BREET
+    global RAIL, LAN_TOKEN, META, BREET, DESK
+    DESK = build_desk()
     try:
         store = build_store(argv)
     except Tampered as e:
@@ -915,6 +959,10 @@ def main(argv):
             print("  This screen carries payout authority. The token stops the")
             print("  other devices on your wifi, and nothing more -- it travels")
             print("  in plain HTTP. Do not expose this beyond a network you own.")
+        print("")
+        for line in describe(DESK):
+            print("  " + line)
+        print("")
         print("ledger:", RAIL.ledger.label)
         print_provider_status()
         print_store_status()

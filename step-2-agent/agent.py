@@ -53,8 +53,14 @@ class MockLedger:
         return NAMES.get(role, role)
 
     def open_mandate(self, cap=0.5, life_seconds=86400,
-                     period_limit=None, period_seconds=None):
-        self.m = {"cap": cap, "spent": 0.0, "allowed": list(ALLOWED),
+                     period_limit=None, period_seconds=None, allowed=None):
+        """`allowed` comes from the desk's settings so a real operator names
+        their own counterparties. It is a PARAMETER of the mandate, not a check
+        performed here -- the refusal still happens in charge(), mirroring the
+        assertion in the Daml choice body. Defaults to the demo roles so every
+        existing caller behaves exactly as before."""
+        self.m = {"cap": cap, "spent": 0.0,
+                  "allowed": list(ALLOWED if allowed is None else allowed),
                   "expired": life_seconds < 0, "revoked": False,
                   "period_limit": period_limit, "period_seconds": period_seconds,
                   "period_spent": 0.0, "period_start": time.time()}
