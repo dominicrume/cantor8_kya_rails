@@ -110,6 +110,18 @@ jobs:
       - name: the quote outlives the process, and its history is tamper-evident
         run: python3 tests/store_smoke.py
 
+      - name: killing the wallet loses no receipts, and buys the agent no cap
+        run: python3 tests/mcp_survives_kill.py
+
+      - name: every line the README shows a judge is still that line
+        run: python3 tests/readme_citations.py
+
+      - name: no malformed request can make the desk stop answering
+        run: python3 tests/route_fuzz.py
+
+      - name: neither screen goes silent, or lies, when the desk stops answering
+        run: node tests/frontend_offline.js
+
       - name: breaking a real thing makes a suite go red
         run: python3 tests/mutation_suite.py
 
@@ -175,7 +187,25 @@ jobs:
           fi
       - name: every test is named after the attack it proves
         working-directory: step-1-mandate/test
-        run: daml test
+        run: |
+          # `daml test` exits 0 when it runs NOTHING. Run it in the package
+          # next door -- where the templates live but no scripts do -- and it
+          # reports success having tested not one thing. So the count is
+          # asserted, not the exit code: if the scripts ever move, or the
+          # working-directory line above is lost in an edit, this job goes red
+          # instead of quietly certifying an empty suite.
+          daml test --all --show-coverage 2>&1 | tee /tmp/daml-test.log
+          ran=$(grep -c ': ok,' /tmp/daml-test.log || true)
+          echo "$ran scripts ran"
+          if [ "$ran" -lt 92 ]; then
+            echo "::error::expected at least 92 attack scripts, $ran ran"; exit 1
+          fi
+          # 42 choices, 28 exercised; the other 14 are Daml's auto-generated
+          # Archive on each template. The README says so, so it is checked.
+          if ! grep -q '28 ( 66.7%) exercised in any tests' /tmp/daml-test.log; then
+            echo "::error::choice coverage moved; the README claim needs re-checking"
+            grep -A3 'External template choices' /tmp/daml-test.log; exit 1
+          fi
 
   mutation:
     # The only job that tests the tests. Deletes each fence in the Daml in turn

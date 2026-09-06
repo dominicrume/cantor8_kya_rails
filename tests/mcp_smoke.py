@@ -53,7 +53,7 @@ for mid, method, params in REQUESTS:
         m["params"] = params
     lines.append(json.dumps(m))
 
-p = subprocess.run([sys.executable, SERVER], input="\n".join(lines) + "\n",
+p = subprocess.run([sys.executable, SERVER, "--ephemeral"], input="\n".join(lines) + "\n",
                    capture_output=True, text=True, timeout=60)
 by_id = {}
 for line in p.stdout.splitlines():
@@ -109,10 +109,85 @@ over = payload(13)
 check(over["outcome"] == "REFUSED" and "period" in over["rule"],
       "second payout REFUSED by the period limit, not the cap (rule: %s)" % over["rule"])
 
+
+# ---------------------------------------------------------------------------
+# A hostile stdin. This is not hypothetical: a JSON list where an object was
+# expected raised AttributeError inside handle(), killed the loop, and ended
+# the server. The model was left with silence, its pending request unanswered,
+# and the whole in-memory receipt chain gone with the process.
+#
+# The malformed lines are interleaved BETWEEN good ones on purpose. Feeding
+# them at the end would pass even if each one still killed the server.
+# ---------------------------------------------------------------------------
+print()
+print("a hostile stdin, with the good requests still to come after it")
+
+HOSTILE = [
+    ('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}', None),
+    ("this is not json at all", -32700),
+    ('{"jsonrpc":"2.0","id":2,"method":"tools/list"}', None),
+    ("[1,2,3]", -32600),
+    ("5", -32600),
+    ('"a bare string"', -32600),
+    ("null", -32600),
+    ('{"jsonrpc":"2.0","id":3,"method":["not","a","string"]}', -32600),
+    ('{"jsonrpc":"2.0","id":{"an":"object"},"method":"tools/list"}', -32600),
+    ('{"jsonrpc":"2.0","id":4,"method":"no/such/method"}', -32601),
+    ('{"jsonrpc":"2.0","id":5,"method":"tools/call","params":"not an object"}', None),
+    ('{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"charge"}}', None),
+    ('{"jsonrpc":"2.0","id":7,"method":"tools/call",'
+     '"params":{"name":"charge","arguments":{"amount":"lots","payee":[1]}}}', None),
+    ('{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"../../etc/passwd"}}', None),
+    # The line that proves the session is still alive after all of the above.
+    ('{"jsonrpc":"2.0","id":99,"method":"tools/list"}', None),
+]
+
+hp = subprocess.run([sys.executable, SERVER, "--ephemeral"],
+                    input="\n".join(h[0] for h in HOSTILE) + "\n",
+                    capture_output=True, text=True, timeout=60)
+answers = [json.loads(l) for l in hp.stdout.splitlines() if l.strip()]
+survivor = [a for a in answers if a.get("id") == 99]
+
+check(hp.returncode == 0, "the server exits cleanly rather than crashing (rc=%s)"
+      % hp.returncode)
+check(len(survivor) == 1,
+      "the LAST request is still answered -- no bad line ended the session")
+check(bool(survivor) and len(survivor[0]["result"]["tools"]) == 4,
+      "and it is answered correctly, with all four tools")
+check("Traceback" not in hp.stderr, "nothing raised out of the loop")
+check(all("jsonrpc" in a for a in answers),
+      "every answer is a JSON-RPC message, including the failures")
+
+# Line by line, not as a set. Asking only whether -32600 appears SOMEWHERE
+# passes even when the line that should have produced it produced something
+# else entirely -- one aggregate hiding every individual answer. Each of these
+# lines produces exactly one response, in order, so they can be matched up.
+check(len(answers) == len(HOSTILE),
+      "one answer per line, in order (%d lines, %d answers)"
+      % (len(HOSTILE), len(answers)))
+wrong = []
+for (line, want), got in zip(HOSTILE, answers):
+    code = got.get("error", {}).get("code")
+    if want != code:
+        wrong.append("%.40s -> wanted %s, got %s" % (line, want, code))
+check(not wrong, "each line gets ITS proper JSON-RPC code")
+for w in wrong:
+    print("       ", w)
+check(all(a["error"]["message"] for a in answers if "error" in a),
+      "and every error carries a message a caller can act on")
+
+# A tool that fails must not look like a transport failure -- the model has to
+# be able to tell "you asked wrongly" from "the wallet is broken".
+tool_errors = [a for a in answers
+               if a.get("result", {}).get("isError") is True]
+check(len(tool_errors) >= 3,
+      "a bad tool call comes back as a tool error, not a dead connection (%d)"
+      % len(tool_errors))
+
 print()
 if fails:
     print("MCP SMOKE FAILED - %d:" % len(fails))
     for f in fails:
         print("  -", f)
     sys.exit(1)
-print("MCP smoke passed: the model cannot overspend, cannot redirect, cannot outlive a revoke.")
+print("MCP smoke passed: the model cannot overspend, cannot redirect, cannot\noutlive a revoke -- and cannot end the session by sending nonsense.")

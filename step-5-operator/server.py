@@ -13,7 +13,7 @@ Then open http://localhost:8420 on the same machine, or on a phone using the
 machine's LAN address. It binds localhost by default: this thing carries
 payout authority and should not appear on a network by accident.
 """
-import hmac, json, os, secrets, sys, time, http.server, socketserver, urllib.parse
+import hmac, json, os, secrets, sys, time, traceback, http.server, socketserver, urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "step-2-agent"))
@@ -24,7 +24,7 @@ from kya_chain import Chain, NonAsciiInReceipt
 from bot import Conversation, GREETING
 from meta import MetaAdapter, MAX_BODY
 from breet import BreetAdapter
-from store import Store, Tampered
+from store import Store, Tampered, Unusable
 
 # Meta's webhook, if and only if it is fully configured. A half-configured
 # webhook endpoint is an open one, so all three values must be present or the
@@ -446,16 +446,64 @@ RAIL = None
 # does not make the router harder to follow.
 # ---------------------------------------------------------------------------
 
+# The caller vanished mid-body. Distinct from a refusal because there is no
+# longer a socket to write an answer to.
+HUNG_UP = object()
+
+
+class BadRequest(ValueError):
+    """The caller sent something this endpoint cannot act on.
+
+    A 400 with a reason, never a 500 and never a dropped connection. Probing
+    the thirteen routes with seven malformed bodies each produced 24 dropped
+    connections: float(body.get("amount")) on a string, a list or None, and a
+    dict used where a key was expected. Every one killed the request rather
+    than answering it.
+    """
+
+
+def as_text(body, key, required=True, default=""):
+    """A string, or a 400 saying which field and what arrived instead."""
+    value = body.get(key, None)
+    if value is None:
+        if required:
+            raise BadRequest("%s is required" % key)
+        return default
+    if not isinstance(value, str):
+        raise BadRequest("%s must be text, not %s" % (key, type(value).__name__))
+    return value
+
+
+def as_number(body, key, required=True, default=0.0):
+    """A finite number. Rejects bools, infinities and NaN as well as the
+    obvious wrong types: `True` is an int in Python and would otherwise be a
+    perfectly acceptable amount."""
+    value = body.get(key, None)
+    if value is None:
+        if required:
+            raise BadRequest("%s is required" % key)
+        return default
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise BadRequest("%s must be a number, not %s" % (key, type(value).__name__))
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise BadRequest("%s must be a number, got %r" % (key, str(value)[:40]))
+    if number != number or number in (float("inf"), float("-inf")):
+        raise BadRequest("%s must be a finite number" % key)
+    return number
+
+
 def r_open(body):
-    pl = body.get("period_limit")
-    return RAIL.open(float(body.get("cap", 5.0)),
+    pl = as_number(body, "period_limit", required=False, default=None) if body.get("period_limit") is not None else None
+    return RAIL.open(as_number(body, "cap", required=False, default=5.0),
                      None if pl in (None, "") else float(pl),
-                     body.get("period_seconds") or None)
+                     as_number(body, "period_seconds", required=False, default=None) if body.get("period_seconds") is not None else None)
 
 
 def r_request(body):
-    return RAIL.request(float(body.get("amount", 0)), body.get("payee", ""),
-                        body.get("what", ""))
+    return RAIL.request(as_number(body, "amount"), as_text(body, "payee"),
+                        as_text(body, "what", required=False))
 
 
 def r_revoke(body):
@@ -463,16 +511,16 @@ def r_revoke(body):
 
 
 def r_quote(body):
-    return RAIL.desk.issue(body.get("customer", ""), float(body.get("rate", 0)),
-                           float(body.get("amount", 0)), body.get("payout_account", ""))
+    return RAIL.desk.issue(as_text(body, "customer", required=False), as_number(body, "rate"),
+                           as_number(body, "amount"), as_text(body, "payout_account", required=False))
 
 
 def _stamp(res, body, authority="quote issued by Principal + Operator"):
     """A payout attempt is a receipt whether or not it was allowed."""
     try:
         res["receipt"] = RAIL.chain.stamp(
-            body.get("what") or ("payout for " + body.get("reference", "")),
-            float(body.get("amount", 0)), body.get("claimed_account", "")[:60],
+            as_text(body, "what", required=False) or ("payout for " + as_text(body, "reference", required=False)),
+            as_number(body, "amount"), as_text(body, "claimed_account", required=False)[:60],
             res["rule"], "ACCEPTED" if res["outcome"] in ("PAID",) else "REFUSED",
             authority, RAIL.ledger.label, RAIL.ledger.currency, RAIL.ledger.instrument)
     except NonAsciiInReceipt as e:
@@ -481,51 +529,52 @@ def _stamp(res, body, authority="quote issued by Principal + Operator"):
 
 
 def r_fulfil(body):
-    res = RAIL.desk.fulfil(body.get("reference", ""), float(body.get("amount", 0)),
-                           body.get("claimed_account", ""))
+    res = RAIL.desk.fulfil(as_text(body, "reference", required=False), as_number(body, "amount"),
+                           as_text(body, "claimed_account", required=False))
     if res.get("outcome") == "PAID":
         res["outcome"] = "PAID"
     return _stamp(res, body)
 
 
 def r_approve(body):
-    return {"approved": RAIL.desk.approve(body.get("account", ""))}
+    return {"approved": RAIL.desk.approve(as_text(body, "account", required=False))}
 
 
 def r_deal(body):
     return RAIL.cycle.open_deal(
-        body.get("customer", ""), body.get("asset", ""), body.get("network", ""),
-        float(body.get("amount", 0)), float(body.get("rate", 0)),
-        body.get("payout_account", ""), body.get("memo") or None,
+        as_text(body, "customer"), as_text(body, "asset"),
+        as_text(body, "network"), as_number(body, "amount"),
+        as_number(body, "rate"), as_text(body, "payout_account"),
+        as_text(body, "memo", required=False) or None,
         RAIL.desk.approved)
 
 
 def r_deposit_confirmed(body):
-    return RAIL.cycle.confirm_deposit(body.get("reference", ""))
+    return RAIL.cycle.confirm_deposit(as_text(body, "reference", required=False))
 
 
 def r_offtaker(body):
-    return RAIL.cycle.send_to_offtaker(body.get("reference", ""),
-                                       body.get("offtaker", ""), body.get("address", ""))
+    return RAIL.cycle.send_to_offtaker(as_text(body, "reference", required=False),
+                                       as_text(body, "offtaker", required=False), as_text(body, "address", required=False))
 
 
 def r_naira(body):
-    return RAIL.cycle.confirm_naira(body.get("reference", ""),
-                                    float(body.get("received", 0)))
+    return RAIL.cycle.confirm_naira(as_text(body, "reference", required=False),
+                                    as_number(body, "received"))
 
 
 def r_pay(body):
-    return _stamp(RAIL.cycle.pay(body.get("reference", ""),
-                                 body.get("claimed_account", ""),
-                                 float(body.get("amount", 0))), body)
+    return _stamp(RAIL.cycle.pay(as_text(body, "reference", required=False),
+                                 as_text(body, "claimed_account", required=False),
+                                 as_number(body, "amount")), body)
 
 
 def r_wa(body):
-    return {"reply": RAIL.on_message(body.get("from") or "sim", body.get("text", ""))}
+    return {"reply": RAIL.on_message(as_text(body, "from", required=False) or "sim", as_text(body, "text", required=False))}
 
 
 def r_rate(body):
-    r = float(body.get("rate", 0))
+    r = as_number(body, "rate")
     lo, hi = RAIL.band
     if not (lo <= r <= hi):
         return {"error": "rate is outside the band %s-%s" % (lo, hi)}
@@ -686,21 +735,81 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._breet_post
         return None
 
+    def _read_body(self):
+        """(parsed body, refusal). Exactly one of the two is None.
+
+        Content-Length arrives from the caller, so it is not a number until it
+        has been checked, and it is not a SIZE until it has been capped.
+        int("abc") raised ValueError here and killed the connection; a header
+        saying 4000000000 had this process try to read four gigabytes into
+        memory on the word of an anonymous client. A payout instruction is
+        never a megabyte, so the JSON routes share the same MAX_BODY the
+        webhook endpoints already use -- one limit with one meaning. Defining a
+        second one here shadowed the import and silently raised the webhook
+        ceiling from 256KB to 1MB; breet_wire_smoke caught it in one run, and
+        deadcode_lint now catches the shape of it.
+        """
+        raw_len = self.headers.get("Content-Length", "0")
+        try:
+            n = int(raw_len)
+        except (TypeError, ValueError):
+            return None, ({"error": "Content-Length is not a number"}, 400)
+        if n < 0:
+            return None, ({"error": "Content-Length cannot be negative"}, 400)
+        if n > MAX_BODY:
+            return None, ({"error": "the body is larger than the %d byte limit"
+                                    % MAX_BODY}, 413)
+        try:
+            raw = self.rfile.read(n) or b"{}"
+        except OSError:
+            return None, HUNG_UP        # gone mid-body; there is nobody to answer
+        try:
+            return json.loads(raw), None
+        except UnicodeDecodeError:
+            return None, ({"error": "the body is not valid UTF-8 text"}, 400)
+        except json.JSONDecodeError as e:
+            # Say WHERE. "bad request" sends an integrator hunting through a
+            # payload by hand; "line 1 column 6" ends it in a second.
+            return None, ({"error": "the body is not valid JSON: %s "
+                                    "(line %d column %d)"
+                                    % (e.msg, e.lineno, e.colno)}, 400)
+
     def do_POST(self):
         hook = self._webhook()
         if hook is not None:
             return hook()
         if not self.authorised():
             return self._json({"error": "unauthorised"}, 401)
-        n = int(self.headers.get("Content-Length", 0))
-        try:
-            body = json.loads(self.rfile.read(n) or b"{}")
-        except json.JSONDecodeError:
-            return self._json({"error": "bad request"}, 400)
+        body, refusal = self._read_body()
+        if refusal is HUNG_UP:
+            return
+        if refusal is not None:
+            return self._json(*refusal)
         route = POST_ROUTES.get(self.path)
         if route is None:
             return self._json({"error": "unknown endpoint"}, 404)
-        out = route(body)
+        if not isinstance(body, dict):
+            return self._json({"error": "the body must be a JSON object"}, 400)
+        return self._dispatch(route, body)
+
+    def _dispatch(self, route, body):
+        """Every answer this server gives, including the ones about its own
+        failures. A handler may raise; the socket must never see it.
+
+        BadRequest is the caller's fault and says which field. Anything else is
+        ours: the caller gets a plain 500 rather than a traceback -- an
+        exception message can carry internal paths and values -- and the detail
+        goes to the operator's console where it belongs.
+        """
+        try:
+            out = route(body)
+        except BadRequest as e:
+            return self._json({"error": str(e)}, 400)
+        except Exception as e:                       # noqa: BLE001 - the boundary
+            print("UNHANDLED on %s: %s: %s"
+                  % (self.path, type(e).__name__, e), file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            return self._json({"error": "the desk could not process that request"}, 500)
         RAIL.persist()
         return self._json(out)
 
@@ -766,6 +875,16 @@ def main(argv):
         print("  The journal is the desk's audit trail. Investigate it before")
         print("  running anything: python3 tests/store_check.py <path>")
         sys.exit(3)
+    except Unusable as e:
+        # A different thing entirely, and it must not read like tampering.
+        # Nothing is wrong with the desk's history; it cannot find a place to
+        # keep it. The fix is a path, not an investigation.
+        print("CANNOT START: the desk has nowhere to keep its record.")
+        print(" ", e)
+        print("  Or run with --ephemeral to work without a record at all --")
+        print("  nothing will survive the process, which is a real choice, not")
+        print("  a workaround.")
+        sys.exit(4)
     RAIL = Rail(argv, store=store)
     META = build_meta(RAIL)
     BREET = build_breet(RAIL)

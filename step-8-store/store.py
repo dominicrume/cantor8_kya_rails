@@ -50,6 +50,36 @@ class Tampered(Exception):
     """The journal does not follow from itself. Someone edited history."""
 
 
+class Unusable(Exception):
+    """The journal cannot be opened, and it is not a tampering question."""
+
+
+def _why_unusable(path, err):
+    """Turn a SQLite error into the sentence that says what to do about it.
+
+    "sqlite3.OperationalError: unable to open database file" is true and
+    useless. It is the same message for a path that is a directory, a folder
+    that does not exist, a folder the desk cannot write to, and a file that is
+    not a journal at all -- four different mistakes with four different fixes.
+    An operator who mistypes KYA_STORE deserves to be told which one.
+    """
+    folder = os.path.dirname(os.path.abspath(path)) or "."
+    if os.path.isdir(path):
+        return "%s is a folder, not a file. KYA_STORE names the journal file " \
+               "itself, for example %s/kya-desk.db" % (path, path.rstrip("/"))
+    if not os.path.isdir(folder):
+        return "the folder %s does not exist, so nothing can be written " \
+               "there. Create it, or point KYA_STORE somewhere that does." % folder
+    if not os.access(folder, os.W_OK):
+        return "this desk cannot write into %s. Check the permissions on that " \
+               "folder, or point KYA_STORE somewhere writable." % folder
+    if os.path.exists(path) and "not a database" in str(err):
+        return "%s exists but is not a KYA journal -- it is some other file. " \
+               "Refusing to write over it. Move it aside, or choose another " \
+               "path." % path
+    return "%s could not be opened: %s" % (path, err)
+
+
 class Journal:
     """An append-only, seal-chained log in SQLite."""
 
@@ -58,10 +88,16 @@ class Journal:
         # isolation_level=None: every statement commits as it runs. A desk
         # that loses the last write because the lid closed is the whole
         # problem this file exists to fix.
-        self.db = sqlite3.connect(path, isolation_level=None)
-        self.db.execute("PRAGMA journal_mode=WAL")
-        self.db.execute("PRAGMA synchronous=FULL")
-        self.db.executescript(SCHEMA)
+        # A desk that cannot open its journal must say so in a sentence. The
+        # raw sqlite3 error is a traceback on the operator's screen at the
+        # moment they are trying to start work.
+        try:
+            self.db = sqlite3.connect(path, isolation_level=None)
+            self.db.execute("PRAGMA journal_mode=WAL")
+            self.db.execute("PRAGMA synchronous=FULL")
+            self.db.executescript(SCHEMA)
+        except sqlite3.Error as e:
+            raise Unusable(_why_unusable(path, e)) from e
         self.n, self.prev = self._tail()
 
     def _tail(self):

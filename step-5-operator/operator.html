@@ -42,6 +42,13 @@
          font-weight:600;font-family:inherit;cursor:pointer;margin-top:16px}
   #send{background:var(--ok);color:#fff}
   #send:disabled{background:#26362e;color:#6d7d75}
+  /* Not red. Red says "this failed"; the payment may in fact have gone
+     through and the screen simply cannot see it. Amber says "you do not
+     know", which is the true state and the one worth acting on. */
+  .link{background:#3a2f14;border:1px solid #7a5c1a;color:#f0d48a;
+        padding:10px 12px;border-radius:8px;margin:0 0 12px;font-size:14px;
+        line-height:1.45}
+  .link b{color:#ffe9ae}
 
   /* The answer. This is the screen that matters: a refusal must read as the
      system deciding, not as the operator failing. */
@@ -122,6 +129,7 @@
 <body>
 <div class="wrap">
   <header><h1>Operator</h1><span id="who"></span></header>
+  <div class="link" id="link" hidden></div>
 
   <div class="mandate">
     <div class="float"><b id="remaining">—</b><small id="capline"></small></div>
@@ -237,16 +245,78 @@ function render(s){
 const esc = t => String(t).replace(/[&<>"]/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-async function refresh(){ render(await (await fetch('/api/state')).json()); }
+// ---------------------------------------------------------------------------
+// Everything this page asks the desk goes through here.
+//
+// A screen with payout authority has one failure mode worse than an error,
+// and that is silence. Before this, `await (await fetch(...)).json()` threw
+// on an unreachable desk, the handler died mid-way, and the button sat
+// disabled reading "Asking the ledger..." forever. The operator was left to
+// guess whether the money moved. It is the exact ambiguity that cost the desk
+// this whole project is built around.
+//
+// So a desk that cannot be reached comes back in the SAME SHAPE as a desk
+// that refused: {error: "..."}. Every call site already handles that, which
+// is why this is a wiring change and not a rewrite.
+let retrying = null;
+
+function setLink(ok, why){
+  const el = $('link');
+  el.hidden = ok;
+  if (ok){
+    // Back. Stop knocking, and stop only here -- clearing the timer anywhere
+    // else is how you end up with two of them.
+    if (retrying){ clearInterval(retrying); retrying = null; }
+    return;
+  }
+  el.innerHTML = '<b>The desk is not answering.</b> ' + esc(why) +
+    ' Nothing on this screen is known to be current. Do not assume a payment ' +
+    'failed just because you cannot see it — check the receipts before retrying. ' +
+    'This screen is still trying, and will say so the moment the desk answers.';
+  // Nothing polls in the normal case; a screen that has LOST the desk is the
+  // one case where polling earns its keep, because otherwise the operator sits
+  // in front of a stale page with no way to know it came back.
+  if (!retrying) retrying = setInterval(refresh, 5000);
+}
+
+async function api(url, body){
+  let res;
+  try {
+    res = await fetch(url, body === undefined ? undefined : {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)});
+  } catch (e) {
+    setLink(false, 'The connection failed.');
+    return {error: 'the desk could not be reached, so nothing was sent'};
+  }
+  let text;
+  try { text = await res.text(); }
+  catch (e) {
+    setLink(false, 'The reply was cut off.');
+    return {error: 'the reply from the desk was cut off'};
+  }
+  setLink(true);
+  try { return JSON.parse(text); }
+  catch (e) {
+    // A 502 from something in front of us, or an HTML error page. Either way
+    // it is not the desk talking, and saying so beats a parse error.
+    return {error: 'the desk replied with something this screen cannot read' +
+                   (res.status === 200 ? '' : ' (HTTP ' + res.status + ')')};
+  }
+}
+
+async function refresh(){
+  const s = await api('/api/state');
+  if (s.error) return;          // the strip already says so; keep the last view
+  render(s);
+}
 
 $('send').onclick = async () => {
   const amount = parseFloat($('amount').value);
   if (!(amount > 0)) { $('amount').focus(); return; }
   $('send').disabled = true; $('send').textContent = 'Asking the ledger…';
-  const res = await (await fetch('/api/request', {method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({amount, payee: $('payee').value, what: $('what').value || 'payout'})
-  })).json();
+  const res = await api('/api/request',
+    {amount, payee: $('payee').value, what: $('what').value || 'payout'});
   $('send').textContent = 'Request payout';
 
   const box = $('answer');
@@ -355,8 +425,7 @@ async function attempt(reference, amount, claimed_account, what){
   await refresh();
 }
 
-const post = async (url, body) => (await fetch(url, {method:'POST',
-  headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})).json();
+const post = api;      // one door, so nothing bypasses the checks above
 
 function renderStep(){
   const acts = $('acts');

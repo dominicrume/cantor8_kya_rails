@@ -1,232 +1,342 @@
-# Proposal: KYA Receipt Chain — verifiable accountability for agent-operated payments
+## Development Fund Proposal
 
-*Draft for the Canton Protocol Development Fund. Submitted as a PR to
-`canton-foundation/canton-dev-fund` under `proposals/`. Requires a Tech & Ops
-Committee champion.*
-
-**Applicant:** Rume Dominic (O'Rume Dominic Uririe), MSc Artificial
-Intelligence, Aston University. Creator of the KYA (Know Your AgenticAI)
-Framework.
-**Existing work:** https://github.com/dominicrume/cantor8_kya_rails (MIT)
-**Contact:** dominicrume@gmail.com
-
----
-
-## 1. Objective and scope
-
-Agents on Canton already transact at volume. Every one of those transactions is
-authorised by a key, and a key has exactly one answer: yes. Two things are
-missing from that picture, and this proposal addresses both.
-
-**First, a bounded mandate.** An agent should hold a written authority — a cap,
-a counterparty allow-list, an expiry, an instant revoke — enforced by the ledger
-rather than by the application submitting the command. Canton's authorisation
-model is unusually well suited to this; almost nothing in the ecosystem uses it
-this way.
-
-**Second, and this is the part that generalises: a record of what was refused.**
-Most systems log what succeeded. That answers *what happened*. It does not
-answer *what was attempted and stopped, and which rule decided* — which is the
-first question asked after an incident and the first question an auditor asks.
-An agent that is refused has still acted, and today that action leaves no
-artefact anywhere in the stack.
-
-**In scope:**
-
-1. **KYA Receipt Chain v1.0** — an open, ledger-agnostic format for
-   tamper-evident receipts of agent actions, refusals included. Written
-   specification, conformance vectors, and reference implementations.
-2. **A reference mandate contract** — Daml templates enforcing cap, allow-list,
-   expiry and revoke in the choice body, with a mutation-tested attack suite.
-3. **An MCP server** so a language model can hold a mandate directly, and the
-   refusal can be experienced rather than described.
-
-**Out of scope:** custody, key management, payment licensing, and any claim to
-be a money transmitter. This is an accountability and authorisation layer over
-flows that already exist.
-
-## 2. Technical approach
-
-**The seal.** A receipt is a JSON object; the seal is
-`sha256(canonical(body) + previous_seal)`, where canonical form is sorted keys,
-`","`/`":"` separators and ASCII-only. Verification requires no network, no key
-material and no trust in the producer — the reader recomputes. Editing any
-receipt breaks that receipt and every receipt after it.
-
-ASCII-only is not stylistic. Python escapes non-ASCII to `\uXXXX`; JavaScript's
-`JSON.stringify` emits the raw character. The same receipt then hashes
-differently in two languages, and a chain verifies on the server while failing
-in the browser. The specification mandates the restriction and the reference
-implementation refuses to seal a receipt that violates it.
-
-**The mandate.** `KyaMandate` carries cap, allow-list, expiry and revoke, all
-asserted inside the `Charge` choice body. `signatory owner, spender` means both
-parties sign, so the agent consents to its own limits and cannot then remove
-them. `Revoke` is consuming and creates nothing — there is no flag to race.
-`ChargeRecord` puts each accepted charge on-ledger with `observer payee`, so a
-counterparty can read what they were paid without gaining authority over
-anything.
-
-**What is already built and verified** (all reproducible from a clean clone):
-
-| | Status |
-| --- | --- |
-| Specification | 176 lines, written to be implemented from the text alone |
-| Reference implementations | 2 — Python (stdlib only) and browser JavaScript |
-| Conformance vectors | 9, generated from the reference implementation |
-| Daml attack suite | 11 scripts, every one named for the attack it proves |
-| Mutation tested | yes — deleting the cap assertion turns a test red |
-| Deployed on Cantor8 DevNet | package `df5a02e88a68…`, vetted |
-| Refusals returned by DevNet itself | over-cap, non-allow-listed payee, expired, revoked, agent-only cap raise |
-| CI | conformance in both languages, vector reproducibility, MCP fences, Daml suite |
-| Licence | MIT |
-
-The expiry evidence is the piece worth singling out: the same mandate, same
-payee, same amount, **accepted at T and refused at T+100s on a real clock**.
-`expiresAt` is only a field until the assertion in `Charge` makes it a rule.
-
-## 3. Architectural alignment
-
-**It uses Canton for what Canton is uniquely good at.** The value here is not
-that limits exist; it is that they are enforced by a ledger the agent does not
-control, before the transaction can exist, with the counterparty able to see
-only their own record. Privacy plus atomic settlement across parties who do not
-trust each other is the combination Canton offers and very little else does.
-
-**The privacy matrix.** Who signs each contract, who observes it, and who is
-excluded — generated from the Daml rather than written by hand, with CI
-failing if the two drift apart:
-
-| Contract | Signatories | Observers | Excluded |
-| --- | --- | --- | --- |
-| `KyaMandate` | `owner`, `spender` | — | **everyone else** |
-| `ChargeRecord` | `owner`, `spender` | `payee` | **everyone else** |
-| `Quote` | `operator` | `customer` | **everyone else** |
-| `PayoutBook` | `principal` | `operator` | **everyone else** |
-| `DepositInstruction` | `operator` | `customer`, `depositFeed` | **everyone else** |
-| `InboundDeal` | `operator` | `customer`, `principal`, `bankFeed` | **everyone else** |
-| `Release` | `operator` | `customer` | **everyone else** |
-
-The exclusions are the design. A payee verifies what they were paid without
-seeing the cap, the float, or any other payee. A watcher cannot see that a
-quote exists — which is the structural difference from a public chain, where a
-monitorable deposit address is what makes a false claim cheap to fabricate. A
-feed observes one deal and can confirm one fact; narrow sight and narrow
-authority, deliberately matched. The full table is in
-[docs/privacy-matrix.md](../docs/privacy-matrix.md).
-
-**It is a building block, not an application.** `KyaMandate` is a template any
-Canton application can hold alongside whatever it already does. The receipt
-format is not Canton-specific at all — which is the point. A format adopted by
-one repository is a library; a format with a specification, vectors and multiple
-independent implementations is infrastructure.
-
-**It reduces reliance on any single organisation**, which is the Fund's stated
-aim. The specification is MIT, the vectors are the authority over the prose, and
-the most useful contribution anyone can make is an implementation in another
-language that proves it matches.
-
-**It states its limits.** The specification's section 8 says plainly what the
-format does *not* do: it is not signed, so it proves internal consistency and
-not origin; it does not prove a rule was enforced, only that a decision was
-recorded; and it makes editing detectable, not deletion. A security format that
-overstates itself is worse than none.
-
-## 4. Milestones and deliverables
-
-**M1 — Specification hardening and a third implementation** *(6 weeks)*
-Independent implementation in Go or Rust, produced from the specification text
-alone and proved against the vectors. Any ambiguity found becomes a
-specification fix and a new vector. Vector set expanded to cover empty and
-maximal fields, deep chains, and misaligned `prev` links.
-
-**M2 — Mandate library and audit** *(8 weeks)*
-`KyaMandate` packaged for reuse: per-period limits in addition to the total cap,
-documented upgrade path, and a published threat model. External review of the
-Daml. Mutation testing extended to every fence, run in CI.
-
-**M3 — Agent integration and reference deployment** *(6 weeks)*
-MCP server hardened for real use. A worked end-to-end deployment on DevNet with
-Canton Coin actually moving through the mandate, not merely recorded against it.
-Documentation aimed at a team adopting this in a week.
-
-**M4 — Adoption** *(ongoing, 12 weeks)*
-Two independent teams building on the format, with their feedback folded into
-v1.1. Workshop material for developer sessions.
-
-## 5. Acceptance criteria
-
-Each milestone is a pull request, publicly reviewable, and complete only when:
-
-- **M1** — the third implementation passes all conformance vectors in CI, from a
-  clean checkout, with no changes to the reference implementations. Every
-  specification ambiguity it exposed is fixed and covered by a new vector.
-- **M2** — an external reviewer's findings are published with responses. Every
-  fence has a mutation test that goes red when the fence is deleted; CI enforces
-  this. Per-period limits ship with tests named for the attacks they prove.
-- **M3** — a Canton Coin transfer completes through a mandate on DevNet, with
-  the sealed receipt chain for it published, verifiable offline by a third
-  party. A developer outside the project reproduces the deployment from the
-  documentation alone.
-- **M4** — two named projects, not authored by the applicant, have adopted the
-  format. v1.1 ships with their feedback addressed.
-
-Acceptance is deliberately falsifiable. "A third party reproduces it" and
-"deleting a fence turns a test red" are checkable by the Committee without
-taking the applicant's word for anything — which is the same standard the
-receipt format itself is built on.
-
-## 6. Funding request and milestone breakdown
-
-Denominated in Canton Coin, released on milestone acceptance.
-
-**Total: 1,200,000 CC development, plus 250,000 CC for an independent Daml
-review at M2, quoted separately as a third-party cost.**
-
-| Milestone | Deliverable | Weeks | CC |
-| --- | --- | --- | --- |
-| M1 | Spec hardening + third implementation | 6 | 240,000 |
-| M2 | Mandate library, per-period limits | 8 | 360,000 |
-| M2a | Independent Daml review (third party) | — | 250,000 |
-| M3 | Agent integration + reference deployment | 6 | 300,000 |
-| M4 | Adoption, v1.1, workshop material | 12 | 300,000 |
-| | **Total** | **32** | **1,450,000** |
-
-Sized against comparable awards in this repository: an individual contributor
-delivering payment streams requested 900,000 CC development plus 200,000 CC for
-independent review; an individual delivering a settlement reference
-implementation requested 1,100,000 CC. This proposal covers 32 weeks — longer
-than either — while remaining well below the 2,260,000 CC requested for a team
-delivering language SDKs.
-
-The applicant would prefer fixed CC amounts rather than a fixed fiat value, and
-is open to monthly release within milestones if the Committee prefers that
-structure.
-
-Work to date has been unfunded. The applicant is not requesting retrospective
-payment for it; it is offered as evidence that the milestones above are
-deliverable.
+**Organization:** Independent (Rume Dominic / O'Rume Dominic Uririe)
+**Author / Primary Contact:** Rume Dominic — dominicrume@gmail.com — github.com/dominicrume
+**Status:** Draft
+**Created:** 2026-09-06
+**Proposal Type:** RFP-aligned
+**RFP / Roadmap Area:** Security, Assurance & Incident Readiness — **RFP 27, Security
+Monitoring, Auditability and Evidence**
+**Champion:** `Needs Champion`
+**Total Funding Request:** 300,000 CC
+**Project Duration:** 16 weeks
+**Label:** regulatory-compliance
 
 ---
 
-## Why the applicant
+## Abstract
 
-I did not arrive at this from theory. I run a payout business whose principal is
-in one country and whose operations are in another, and its binding constraint
-is exactly the problem above: someone must execute on the ground, and cannot
-safely be given unbounded authority over the float. The failure mode is not
-theft — it is the message *"change of account, send it here instead,"* which
-does not require the operator to be dishonest, only convinced. In agent terms
-that is prompt injection under a different name.
+Canton keeps transaction detail private, which means an institution cannot prove
+its own conduct to a counterparty or a regulator by showing them the ledger. The
+gap is sharpest for actions that were **stopped**: an ordinary audit log contains
+what a system did, and the party who writes that log is the party the question is
+about.
 
-I am the first user of this work, which means the incentive to make the
-guarantees real rather than presentable is not an abstract one.
+This proposal delivers an open, implementation-neutral evidence format for
+**authorisation decisions — the refusals as well as the approvals** — with three
+properties: an entry cannot be removed or edited without detection, the record can
+be checked by anyone with no wallet, node or account, and its integrity is bound
+to Canton without publishing what it contains.
 
-Alongside this I filed four findings against the Cantor8 hackathon toolkit,
-with fixes, including a default-argument binding that silently sends the wrong
-ledger user and returns a 403 naming neither the user nor the cause.
+The format, a conformance suite and a Daml reference implementation already exist,
+are MIT-licensed and are reproducible from a clean clone. This grant funds the work
+that turns them from one applicant's repository into something other Canton
+applications adopt.
 
-**Verification:** every claim in this proposal is reproducible from
-`https://github.com/dominicrume/cantor8_kya_rails` at the commit referenced in
-the PR. `daml test`, `tests/conformance.py`, `tests/conformance.js` and
-`tests/mcp_smoke.py` run from a clean clone with no network and no install.
+---
+
+## Specification
+
+### 1. Objective
+
+**One objective: a privacy-preserving, tamper-evident evidence format for
+authorisation decisions on Canton, with a conformance suite that lets any
+application produce records another party can verify.**
+
+The problem is specific. Under Canton's privacy model, a participant sees only the
+sub-transactions it is a stakeholder in. That is the correct design, and it means
+compliance evidence cannot be assembled by an outside observer — it has to be
+produced by the participant, which is exactly the party whose conduct is in
+question. Self-attested evidence is worth what the attestor's reputation is worth.
+
+The narrower half of the problem is refusals. When an authorisation check stops an
+action, nothing durable is created on-ledger, because nothing happened. There is no
+contract, no event, no archive. The attempt exists only in whatever the application
+chose to log. RFP 27 asks for "audit trails, compliance evidence... while preserving
+Canton's privacy model", and refused authorisations are the part of that trail with
+no ledger artefact behind it.
+
+**In scope:** the record format and its canonicalisation; a conformance vector suite
+and a language-neutral grader; a Daml reference implementation of a bounded mandate
+whose refusals are covered by named tests; an on-ledger anchor that binds a record
+to its origin without disclosing contents; a browser verifier requiring no install;
+and integration with at least two Canton applications not written by the applicant.
+
+**Out of scope:** custody, key management, payment licensing, identity issuance,
+zero-knowledge proving systems, and any claim that this constitutes regulatory
+approval in any jurisdiction.
+
+### 2. Implementation Mechanics
+
+**The record.** An entry is a JSON object naming what was attempted, the rule that
+allowed or refused it, the outcome, and the ledger that answered. Its seal is
+`sha256(canonical(entry_without_seal) + previous_seal)`, where `canonical` is JSON
+with sorted keys, `","` and `":"` separators, and non-ASCII escaped. Entries chain,
+so removing or editing one breaks every seal after it. The canonicalisation is the
+whole specification — it is what lets independent implementations agree byte for
+byte, and it is the part that most needs conformance vectors rather than prose.
+
+**Why a hash chain rather than signatures.** Verification must be possible with no
+key distribution, no PKI and no network. A reader with the file and a SHA-256
+implementation can check integrity. Signatures answer a different question — who
+wrote this — which the anchor below answers on-ledger instead.
+
+**The anchor.** A chain that is internally consistent proves only internal
+consistency; a chain forged from scratch verifies perfectly. The head seal and entry
+count are published in a Daml contract. An outside party asks the ledger whether a
+given head was ever anchored. A forged chain verifies green and answers
+`NOT ANCHORED`. **No entry content reaches the ledger** — only a hash and a count —
+so the privacy model is preserved while integrity becomes externally checkable.
+
+**The mandate.** The reference implementation is a Daml template whose `Charge`
+choice body carries the authorisation fences as `assertMsg` assertions: total cap,
+per-period limit, allow-list, expiry, positive amount. Revoke is a consuming choice,
+so it archives the mandate rather than asserting against it. Refusals are produced
+by the ledger, not by application code, which is what makes the resulting evidence
+worth more than a log line.
+
+**What already exists and is reproducible from a clean clone**, all figures
+re-verified on 2026-09-06 and defensible on request:
+
+| | |
+|---|---|
+| Daml attack scripts | 92 of 92 pass; 28 of 42 template choices exercised, the other 14 are Daml's auto-generated `Archive` |
+| Fence coverage | 30 of 30 `assertMsg` fences mutation-tested — deleting any one turns a **named** test red |
+| Suite integrity | 23 real defects introduced deliberately, each requiring the suite that claims to cover it to fail; every one does |
+| Format agreement | 3 independent implementations (Python, JavaScript, Go) across 16 conformance vectors |
+| Interface robustness | 553 malformed requests over every route and field; zero dropped connections, zero server errors |
+| Deployed | `kya-rails-mandate` 1.1.0 on Canton DevNet, vetted as an upgrade of 1.0.0 |
+
+Two of the 16 vectors exist because the question asked was which *wrong*
+implementations would still pass. Two did.
+
+**Operational approach.** Stdlib-only in every implementation, no runtime
+dependencies, MIT licence. The verifier is a single HTML file that works from a
+local disk. This is deliberate: an evidence format whose verification requires
+installing the producer's software is not evidence.
+
+### 3. Architectural Alignment
+
+This uses Canton for the one thing only Canton can do here — bind a private record
+to a ledger without publishing it — and does nothing on-ledger that does not need to
+be. The mandate template is a building block any application can instantiate, not an
+application competing with one.
+
+It is deliberately scoped **beneath** the Identity and Metadata SIG's work rather
+than beside it. RFP 12.1 asks for provider-neutral credential standards including
+*"authority to act on behalf of an institution."* A mandate is a bounded instance of
+exactly that credential, and the evidence format here is what makes its exercise —
+and its refusal — checkable afterwards. This proposal does **not** attempt the
+credential standard: the template asks for a single objective, and credential
+issuance and evidence recording are different problems on different timeframes. The
+intended relationship is that this work produces the verification substrate a later
+credential standard can cite, and Milestone 3 includes a written alignment note
+agreed with the Identity and Metadata SIG rather than asserted at them.
+
+Relevant prior art it extends rather than replaces: the Foundation's existing
+`daml-lint`, `daml-props` and `daml-verify` tooling operate on source before
+deployment; this operates on decisions after deployment. Hacken's Canton Monitor
+(Dev Fund #302) detects anomalies at a participant's own trust boundary and emits
+SIEM alerts; those alerts are observations by the monitor's operator. This format is
+complementary and lower in the stack: it is the tamper-evident artefact an operator
+hands to someone who does not trust them.
+
+### 4. Backward Compatibility
+
+No backward compatibility impact. The format is additive and the mandate template is
+a new package. Nothing here changes an existing interface, and applications that do
+not adopt it are unaffected. Version 1.1.0 is already vetted as an upgrade of 1.0.0
+on DevNet, so the upgrade path is exercised rather than assumed.
+
+---
+
+## Milestones and Deliverables
+
+Sixteen weeks, four milestones. **Half the funding is build, half unlocks only on
+demonstrated use by parties other than the applicant.** Milestones 3 and 4 pay for
+adoption, not for artefacts.
+
+### Milestone 1: Specification hardening and independent conformance
+- **Estimated Delivery:** Week 4
+- **Focus:** Make the format implementable by someone with no contact with the applicant.
+- **Deliverables / Value Metrics:**
+  - Specification revised against the ambiguities found by a third party attempting an implementation from the document alone, with each ambiguity recorded.
+  - Conformance vector set expanded from 16, every addition justified by a wrong implementation that previously passed.
+  - Language-neutral grader runnable against any executable over a pipe.
+  - **Value metric:** one implementation in a language not currently covered, written by someone other than the applicant, passing the full vector set.
+
+### Milestone 2: Mandate library and independent Daml review
+- **Estimated Delivery:** Week 8
+- **Focus:** Make the reference implementation safe to depend on.
+- **Deliverables / Value Metrics:**
+  - Mandate template generalised from the applicant's use case to a reusable library with documented extension points.
+  - Independent Daml security review, commissioned from a reviewer with no involvement in the work; findings and remediation published in full, including any that are not fixed and why.
+  - Threat model and privacy matrix published: who signs, who observes, who is excluded, for every contract.
+  - **Value metric:** review completed and published; all findings rated high or above either remediated or documented with a stated reason.
+
+### Milestone 3: Adoption by Canton applications
+- **Estimated Delivery:** Week 12
+- **Focus:** Use by people who did not write it.
+- **Deliverables / Value Metrics:**
+  - Integration support for Canton applications adopting the format, with the integration work done by those teams and not by the applicant.
+  - Written alignment note agreed with the Identity and Metadata SIG on the boundary between this evidence layer and credential standards under RFP 12.1.
+  - **Value metric:** **two Canton applications outside the applicant's control emitting records that pass the conformance suite**, named in the milestone submission and independently checkable.
+
+### Milestone 4: Operational adoption and handover
+- **Estimated Delivery:** Week 16
+- **Focus:** Survive the applicant losing interest.
+- **Deliverables / Value Metrics:**
+  - Anchor verification available as a library, not only as a page.
+  - Maintainer documentation sufficient for a second maintainer, and a named second maintainer accepting commit rights.
+  - Listed in the Canton Developer Hub catalogue with a current SDK version.
+  - **Value metric:** **a third adopting application, and at least one adopter running anchored records against a Canton environment rather than a local file.**
+
+---
+
+## Acceptance Criteria
+
+The Tech & Ops Committee will evaluate completion based on:
+
+- Deliverables completed as specified for each milestone
+- Demonstrated functionality or operational readiness
+- Documentation and knowledge transfer provided
+- Alignment with stated value metrics
+
+Project-specific acceptance conditions, all externally checkable:
+
+1. **Milestone 3 does not pass on the applicant's own usage.** Two applications
+   outside the applicant's control must emit conforming records, and be named.
+2. **An implementation the applicant did not write must pass the conformance suite**
+   from the specification alone.
+3. **The independent Daml review must be published in full**, including findings not
+   remediated and the reason each was not.
+4. **A second maintainer with commit rights must accept**, in writing, before the
+   final milestone is accepted.
+5. **Every quantitative claim in a milestone submission must be reproducible from a
+   clean clone** by a reviewer, using a documented command.
+
+Criterion 5 is offered deliberately. The applicant's method treats an untested claim
+as an unmade one, and the same standard should apply to what is said to this
+committee.
+
+---
+
+## Funding
+
+**Total Funding Request:** 300,000 CC
+
+Total scope for the sixteen weeks is estimated at **$36,000 USDT**, fixed at the date
+of submission. The Foundation grant covers the portion below; the applicant covers
+the balance as in-kind co-investment, consisting of the existing MIT-licensed
+codebase — specification, three implementations, conformance suite, Daml package and
+verifier, already built and public before this proposal — and continued maintenance.
+
+### Payment Breakdown by Milestone
+
+- Milestone 1 *(Specification hardening)*: 75,000 CC upon committee acceptance
+- Milestone 2 *(Mandate library and independent review)*: 75,000 CC upon committee acceptance
+- Milestone 3 *(Adoption by Canton applications)*: 75,000 CC upon committee acceptance
+- Milestone 4 *(Operational adoption and handover)*: 75,000 CC upon final release and acceptance
+
+**150,000 CC — half the grant — is contingent on adoption by parties other than the
+applicant.** If nobody adopts it, that half is not paid.
+
+The independent Daml review in Milestone 2 is a third-party cost and is quoted inside
+the Milestone 2 figure rather than as a separate line, so the committee is asked to
+approve one number.
+
+### Volatility Stipulation
+
+Project duration is **under 6 months**. Should the timeline extend beyond six months
+due to Committee-requested scope changes, any remaining milestones must be
+renegotiated to account for significant USD/CC price volatility.
+
+---
+
+## Co-Marketing
+
+Upon release, the applicant will collaborate with the Foundation on:
+
+- Announcement coordination
+- A technical write-up on producing compliance evidence under a privacy-preserving
+  ledger model, including what the approach does **not** prove
+- Developer promotion through the Canton Developer Hub and the relevant SIGs
+
+Specific commitment: the applicant will publish the failure cases as prominently as
+the successes, including any conformance vector that exists because an earlier
+version of this work was wrong.
+
+---
+
+## Motivation
+
+**Who benefits.** Any Canton participant that has to demonstrate its own conduct to
+a party that does not already trust it. That is a broad class — validators, app
+providers, custodians, and any application acting on a client's behalf — but the
+honest estimate is narrower than "all of them", because most applications today have
+no external party demanding evidence. The immediate beneficiaries are applications in
+regulated workflows and those operating autonomous or delegated execution, where the
+question "what did it try, and what stopped it" is asked by someone external.
+
+The Foundation's own roadmap states an expectation of **multiple grants** in this
+area, which suggests the committee's estimate of the need is not smaller than the
+applicant's.
+
+**The originating case, stated plainly because it is evidence the problem is real
+rather than a marketing story.** This work comes from an over-the-counter and
+remittance desk in Nigeria that lost money to two specific failures: a payout account
+substituted after a quote was agreed, and a single quote paid twice. Neither was a
+broken cryptographic primitive. Both were authorisation decisions that nobody could
+prove afterwards. Both are now fenced in the Daml and have named attack scripts.
+Small operational businesses are where this evidence gap costs money first, and
+Canton already has a live precedent at that scale — DSRV's deployment of ITCEN
+Group's payment application inside a KOSDAQ-listed company's existing systems.
+
+**Existing evidence of demand is thin and is presented as such.** The applicant's
+prior published tooling has 2,471 total PyPI downloads with 880 in the last thirty
+days, which includes CI and mirror traffic and should not be read as 2,471 people.
+The format itself has three implementations, all written by the applicant. That is
+precisely why Milestones 3 and 4 are adoption-gated: the committee should not take
+the applicant's word for demand, and this proposal is structured so it does not have
+to.
+
+---
+
+## Rationale
+
+**Why extend rather than replace.** The default is to extend what exists, and this
+proposal does. It does not replace the Foundation's static-analysis tooling, which
+operates on source before deployment. It does not replace participant-side monitoring
+such as Hacken's Canton Monitor, which observes at an operator's own trust boundary
+and reports to that operator. It sits below both: the artefact an operator hands to
+someone who does not trust them. Where an existing component could carry this, it
+should — Milestone 1 includes checking whether the record format is better published
+as an extension to an existing standard than as a new one, and the answer being "yes"
+is an acceptable outcome of that milestone.
+
+**Why a hash chain and not zero-knowledge proofs.** RFP 11 lists ZK proofs of
+aggregate data as the most trustworthy end of the public-verifiability spectrum, and
+that is correct. This proposal deliberately sits at the simple end. A hash chain
+verifiable in a browser with no dependencies is adoptable this quarter by a desk with
+one laptop; a proving system is not. The two are complementary, and the format is
+designed so that the anchoring step could later be replaced by a stronger proof
+without changing the record.
+
+**Why refusals specifically.** Approvals leave ledger artefacts. Refusals do not,
+which is why they are the part of an audit trail that is easiest to omit and hardest
+to challenge. A format that records only what succeeded would be cheaper to build and
+would not answer the question anyone actually asks.
+
+**Why this applicant.** The work is already built, public and MIT-licensed, and every
+number above is reproducible from a clean clone by a reviewer. The applicant is an
+individual, not an organisation, which is a real risk to the committee — Milestone 4
+requires a named second maintainer with commit rights precisely because that risk
+should be retired inside the grant rather than after it.
+
+---
+
+**Verification.** Every quantitative claim in this proposal was re-run on 2026-09-06
+and can be reproduced from a clean clone of
+`https://github.com/dominicrume/cantor8_kya_rails` (MIT). The applicant will provide
+the exact command for any figure on request, and undertakes to correct any figure
+shown to be wrong.

@@ -40,7 +40,17 @@ class MockLedger:
     currency, instrument = "CC", "Amulet (MOCKED, no coin moves)"
 
     def name(self, role):
-        return NAMES[role]
+        """A payee this desk does not recognise is the single most important
+        thing to write down, so an unknown one must never stop the receipt
+        being written.
+
+        It used to. charge() correctly refuses any payee not on the allow-list
+        -- and then this method raised KeyError on that same payee, so the desk
+        answered 500 and the refusal was never stamped. The one attempt most
+        worth having in the audit trail was the one it threw away. Every test
+        missed it because they all used the three known role names.
+        """
+        return NAMES.get(role, role)
 
     def open_mandate(self, cap=0.5, life_seconds=86400,
                      period_limit=None, period_seconds=None):
@@ -74,6 +84,22 @@ class MockLedger:
         if fresh:
             m["period_start"] = time.time()
         return "ACCEPTED", "cap %.1f, spent %.1f, payee on allow-list" % (m["cap"], m["spent"])
+
+    def snapshot(self):
+        """What has to survive the process.
+
+        On the real rail this lives on the ledger: the mandate is a contract,
+        and `spent` is a field on it, so killing the client changes nothing.
+        The mock keeps the same numbers in a dict, which means it has to be
+        told to keep them. Without this, killing the process and restarting
+        left the agent with a fresh mandate and the whole cap available again
+        -- a cap reset obtained by crashing rather than by asking the owner,
+        which is exactly the fence this project exists to hold.
+        """
+        return dict(self.m) if hasattr(self, "m") else None
+
+    def resume(self, state):
+        self.m = dict(state)
 
     def anchor(self, seal, count, label):
         """MOCKED: publishes nothing. There is no ledger to publish to."""

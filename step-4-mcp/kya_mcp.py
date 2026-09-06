@@ -22,9 +22,11 @@ MCP SDK. The protocol is small enough to implement honestly.
 """
 import json, os, sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                "..", "step-2-agent"))
+HERE = os.path.dirname(os.path.abspath(__file__))
+for _p in ("step-2-agent", "step-8-store"):
+    sys.path.insert(0, os.path.join(HERE, "..", _p))
 from kya_chain import Chain, NonAsciiInReceipt
+from store import Store, Tampered, Unusable
 
 PROTOCOL = "2024-11-05"
 SERVER = {"name": "kya-rails", "version": "1.0.0"}
@@ -35,9 +37,23 @@ def log(msg):
 
 
 class Wallet:
-    """One mandate, one receipt chain, for the life of the process."""
+    """One mandate and one receipt chain, written through to a journal.
 
-    def __init__(self, devnet=False):
+    "For the life of the process" is what this used to say, and it was the
+    honest description of a real gap. The chain lived in memory: a crash, a
+    kill, or a client that hung up took every receipt with it -- including,
+    and this is the part that matters, the refusals. An audit trail that
+    disappears when the thing being audited falls over is not an audit trail.
+
+    It also reset the cap. `spent` lived in the same memory, so a process that
+    died came back with the whole float available again: a cap reset obtained
+    by crashing rather than by asking the owner.
+
+    Both are fixed the same way the operator rail fixes them -- write through
+    to the seal-chained journal, restore from it on the way up.
+    """
+
+    def __init__(self, devnet=False, store=None):
         if devnet:
             from devnet_ledger import DevNetLedger
             self.ledger = DevNetLedger()
@@ -46,6 +62,44 @@ class Wallet:
             self.ledger = MockLedger()
         self.chain = Chain()
         self.open = False
+        self.store = store
+        self._written = 0
+        if store is not None:
+            self.resume()
+
+    # -- keeping it ---------------------------------------------------------
+    def _state(self):
+        return {"open": self.open, "ledger": self.ledger.label,
+                "mandate": self.ledger.snapshot()}
+
+    def persist(self):
+        """Called after every tool call, from one place.
+
+        One choke point rather than a line in each method: a persistence layer
+        you have to remember to invoke is one you will forget to invoke on
+        exactly the path that mattered. The operator rail says the same thing
+        for the same reason.
+        """
+        if self.store is None:
+            return
+        for receipt in self.chain.receipts[self._written:]:
+            self.store.receipt(receipt)
+        self._written = len(self.chain.receipts)
+        self.store.snapshot(self._state())
+
+    def resume(self):
+        """Bring back the chain and the mandate. Returns receipts recovered."""
+        state, _messages, receipts = self.store.restore()
+        # Chain.stamp derives both `n` and `prev` from this list, so restoring
+        # it is enough for the next receipt to follow the last one written --
+        # across a restart, in the same unbroken chain.
+        self.chain.receipts = list(receipts)
+        self._written = len(receipts)
+        mandate = (state or {}).get("mandate")
+        if mandate:
+            self.ledger.resume(mandate)
+            self.open = state.get("open", False)
+        return len(receipts)
 
     def open_mandate(self, cap, allowed, life_seconds,
                      period_limit=None, period_seconds=None):
@@ -158,6 +212,7 @@ def _tools_call(msg, wallet, mid):
     p = msg.get("params") or {}
     try:
         out = call_tool(wallet, p.get("name"), p.get("arguments") or {})
+        wallet.persist()
         text, is_error = json.dumps(out, indent=2), False
     except NonAsciiInReceipt as e:
         # The seal guard. Surfaced as a tool error so the model can fix its own
@@ -180,34 +235,123 @@ METHODS = {
 }
 
 
+# The JSON-RPC 2.0 codes, used as specified. A client that is told it sent
+# malformed JSON can fix it; a client given silence cannot, and just waits.
+PARSE_ERROR, INVALID_REQUEST, METHOD_NOT_FOUND, INTERNAL_ERROR = (
+    -32700, -32600, -32601, -32603)
+
+
+def _error(mid, code, message):
+    return {"jsonrpc": "2.0", "id": mid, "error": {"code": code, "message": message}}
+
+
 def handle(msg, wallet):
-    """Returns a response dict, or None for a notification."""
+    """Returns a response dict, or None for a notification.
+
+    Anything at all can arrive on stdin, so nothing here assumes a shape it
+    has not checked. `msg.get(...)` on a JSON list raised AttributeError and
+    took the whole server down with it.
+    """
+    if not isinstance(msg, dict):
+        return _error(None, INVALID_REQUEST, "a JSON-RPC request must be an "
+                      "object, not %s" % type(msg).__name__)
     method, mid = msg.get("method"), msg.get("id")
+    if not isinstance(mid, (str, int, float, type(None))):
+        return _error(None, INVALID_REQUEST, "id must be a string, a number or null")
+    if not isinstance(method, str):
+        # `method in METHODS` on a list raises TypeError: unhashable type.
+        return _error(mid, INVALID_REQUEST, "method must be a string, not %s"
+                      % type(method).__name__)
     if method in METHODS:
         fn = METHODS[method]
         return fn(msg, wallet, mid) if fn else None
     if mid is None:
         return None
-    return {"jsonrpc": "2.0", "id": mid,
-            "error": {"code": -32601, "message": "method not found: %s" % method}}
+    return _error(mid, METHOD_NOT_FOUND, "method not found: %s" % method)
+
+
+def answer(line, wallet):
+    """One line in, one response (or None) out. This never raises.
+
+    It is the model's only route to the wallet, and the receipt chain lives in
+    this process's memory. A single malformed line used to end both: a JSON
+    list where an object was expected killed handle(), the loop, and the
+    server. The model got silence, its pending request was never answered, and
+    every receipt stamped so far went with it.
+    """
+    try:
+        msg = json.loads(line)
+    except json.JSONDecodeError as e:
+        return _error(None, PARSE_ERROR, "could not parse that line as JSON: %s" % e.msg)
+    try:
+        return handle(msg, wallet)
+    except Exception as e:                   # noqa: BLE001 - the boundary
+        # The detail goes to the log, where an operator reads it. The model
+        # gets told it failed, not how, and the server stays up.
+        log("UNHANDLED %s: %s" % (type(e).__name__, e))
+        mid = msg.get("id") if isinstance(msg, dict) else None
+        return _error(mid, INTERNAL_ERROR, "the wallet could not process that request")
+
+
+def build_store(argv):
+    """Persistent unless --ephemeral, the same way round as the operator rail:
+    the safe mode is the default and the dangerous one takes a flag."""
+    if "--ephemeral" in argv:
+        return None
+    # Its OWN journal, never the desk's. Two processes each hold a Journal
+    # that caches the last row number in memory, so both would compute the
+    # same next `n` and the second INSERT would collide with the primary key.
+    # Loud rather than silent, but still a broken session.
+    path = os.environ.get("KYA_MCP_STORE") or os.path.join(HERE, "..", "kya-mcp.db")
+    return Store(path)
+
+
+def announce(wallet, store):
+    """The first thing an operator reads. It has to say whether the receipts
+    from before are back, because that is the only question worth asking of a
+    wallet that has just restarted."""
+    if store is None:
+        log("EPHEMERAL: no journal. Receipts die with this process.")
+        return
+    log("journal: %d receipt(s) recovered, chain %s"
+        % (len(wallet.chain.receipts),
+           "verifies" if wallet.chain.verify()[0] else "IS BROKEN"))
 
 
 def main(argv):
-    wallet = Wallet(devnet="--devnet" in argv)
-    log("ready, ledger = " + wallet.ledger.label)
+    # Nothing here may print to stdout: that is the protocol channel, and a
+    # stray line of English in it corrupts the session it is trying to warn
+    # about. Every word below goes to stderr through log().
+    try:
+        store = build_store(argv)
+    except Tampered as e:
+        log("REFUSING TO START. " + str(e))
+        log("  This journal is the wallet's audit trail. Investigate it before")
+        log("  running anything: python3 tests/store_check.py <path>")
+        return 3
+    except Unusable as e:
+        log("CANNOT START: nowhere to keep the record. " + str(e))
+        log("  Or run with --ephemeral to work without one -- nothing will")
+        log("  survive the process, which is a real choice, not a workaround.")
+        return 4
+
+    wallet = Wallet(devnet="--devnet" in argv, store=store)
+    announce(wallet, store)
     for line in sys.stdin:
         line = line.strip()
         if not line:
             continue
+        resp = answer(line, wallet)
+        if resp is None:
+            continue                          # a notification; nothing to say
         try:
-            msg = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        resp = handle(msg, wallet)
-        if resp is not None:
             sys.stdout.write(json.dumps(resp) + "\n")
             sys.stdout.flush()
+        except BrokenPipeError:
+            # The client hung up. That is how these sessions end, not a fault.
+            return 0
+    return 0
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    sys.exit(main(sys.argv[1:]))

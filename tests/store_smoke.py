@@ -17,7 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 for p in ("step-8-store", "step-7-providers", "step-6-whatsapp",
           "step-5-operator", "step-2-agent"):
     sys.path.insert(0, os.path.join(ROOT, p))
-from store import Store, Journal, Tampered
+from store import Store, Journal, Tampered, Unusable
 
 ACCT = "GTB 0123456789 / CHIDI OKAFOR"
 THIEF = "ZENITH 9988776655 / SOMEONE ELSE"
@@ -264,10 +264,57 @@ for _t in sorted(_glob.glob(os.path.join(ROOT, "tests", "*.py"))):
     _args = _spawn_args(_src)
     if not _args:
         continue                              # imports the module, spawns nothing
-    check("--ephemeral" in _args or "KYA_STORE" in _args,
+    check("--ephemeral" in _args or "KYA_STORE" in _args
+          or "KYA_MCP_STORE" in _args,
           "%s spawns the server without touching the real journal" % _name)
 
+
+# ---------------------------------------------------------------------------
+# Four different mistakes that SQLite reports with one message.
+#
+# "unable to open database file" is what you get for a path that is a folder,
+# a folder that does not exist, a folder you cannot write to, and a file that
+# is not a journal at all. Each has a different fix, and the operator seeing
+# it has mistyped one environment variable and wants to get on with their day.
+# Before this, all four arrived as a Python traceback.
+# ---------------------------------------------------------------------------
 print()
+print("a store path that cannot be used says WHICH mistake it is")
+
+_tmp = tempfile.mkdtemp()
+_notdb = os.path.join(_tmp, "notadb.db")
+open(_notdb, "w").write("this is a text file, not a database")
+_ro = os.path.join(_tmp, "readonly")
+os.mkdir(_ro)
+os.chmod(_ro, 0o500)
+
+CASES = [
+    (_tmp, "is a folder, not a file", "the path is a directory"),
+    (os.path.join(_tmp, "nope", "x.db"), "does not exist", "the folder is missing"),
+    (_notdb, "is not a KYA journal", "the file is something else"),
+]
+if os.geteuid() != 0:          # root can write anywhere, so this case cannot arise
+    CASES.append((os.path.join(_ro, "x.db"), "cannot write into",
+                  "the folder is not writable"))
+
+for _path, _phrase in [(c[0], c[1]) for c in CASES]:
+    _label = [c[2] for c in CASES if c[0] == _path][0]
+    try:
+        Store(_path)
+        check(False, "%s is refused" % _label)
+    except Unusable as e:
+        check(_phrase in str(e), "%s: says so plainly (%.55s)" % (_label, e))
+    except Exception as e:
+        check(False, "%s raised %s instead of Unusable" % (_label, type(e).__name__))
+
+# Unusable must never be mistaken for Tampered. One means "your history was
+# edited, investigate". The other means "fix the path". Sending an operator
+# hunting for fraud because of a typo is its own kind of harm.
+check(not issubclass(Unusable, Tampered) and not issubclass(Tampered, Unusable),
+      "a bad path is never reported as an edited history")
+
+os.chmod(_ro, 0o700)           # so the temp dir can be cleaned up
+
 if fails:
     print("STORE SMOKE FAILED - %d:" % len(fails))
     for f in fails:

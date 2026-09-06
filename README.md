@@ -2,7 +2,71 @@
 
 [![ci](https://github.com/dominicrume/cantor8_kya_rails/actions/workflows/ci.yml/badge.svg)](https://github.com/dominicrume/cantor8_kya_rails/actions/workflows/ci.yml)
 
-**A spend-limited wallet for an AI agent, enforced on Canton.**
+**Know Your Agent. Proof of what an AI agent was *refused*, not just what it
+was allowed — with the limits enforced in a Daml choice body.**
+
+Every log records what your agent did. The question an auditor, a counterparty
+or a regulator actually asks is the other one: *what did it try, and what
+stopped it?* An ordinary log cannot answer that, because the operator who
+writes the log is the party the question is about.
+
+KYA Rails writes a receipt for every attempt, refusals included, and seals each
+one onto the last. Anyone can check the chain by dropping the file on a web
+page — no wallet, no install, no account, no node. The head is anchored on
+Canton, so a chain that was rewritten from scratch has nowhere to hide.
+
+The spending rules are not policy in an application. They are `assertMsg`
+fences in a Daml choice body: the agent cannot argue with them, the operator
+cannot quietly widen them, and a crash does not reset them.
+
+KYC asks whether a person is who they say. **KYA asks what an autonomous
+actor was permitted to do, and proves what it was stopped from doing.**
+
+### D1, answered — the three attacks the judges will run
+
+The brief says: *"We will try to make your agent exceed its cap, and pay someone
+it should not. Both must fail **on the ledger**, not in your API. Be ready to show
+us the line of Daml that stops it. Then we will revoke and try again."*
+
+Here are the lines.
+
+| The attack | The line of Daml that refuses it | The test that proves it |
+| --- | --- | --- |
+| Exceed the cap | [`KyaMandate.daml:71`](step-1-mandate/daml/KyaMandate.daml#L71) — `assertMsg "charge would exceed the cap" (spent + amount <= cap)` | `testOverCapRefusedByTheCapAssertion` |
+| Pay someone not allowed | [`KyaMandate.daml:72`](step-1-mandate/daml/KyaMandate.daml#L72) — `assertMsg "payee is not on the allow-list" (payee ``elem`` allowed)` | `testPayoutRedirectionRefused` |
+| Charge after revoke | [`KyaMandate.daml:94`](step-1-mandate/daml/KyaMandate.daml#L94) — `choice Revoke` is **consuming**: it archives the mandate, so there is no contract left to charge. Stronger than an assertion | `testAfterRevokeRefused` |
+
+Two more fences on the same choice, beyond what D1 asks for:
+[expiry](step-1-mandate/daml/KyaMandate.daml#L69),
+[positive amount](step-1-mandate/daml/KyaMandate.daml#L70), and a
+[per-period limit](step-1-mandate/daml/KyaMandate.daml#L85) that refuses while the
+total cap still has room.
+
+**Every fence is proven load-bearing, not just present.** `tests/mutation.py`
+deletes each of the 30 `assertMsg` fences in turn, rebuilds, and requires a
+*named* test to go red. All 30 do — so no fence is decoration, and none is
+enforced only by a test that would pass without it:
+
+```
+$ python3 tests/mutation.py
+baseline: 92 scripts green
+  ok    charge would exceed the cap          -> testOverCapRefusedByTheCapAssertion goes red
+  ok    payee is not on the allow-list       -> testPayoutRedirectionRefused goes red
+  ...  30 of 30
+every fence is covered: deleting any one of them turns a test red.
+```
+
+One command runs the ledger side end to end:
+
+```bash
+cd step-1-mandate/test && daml test        # 92 of 92 attack scripts
+```
+
+Nothing above is enforced in Python. The Python mirror in `step-2-agent/agent.py`
+is labelled `MOCKED` and exists so the demo survives a dead network; the fences
+that matter are the ones on this page.
+
+---
 
 Two parts, and the second one is not about Canton:
 
@@ -74,16 +138,19 @@ country and deciding whether to trust the person who produced it.
 | Claim | Evidence |
 | --- | --- |
 | Attack suite green | **92 / 92** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 28 of 42 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered |
-| The cycle holds at every join | 26 checks over HTTP, in the order a desk works it |
+| The cycle holds at every join | 33 checks over HTTP, in the order a desk works it |
 | Installable | `pip install knowyouragenticai-receipts` — the format alone, zero dependencies, with the vectors inside it so `python -m knowyouragenticai_receipts` self-tests offline |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
-| The tests are themselves tested | `tests/mutation_suite.py` breaks 14 real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
+| The tests are themselves tested | `tests/mutation_suite.py` breaks 23 real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **30** in the Daml, and **24 of the 30** refusals at the edges by a named test — the other six are load-bearing but fail as a traceback, which `tests/mutation_py.py` now says out loud instead of counting as coverage |
+| Nothing malformed can silence the desk | **553** requests — every route, every field it reads, every wrong value — with the rest of the body left valid so the check is actually reached. 0 dropped connections, 0 server errors, and every 400 names the field. `tests/route_fuzz.py` |
+| Neither screen goes quiet, or lies | `tests/frontend_offline.js` runs the pages' own code against a failing network: the operator screen never sits silent, and the customer screen never reports an unreachable desk as *"no deal found"* to someone whose crypto is already in flight |
+| One bad line cannot end the model's session | `tests/mcp_smoke.py` feeds 15 malformed JSON-RPC lines **between** the good ones. Each gets its proper code (-32700 / -32600 / -32601), and the request after them all is still answered |
 | The chain is bound to its origin | the head is published on Canton — a **fully forged** chain verifies green in all three implementations, and the ledger answers `NOT ANCHORED` |
-| The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **35** checks, including a forged journal entry that proves the limit |
+| The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **42** checks, including a forged journal entry that proves the limit, and four unusable store paths that each say which mistake it is instead of raising a traceback |
 | The deposit door | **30** attacks on the adapter + **15** over a real socket, including the X-Forwarded-For spoof that defeats a naive IP allowlist |
 | The WhatsApp door | **54** attacks on the adapter + **15** over a real socket: unsigned, wrongly signed, signed-for-another-body, replayed, day-old, another business account, delivery reports, hostile display names |
-| Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, revoke — all in the `Charge` choice body |
+| Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, positive amount — five `assertMsg` fences in the `Charge` choice body. Revoke is not one of them and should not be: it is a **consuming** choice, so it archives the mandate and there is no contract left to charge. That is a stronger guarantee than an assertion, and the distinction is worth stating rather than rounding off |
 | Deployed on Cantor8 DevNet | `kya-rails-mandate` 1.1.0, vetted as an upgrade of 1.0.0. The mandate templates carry package `df5a02e88a68…` from 1.0.0; `KyaAnchor` arrived in 1.1.0 as `fd3f43a273be…`, and both are vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
 | Receipt chain | 6 receipts, 2 accepted, 4 refused, chain verifies end to end |
