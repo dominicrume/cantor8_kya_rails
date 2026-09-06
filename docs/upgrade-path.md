@@ -74,3 +74,36 @@ A `NOT_VALID_UPGRADE_PACKAGE` names the type that changed; HTTP 200 means
 Canton vetted it as an upgrade of what was already there. The tool refuses to
 upload a DAR containing test types at all, which is the mistake that cost us
 the first lineage.
+
+## SDK 3.4.11: tested, deliberately not adopted yet (2026-09-06)
+
+3.4.11 was released while 1.1.0 was deployed. It was built and run rather than
+assumed about:
+
+| | 3.4.10 | 3.4.11 |
+|---|---|---|
+| `daml build` | ok | ok |
+| attack scripts | 92 / 92 | **92 / 92** |
+| choice coverage | 28 of 42 | **28 of 42** |
+| package id | `fd3f43a2…f12ab9` | **`48fe2c12…5c2346`** |
+
+The code is compatible. The package id is not the same, and that is the whole
+decision: the DAR vetted on DevNet as an upgrade of 1.0.0 is `fd3f43a2…`.
+Rebuilding on 3.4.11 produces a *different package* wearing the *same*
+name and version, which is precisely what versioning exists to prevent.
+
+So the upgrade is not a one-line edit to `daml.yaml`. Done properly it is:
+
+1. bump to **1.1.1** — a new package id needs a new version, or `1.1.0` means
+   two different things depending on who built it;
+2. rebuild, upload and vet on DevNet;
+3. confirm the upgrade check still passes against 1.1.0;
+4. update the Developer Hub entry **with a link to the release**, which their
+   contributing guide asks for on any SDK-version change;
+5. update every doc that cites 1.1.0.
+
+Held for now, on evidence rather than inertia: the Hub's stated rule is that a
+tool more than **one major version** behind may be marked outdated. One patch
+behind is not that, and `docs/dev-hub-entry.json` states 3.4.10, which is true.
+Shipping a false version number to avoid looking stale would be the worse
+trade.
