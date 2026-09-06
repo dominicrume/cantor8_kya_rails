@@ -105,7 +105,8 @@ re-verified on 2026-09-06 and defensible on request:
 | Suite integrity | 23 real defects introduced deliberately, each requiring the suite that claims to cover it to fail; every one does |
 | Format agreement | 3 independent implementations (Python, JavaScript, Go) across 16 conformance vectors |
 | Interface robustness | 553 malformed requests over every route and field; zero dropped connections, zero server errors |
-| Deployed | `kya-rails-mandate` 1.1.0 on Canton DevNet, vetted as an upgrade of 1.0.0 |
+| Deployed | `kya-rails-mandate` **1.1.1** built on SDK 3.4.11 (92/92 scripts); **1.1.0** is what is vetted on Canton DevNet, as an upgrade of 1.0.0 |
+| Installable today | `pip install knowyouragenticai-receipts` — 1.0.0, MIT, **zero dependencies**, with the conformance vectors inside it so `python -m knowyouragenticai_receipts selftest` reports 16/16 offline |
 
 Two of the 16 vectors exist because the question asked was which *wrong*
 implementations would still pass. Two did.
@@ -292,13 +293,20 @@ Small operational businesses are where this evidence gap costs money first, and
 Canton already has a live precedent at that scale — DSRV's deployment of ITCEN
 Group's payment application inside a KOSDAQ-listed company's existing systems.
 
-**Existing evidence of demand is thin and is presented as such.** The applicant's
-prior published tooling has 2,471 total PyPI downloads with 880 in the last thirty
-days, which includes CI and mirror traffic and should not be read as 2,471 people.
-The format itself has three implementations, all written by the applicant. That is
-precisely why Milestones 3 and 4 are adoption-gated: the committee should not take
-the applicant's word for demand, and this proposal is structured so it does not have
-to.
+**Existing evidence of demand is thin and is presented as such.** The format is
+installable today as `pip install knowyouragenticai-receipts` (1.0.0, MIT, zero
+dependencies, published 6 September 2026) and verifiable in a browser with nothing
+installed at all -- so the barrier to trying it is as low as it can be made. That
+is a *distribution* fact, not an adoption one, and the two should not be confused.
+
+The honest position on adoption: the format has three implementations and the
+applicant wrote all three. Nobody outside has adopted it yet. The applicant's prior
+published tooling has 2,471 total PyPI downloads with 880 in the last thirty days,
+a figure that includes CI and mirror traffic and should not be read as 2,471 people.
+
+That is precisely why Milestones 3 and 4 are adoption-gated. The committee should
+not take the applicant's word for demand, and this proposal is structured so that
+it does not have to: if nobody adopts it, half the grant is not paid.
 
 ---
 

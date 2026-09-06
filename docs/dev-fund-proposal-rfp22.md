@@ -102,6 +102,7 @@ naive version worse than useless, and the existing implementation addresses each
 | Refusal coverage | `tests/mutation_py.py` — refusals at the edges, reporting the six that fail as a traceback rather than counting them as covered |
 | Fence lint | `tests/fence_lint.py` and a `tools/pre-commit` hook that refuses a commit with a fence missing |
 | CI integration | mutation runs as its own GitHub Actions job against a separate checkout |
+| Published | the receipt format the harness was built alongside is on PyPI as `knowyouragenticai-receipts` 1.0.0 (MIT, zero dependencies). The harness in this proposal is **not** packaged yet; Milestone 1 is what makes it installable |
 
 The last row matters operationally: mutation rewrites the working tree, so it
 cannot share a checkout with anything else. Discovering this cost a confusing
@@ -294,6 +295,10 @@ the difference between a tool that runs in CI and one that runs once.
 
 **Why this applicant.** The harness exists, is public, is MIT-licensed, runs in CI
 today, and produced the findings quoted above on the applicant's own code. The
+applicant has also shipped a package to PyPI from this repository
+(`knowyouragenticai-receipts` 1.0.0, MIT, zero dependencies, 6 September 2026),
+which is evidence of the release discipline this proposal asks to be funded for —
+not evidence that anyone has adopted anything. The
 applicant is an individual, which is a real risk to the committee; Milestone 4
 retires it with a named second maintainer inside the grant.
 

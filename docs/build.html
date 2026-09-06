@@ -52,7 +52,7 @@ pre{background:var(--card);border:1px solid var(--line);border-radius:6px;
 screen an operator actually works from is <b>/desk</b> on a running desk: the
 float, what was refused and why, and the payout form.<br><br>
 Every number below came from a command that ran on this machine at
-2026-09-06 17:18:25 UTC. Nothing here is cached, and nothing is remembered from a previous run.</p>
+2026-09-06 18:37:56 UTC. Nothing here is cached, and nothing is remembered from a previous run.</p>
 <div class="top"><div><div class="big ok">35<span style='color:var(--dim)'>/35</span></div><div class="lbl">suites green</div></div><div><div class="big ok">92<span style='color:var(--dim)'>/92</span></div><div class="lbl">daml attack scripts</div></div><div><div class="big ok">28/42</div><div class="lbl">choices exercised</div></div><div><div class="big ok">1.1.1</div><div class="lbl">package built</div></div><div><div class="big ok">3.4.11</div><div class="lbl">daml sdk</div></div></div>
 <div class="note"><b>Built is not the same as deployed.</b> This repository builds
 <b>1.1.1</b> on SDK <b>3.4.11</b>. What is vetted on Cantor8 DevNet is <b>1.1.0</b>, built on
@@ -97,17 +97,17 @@ it is.</div>
 <tr><td class="s ok">PASS</td><td class="c">breet_wire_smoke.py</td><td class="why">including the X-Forwarded-For spoof that defeats a naive allowlist</td><td class="n">16 checks</td><td class="n">0.6s</td></tr>
 </table>
 <h2>The rules</h2><table>
-<tr><td class="s ok">PASS</td><td class="c">security_lint.py</td><td class="why">no bandit finding in production code</td><td class="n">1 checks</td><td class="n">0.4s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">security_lint.py</td><td class="why">no bandit finding in production code</td><td class="n">1 checks</td><td class="n">0.5s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">complexity_lint.py</td><td class="why">every function is under the ceiling, or says in writing why not</td><td class="n">1 checks</td><td class="n">0.1s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">deadcode_lint.py</td><td class="why">nothing unreachable, and no import silently overwritten</td><td class="n">1 checks</td><td class="n">0.1s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">xss_lint.py</td><td class="why">every innerHTML interpolation goes through esc()</td><td class="n">1 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">privacy_matrix.py --check</td><td class="why">who signs, observes and is excluded is documented for every contract</td><td class="n"></td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">readme_citations.py</td><td class="why">every line of Daml the README shows a judge is still that line</td><td class="n">16 checks</td><td class="n">0.0s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">devhub_entry_check.py</td><td class="why">the Developer Hub listing passes every rule the Foundation publishes</td><td class="n">23 checks</td><td class="n">2.5s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">devhub_entry_check.py</td><td class="why">the Developer Hub listing passes every rule the Foundation publishes</td><td class="n">25 checks</td><td class="n">2.2s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">package_smoke.py</td><td class="why">the installable package refuses what it should refuse</td><td class="n">42 checks</td><td class="n">0.3s</td></tr>
 </table>
 <h2>The tests, tested</h2><table>
-<tr><td class="s ok">PASS</td><td class="c">mutation_py.py</td><td class="why">every refusal at the edges is covered by a named test</td><td class="n">24 of 30</td><td class="n">1.6s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">mutation_py.py</td><td class="why">every refusal at the edges is covered by a named test</td><td class="n">24 of 30</td><td class="n">2.1s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">mutation_suite.py</td><td class="why">23 real defects introduced on purpose; every one makes its suite go red</td><td class="n"></td><td class="n">4.3s</td></tr>
 </table>
 <h2>Reproduce any of it</h2>
@@ -116,7 +116,7 @@ cd cantor8_kya_rails
 python3 tools/dashboard.py          # regenerates this page from scratch
 cd step-1-mandate/test &amp;&amp; daml test # the 92 attack scripts</pre>
 <footer>
-<b>ALL GREEN</b> &middot; whole run took 27 seconds &middot; generated 2026-09-06 17:18:25 UTC<br>
+<b>ALL GREEN</b> &middot; whole run took 29 seconds &middot; generated 2026-09-06 18:37:56 UTC<br>
 Live verifier: <a href="./">dominicrume.github.io/cantor8_kya_rails</a> &middot;
 Source: <a href="https://github.com/dominicrume/cantor8_kya_rails">github.com/dominicrume/cantor8_kya_rails</a><br>
 A green row means the named command exited zero. It does not mean the thing is
