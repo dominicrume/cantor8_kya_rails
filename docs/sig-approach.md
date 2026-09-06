@@ -152,11 +152,19 @@ first message. Both come after somebody has said the problem is real.
 
 ## What to expect to be asked, and the honest answers
 
-**"Who else uses it?"** Nobody yet. Three implementations, all written by the
-applicant. This is why Milestones 3 and 4 are adoption-gated — half the grant is
-not paid if nobody adopts it. Do not dress this up; the review process names
-"adoption metrics or success criteria are missing" as a standard reason for
-revision, and inventing adoption is worse than lacking it.
+**"Who else uses it?"** Nobody yet, and say exactly that. Three implementations,
+all written by you.
+
+What you CAN say is that trying it costs nothing: `pip install
+knowyouragenticai-receipts` (1.0.0, MIT, zero dependencies, published 6 September
+2026), or a web page that needs no install at all. **That is distribution, not
+adoption**, and conflating the two is the fastest way to lose a reviewer who
+checks — which is the kind of reviewer worth having.
+
+This is why Milestones 3 and 4 are adoption-gated: half the grant is not paid if
+nobody adopts it. Do not dress this up; the review process names "adoption metrics
+or success criteria are missing" as a standard reason for revision, and inventing
+adoption is worse than lacking it.
 
 **"Why not just sign the log?"** Signatures answer *who wrote this*, and require key
 distribution to verify. The anchor answers origin on-ledger; the chain answers
