@@ -193,6 +193,18 @@ MUTATIONS = [
      "  a:no-such-state, [tabindex]:no-such-state,",
      "python3 tests/a11y_lint.py"),
 
+    ("the payee list stops coming from the desk's settings",
+     "step-5-operator/server.py",
+     '                "recipients": self.payees(),',
+     '                "recipients": [{"key": k, "name": k} for k in ("customer", "partner")],',
+     "python3 tests/desk_view_smoke.py"),
+
+    ("the operating view stops showing why something was refused",
+     "step-5-operator/desk.html",
+     "    + (showRule ? '<div class=\"rule\">' + esc(r.rule) + '</div>' : '')",
+     "    + ''",
+     "node tests/frontend_offline.js"),
+
     ("a Daml spending fence is deleted",
      "step-1-mandate/daml/KyaMandate.daml",
      '        assertMsg "charge would exceed the cap" (spent + amount <= cap)',

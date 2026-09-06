@@ -15,7 +15,9 @@ command that ran on this machine in the last few minutes, and the page says when
     python3 tools/dashboard.py --fast     skip mutation testing (~2 min faster)
     python3 tools/dashboard.py --open     write it and open it
 
-Output: docs/dashboard.html, which GitHub Pages serves alongside the verifier.
+Output: docs/build.html. It is a BUILD REPORT, not a dashboard -- it answers
+"did the suites pass". The operating view is /desk on a running desk, which is
+where the float, the refusals and the payout form live.
 """
 import html
 import json
@@ -27,7 +29,7 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "docs", "dashboard.html")
+OUT = os.path.join(ROOT, "docs", "build.html")
 
 # (command, group, what a green result actually means)
 SUITES = [
@@ -52,6 +54,8 @@ SUITES = [
     ("python3 tests/bot_smoke.py", "The agent",
      "the WhatsApp bot reads an amount the way a person writes one"),
 
+    ("python3 tests/desk_view_smoke.py", "The desk",
+     "the operating view shows the float, the refusals and the rule for each"),
     ("python3 tests/desk_config_smoke.py", "The desk",
      "settings are refused when wrong, and enforced by the ledger when right"),
     ("python3 tests/operator_smoke.py", "The desk",
@@ -267,10 +271,14 @@ def cards(results, daml, vers):
 PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>KYA Rails - what currently holds</title><style>%s</style></head><body>
+<title>KYA Rails - build report</title><style>%s</style></head><body>
 <main class="wrap">
-<h1>KYA Rails: what currently holds</h1>
-<p class="sub">Every number below came from a command that ran on this machine at
+<h1>KYA Rails: build report</h1>
+<p class="sub">This is a build report, not an operating view &mdash; it answers
+"did the suites pass", which is a question for whoever changes the code. The
+screen an operator actually works from is <b>/desk</b> on a running desk: the
+float, what was refused and why, and the payout form.<br><br>
+Every number below came from a command that ran on this machine at
 %s. Nothing here is cached, and nothing is remembered from a previous run.</p>
 <div class="top">%s</div>
 <div class="note"><b>Built is not the same as deployed.</b> This repository builds

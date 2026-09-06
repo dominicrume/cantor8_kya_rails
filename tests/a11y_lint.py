@@ -34,7 +34,8 @@ PAGES = [
     ("step-3-verify/verifier.html", True, ["cVerdict"]),
     ("step-5-operator/operator.html", True, ["answer", "link"]),
     ("step-5-operator/customer.html", True, ["body", "stale"]),
-    ("docs/dashboard.html", True, []),
+    ("step-5-operator/desk.html", True, ["alerts", "answer"]),
+    ("docs/build.html", True, []),
     ("docs/index.html", True, []),
 ]
 
