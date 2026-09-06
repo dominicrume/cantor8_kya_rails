@@ -73,6 +73,8 @@ SUITES = [
      "neither screen goes silent, or tells the reader something untrue about their money"),
     ("node tests/origin_smoke.js", "The page",
      "the page says where a chain came from, not only that it holds"),
+    ("python3 tests/contrast_lint.py", "The page",
+     "no text anywhere is invisible against its own background"),
     ("python3 tests/a11y_lint.py", "The page",
      "every page is a document, readable on a phone, and usable without a mouse"),
     ("python3 tests/standalone_smoke.py", "The page",
