@@ -24,11 +24,16 @@ def _http(url, **kw):
 
 
 def call(path, body=None):
+    """Every response is watched, so the end of this file can compare what the
+    desk SAID against what it actually wrote down."""
     req = urllib.request.Request(BASE + path,
         data=None if body is None else json.dumps(body).encode(),
         headers={"Content-Type": "application/json"},
         method="GET" if body is None else "POST")
-    return json.loads(urllib.request.urlopen(req, timeout=10).read())
+    out = json.loads(urllib.request.urlopen(req, timeout=10).read())
+    if isinstance(out, dict) and out.get("outcome") == "REFUSED":
+        SEEN_REFUSALS.append((path, out.get("rule", "")))
+    return out
 
 
 # --ephemeral, and a KYA_STORE pointed somewhere harmless as a second line of
@@ -42,6 +47,10 @@ env = dict(os.environ, KYA_PORT=PORT,
 proc = subprocess.Popen([sys.executable, SERVER, "--ephemeral"], env=env,
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 fails = []
+
+
+# Every refusal this test watched the desk hand back. Filled in by call().
+SEEN_REFUSALS = []
 
 
 def check(ok, what):
@@ -79,6 +88,19 @@ try:
                               "what": "customer says this is their new account"})
     check(c["outcome"] == "REFUSED" and "allow-list" in c["rule"],
           "an account not on the allow-list is refused")
+
+    # The line above passed for months while this one crashed the desk.
+    # "unverified" is one of the three names the mock ledger knows, so it
+    # survived the NAMES[role] lookup; a payee nobody has ever heard of --
+    # which is the actual fraud -- raised KeyError AFTER charge() had already
+    # refused it, so the caller got a 500 and NOTHING WAS WRITTEN. The one
+    # attempt most worth having in the audit trail was the one thrown away.
+    c2 = call("/api/request", {"amount": 1.0, "payee": "Fraudster Ltd",
+                               "what": "urgent, new supplier"})
+    check(c2.get("outcome") == "REFUSED" and "allow-list" in c2.get("rule", ""),
+          "a payee this desk has never heard of is refused, not crashed on")
+    check("receipt" in c2 and c2["receipt"]["payee"] == "Fraudster Ltd",
+          "and the refusal is SEALED INTO THE CHAIN, naming who was asked for")
 
     d = call("/api/request", {"amount": 1.0, "payee": "customer",
                               "what": "note with a curly quote ’ in it"})
@@ -119,8 +141,15 @@ try:
     s = call("/api/state")
     check(all(r.get("ledger") for r in s["receipts"]),
           "every receipt on the operator's screen names its ledger")
-    refused = sum(1 for r in s["receipts"] if r["outcome"] == "REFUSED")
-    check(refused == 5, "every refusal is on the operator's own record (got %d)" % refused)
+    # This was `refused == 5`. A hardcoded count does not check what the line
+    # says it checks -- it goes red when a NEW refusal case is added, which is
+    # the opposite of useful, and it would stay green if a refusal were
+    # answered to the caller and never written. So compare the record against
+    # what this test actually watched happen.
+    on_record = sum(1 for r in s["receipts"] if r["outcome"] == "REFUSED")
+    check(on_record == len(SEEN_REFUSALS),
+          "every refusal the desk answered is also on its record (%d answered, "
+          "%d recorded)" % (len(SEEN_REFUSALS), on_record))
 finally:
     proc.terminate()
     try:

@@ -43,6 +43,11 @@
   .foot{text-align:center;font-size:11px;color:var(--dim);padding-top:18px}
   .foot a{color:var(--gold)}
   .miss{text-align:center;padding:50px 0;color:var(--dim)}
+  /* Sits ABOVE what is already on screen rather than replacing it. The state
+     the customer can see is still the last true thing the desk said. */
+  .stale{background:#3a2f14;border:1px solid #7a5c1a;color:#f0d48a;
+         padding:10px 12px;border-radius:8px;margin:0 0 12px;
+         font-size:14px;line-height:1.45}
   /* The QR is a convenience, never the source of truth. The address stays
      visible underneath it in full, because a QR that encodes the wrong thing
      is indistinguishable from one that does not, and the loss is permanent. */
@@ -58,6 +63,7 @@
     <p>Everything below was fixed when your rate was agreed. Nobody can change
        it afterwards — not us, and not anyone messaging you.</p>
   </header>
+  <div class="stale" id="stale" hidden></div>
   <div id="body"><div class="miss">Loading…</div></div>
   <div class="foot">
     Reference <span id="reffoot"></span> &middot;
@@ -153,11 +159,57 @@ function drawQR(text){
   }
 }
 
+// The person reading this page has already sent their crypto. Two things
+// follow from that, and both were wrong here.
+//
+// One: a failure to reach the desk was reported as "No deal found for R-1234"
+// -- which is a false statement, made to someone whose money is in flight, at
+// the exact moment they are most likely to panic and send it again. A 404 and
+// a 502 are not the same news.
+//
+// Two: fetch() rejecting was not caught at all. On a dropped connection this
+// threw inside a setInterval, silently, every five seconds, and the page just
+// stopped updating with no sign that it had.
+let shown = false;         // has anything real ever been rendered?
+
+function stalled(message){
+  if (shown){
+    // Something true is already on screen. Leave it, and say it may be stale
+    // rather than replacing what they can see with an error.
+    $('stale').textContent = message;
+    $('stale').hidden = false;
+    return;
+  }
+  $('body').innerHTML = '<div class="miss">' + esc(message) + '</div>';
+}
+
 async function load(){
   if (!ref){ $('body').innerHTML = '<div class="miss">No reference in this link.</div>'; return; }
-  const res = await fetch('/api/customer?ref=' + encodeURIComponent(ref));
-  if (!res.ok){ $('body').innerHTML = '<div class="miss">No deal found for ' + esc(ref) + '.</div>'; return; }
-  const d = await res.json();
+  let res;
+  try {
+    res = await fetch('/api/customer?ref=' + encodeURIComponent(ref));
+  } catch (e) {
+    return stalled('Cannot reach the desk right now. Your deposit is not '
+                 + 'affected and this page keeps checking. Do not send again.');
+  }
+  if (res.status === 404){
+    shown = false;
+    $('body').innerHTML = '<div class="miss">No deal found for ' + esc(ref) + '.</div>';
+    return;
+  }
+  if (!res.ok){
+    return stalled('The desk is having trouble (HTTP ' + res.status + '). Your '
+                 + 'deposit is not affected and this page keeps checking. '
+                 + 'Do not send again.');
+  }
+  let d;
+  try { d = await res.json(); }
+  catch (e) {
+    return stalled('The desk replied with something this page cannot read. '
+                 + 'It keeps checking. Do not send again.');
+  }
+  $('stale').hidden = true;
+  shown = true;
   render(d);
   if (d.state === 'QUOTED') drawQR(d.depositAddress);
 }

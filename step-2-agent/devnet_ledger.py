@@ -242,10 +242,27 @@ class DevNetLedger:
         return ("Amulet (transferred on DevNet)" if self.move_coin
                 else "Amulet (recorded, not transferred)")
 
+    def snapshot(self):
+        """The mandate is on the ledger; what this process holds is a pointer
+        to it. Losing the pointer strands a live mandate that still has the
+        agent's authority on it -- worse than losing a record, because the
+        contract goes on being chargeable while nothing here knows about it."""
+        return {"cid": self.cid, "revoked": self.revoked, "exp": self.exp}
+
+    def resume(self, state):
+        self.cid = state.get("cid")
+        self.revoked = state.get("revoked", False)
+        self.exp = state.get("exp")
+
     def name(self, role):
         """On the real rail the receipt names the actual on-ledger party, so a
         reader can paste it into the ledger API and find the contract."""
         from agent import NAMES
+        if role not in NAMES or role not in PARTY:
+            # Same reason as MockLedger.name: an unrecognised payee gets
+            # recorded as it was given. There is no on-ledger party to resolve,
+            # and saying so in the receipt is worth more than a crash.
+            return "%s (not a party this desk knows)" % role
         return "%s (%s)" % (NAMES[role], PARTY[role].split("::")[0])
 
     def __init__(self, move_coin=False):
