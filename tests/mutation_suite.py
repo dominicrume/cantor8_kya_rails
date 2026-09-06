@@ -181,6 +181,18 @@ MUTATIONS = [
      "    if False:",
      "python3 tests/desk_config_smoke.py"),
 
+    ("the customer page stops fitting a phone",
+     "step-5-operator/customer.html",
+     '<meta name="viewport" content="width=device-width, initial-scale=1">',
+     "",
+     "python3 tests/a11y_lint.py"),
+
+    ("the payout button loses its keyboard focus ring",
+     "step-5-operator/operator.html",
+     "  a:focus-visible, button:focus-visible, [tabindex]:focus-visible,",
+     "  a:no-such-state, [tabindex]:no-such-state,",
+     "python3 tests/a11y_lint.py"),
+
     ("a Daml spending fence is deleted",
      "step-1-mandate/daml/KyaMandate.daml",
      '        assertMsg "charge would exceed the cap" (spent + amount <= cap)',

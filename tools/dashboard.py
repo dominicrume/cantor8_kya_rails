@@ -69,6 +69,8 @@ SUITES = [
      "neither screen goes silent, or tells the reader something untrue about their money"),
     ("node tests/origin_smoke.js", "The page",
      "the page says where a chain came from, not only that it holds"),
+    ("python3 tests/a11y_lint.py", "The page",
+     "every page is a document, readable on a phone, and usable without a mouse"),
     ("python3 tests/standalone_smoke.py", "The page",
      "the standalone build has not drifted from the source page"),
 
@@ -213,6 +215,12 @@ td.c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
       border-radius:6px;padding:.85rem 1rem;color:var(--dim);font-size:13.5px;margin:1.4rem 0}
 .note b{color:var(--ink)}
 a{color:var(--accent)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;
+  border-radius:3px}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;
+    transition-duration:.001ms !important;scroll-behavior:auto !important}
+}
 footer{color:var(--dim);font-size:12.5px;margin-top:2.5rem;line-height:1.7}
 pre{background:var(--card);border:1px solid var(--line);border-radius:6px;
     padding:.7rem .9rem;overflow-x:auto;font-size:12.5px;color:var(--dim);margin:.5rem 0 0}
@@ -258,8 +266,9 @@ def cards(results, daml, vers):
 
 PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>KYA Rails - what currently holds</title><style>%s</style></head><body>
-<div class="wrap">
+<main class="wrap">
 <h1>KYA Rails: what currently holds</h1>
 <p class="sub">Every number below came from a command that ran on this machine at
 %s. Nothing here is cached, and nothing is remembered from a previous run.</p>
@@ -282,7 +291,7 @@ Source: <a href="https://github.com/dominicrume/cantor8_kya_rails">github.com/do
 A green row means the named command exited zero. It does not mean the thing is
 correct — it means a test that is capable of failing did not fail. Which tests are
 capable of failing is what the last group measures.
-</footer></div></body></html>"""
+</footer></main></body></html>"""
 
 
 def render(results, daml, vers, seconds):

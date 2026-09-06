@@ -1,3 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- Without this line a phone renders the page at a 980px virtual viewport and
+     scales it down. This layout is 440px wide, so it displayed at about 45%:
+     unreadable text and a deposit QR code the customer had to pinch to zoom,
+     on the one screen someone reads while their crypto is already in flight.
+     The file had no doctype and no charset either, so it also parsed in quirks
+     mode. -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>Your deal &middot; KYA Rails</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
@@ -55,7 +67,25 @@
   .qr{display:inline-block;background:#fff;padding:12px;border-radius:12px;line-height:0}
   .qr img,.qr canvas{display:block;width:180px;height:180px;image-rendering:pixelated}
   .qrnote{font-size:11px;color:var(--dim);margin-top:8px}
+
+  /* Keyboard focus. There was a ring on the inputs and none on the buttons --
+     including the one that authorises a payout. :focus-visible rather than
+     :focus so a mouse click does not draw a ring nobody asked for, which is
+     the reason people delete these in the first place. */
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible,
+  input:focus-visible, select:focus-visible, textarea:focus-visible{
+    outline:2px solid var(--gold, #c8b458); outline-offset:2px; border-radius:3px}
+
+  /* Somebody who has asked their operating system to stop moving things has
+     asked for a reason, and a payout screen is not the place to overrule it. */
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration:.001ms !important; animation-iteration-count:1 !important;
+      transition-duration:.001ms !important; scroll-behavior:auto !important}
+  }
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <header>
@@ -63,8 +93,8 @@
     <p>Everything below was fixed when your rate was agreed. Nobody can change
        it afterwards — not us, and not anyone messaging you.</p>
   </header>
-  <div class="stale" id="stale" hidden></div>
-  <div id="body"><div class="miss">Loading…</div></div>
+  <div class="stale" id="stale" role="status" aria-live="polite" hidden></div>
+  <div id="body" role="status" aria-live="polite"><div class="miss">Loading…</div></div>
   <div class="foot">
     Reference <span id="reffoot"></span> &middot;
     <a href="#" id="verifyLink">verify the receipt yourself</a>
@@ -216,3 +246,5 @@ async function load(){
 load();
 setInterval(load, 5000);   // the customer watches it progress without asking
 </script>
+</body>
+</html>
