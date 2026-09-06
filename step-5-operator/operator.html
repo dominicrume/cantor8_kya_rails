@@ -124,12 +124,28 @@
   .storage{text-align:center;font-size:11px;padding:6px 0 0;color:var(--dim)}
   .storage.warn{color:#fff;background:#8c2f2f;border-radius:6px;padding:8px 10px;
                 margin-top:8px;font-weight:600;line-height:1.45}
+
+  /* Keyboard focus. There was a ring on the inputs and none on the buttons --
+     including the one that authorises a payout. :focus-visible rather than
+     :focus so a mouse click does not draw a ring nobody asked for, which is
+     the reason people delete these in the first place. */
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible,
+  input:focus-visible, select:focus-visible, textarea:focus-visible{
+    outline:2px solid var(--gold, #c8b458); outline-offset:2px; border-radius:3px}
+
+  /* Somebody who has asked their operating system to stop moving things has
+     asked for a reason, and a payout screen is not the place to overrule it. */
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration:.001ms !important; animation-iteration-count:1 !important;
+      transition-duration:.001ms !important; scroll-behavior:auto !important}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header><h1>Operator</h1><span id="who"></span></header>
-  <div class="link" id="link" hidden></div>
+  <div class="link" id="link" role="status" aria-live="polite" hidden></div>
 
   <div class="mandate">
     <div class="float"><b id="remaining">—</b><small id="capline"></small></div>
@@ -143,7 +159,7 @@
   <div class="chat" id="chat"></div>
   <div class="acts" id="acts"></div>
 
-  <div class="answer" id="answer">
+  <div class="answer" id="answer" role="status" aria-live="polite">
     <h2 id="ansTitle"></h2>
     <div class="rule" id="ansRule"></div>
     <div class="who" id="ansWho"></div>

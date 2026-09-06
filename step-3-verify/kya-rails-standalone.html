@@ -84,6 +84,22 @@
   .vtext { font-size:15px; font-weight:800; } .vrule { font-size:11px; opacity:.8; margin-top:3px; }
   .sealing { font-size:10.5px; opacity:.7; margin-top:12px; font-family:monospace; }
   #status { text-align:center; font-size:12.5px; font-weight:700; padding:0 14px 14px; min-height:18px; }
+
+  /* Keyboard focus. There was a ring on the inputs and none on the buttons --
+     including the one that authorises a payout. :focus-visible rather than
+     :focus so a mouse click does not draw a ring nobody asked for, which is
+     the reason people delete these in the first place. */
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible,
+  input:focus-visible, select:focus-visible, textarea:focus-visible{
+    outline:2px solid currentColor; outline-offset:2px; border-radius:3px}
+
+  /* Somebody who has asked their operating system to stop moving things has
+     asked for a reason, and a payout screen is not the place to overrule it. */
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration:.001ms !important; animation-iteration-count:1 !important;
+      transition-duration:.001ms !important; scroll-behavior:auto !important}
+  }
 </style>
 </head>
 <body>
@@ -100,7 +116,7 @@
     <input type="file" id="cFile" accept=".json,.js,.txt,application/json,text/plain">
     <span id="cPrompt">Drop <b>receipts.json</b> here &mdash; or tap to choose</span>
   </label>
-  <div class="c-verdict" id="cVerdict" hidden></div>
+  <div class="c-verdict" id="cVerdict" role="status" aria-live="polite" hidden></div>
 </div>
 
 <div class="origin" id="origin">
