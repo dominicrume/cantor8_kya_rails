@@ -113,6 +113,9 @@ jobs:
       - name: the operating view shows the float, the refusals and their rules
         run: python3 tests/desk_view_smoke.py
 
+      - name: no text on any page is invisible against its own background
+        run: python3 tests/contrast_lint.py
+
       - name: every page is a document, readable on a phone, usable without a mouse
         run: python3 tests/a11y_lint.py
 

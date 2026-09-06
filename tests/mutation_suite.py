@@ -205,6 +205,12 @@ MUTATIONS = [
      "    + ''",
      "node tests/frontend_offline.js"),
 
+    ("the verifier's text goes invisible against its own background",
+     "step-3-verify/verifier.html",
+     "color:var(--page-ink); min-height:100vh; }",
+     "color:var(--ink); min-height:100vh; }",
+     "python3 tests/contrast_lint.py"),
+
     ("a Daml spending fence is deleted",
      "step-1-mandate/daml/KyaMandate.daml",
      '        assertMsg "charge would exceed the cap" (spent + amount <= cap)',

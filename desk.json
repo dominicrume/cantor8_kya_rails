@@ -1,0 +1,36 @@
+{
+  "desk": {
+    "name": "VOREM Desk",
+    "operator": "Rume Dominic"
+  },
+  "money": {
+    "cap": 5.0,
+    "period_limit": 2.0,
+    "period_seconds": 86400,
+    "rate": 1250.0,
+    "band": [
+      1000.0,
+      1500.0
+    ]
+  },
+  "counterparties": [
+    {
+      "id": "customer",
+      "name": "Verified customer payouts",
+      "account": "GTB 0123456789 / EXAMPLE NAME",
+      "allowed": true
+    },
+    {
+      "id": "partner",
+      "name": "Settlement partner",
+      "account": "UBA 2233445566 / EXAMPLE PARTNER",
+      "allowed": true
+    },
+    {
+      "id": "unverified",
+      "name": "Unverified account, kept on file",
+      "account": "OPAY 9999999999 / UNKNOWN",
+      "allowed": false
+    }
+  ]
+}

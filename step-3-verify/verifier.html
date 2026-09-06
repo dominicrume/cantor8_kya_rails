@@ -4,9 +4,14 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>KYA Rails. Pay out abroad, prove it at home.</title>
 <style>
-  :root { --green:#075E54; --teal:#128C7E; --bubble:#DCF8C6; --ok:#1a7f37; --warn:#e67e22; --bad:#c0392b; --ink:#1c1c1c; }
+  :root { --green:#075E54; --teal:#128C7E; --bubble:#DCF8C6; --ok:#1a7f37; --warn:#e67e22; --bad:#c0392b; --ink:#1c1c1c;
+           /* --ink is for text on the LIGHT cards. Anything sitting directly on
+              the dark page needs its own colour: #1c1c1c on #0e1512 measures
+              1.09:1, which is 24% of the WCAG minimum, and is why this page had
+              to be select-all'd before it could be read. */
+           --page-ink:#e6ede9; --page-dim:#9fb0a8; }
   * { box-sizing:border-box; margin:0; }
-  body { font-family:-apple-system,'Segoe UI',Georgia,serif; background:#0e1512; color:var(--ink); min-height:100vh; }
+  body { font-family:-apple-system,'Segoe UI',Georgia,serif; background:#0e1512; color:var(--page-ink); min-height:100vh; }
   header { text-align:center; color:#fff; padding:22px 16px 10px; }
   header h1 { font-size:22px; letter-spacing:.5px; }
   header p { font-size:13px; opacity:.75; margin-top:4px; }
@@ -16,7 +21,7 @@
 
   /* the phone */
   .phone { width:340px; background:#000; border-radius:38px; padding:12px 10px; box-shadow:0 18px 50px rgba(0,0,0,.55); }
-  .screen { position:relative; background:#e5ddd5; border-radius:28px; overflow:hidden; display:flex; flex-direction:column; height:600px; }
+  .screen { position:relative; background:#e5ddd5; color:var(--ink); border-radius:28px; overflow:hidden; display:flex; flex-direction:column; height:600px; }
   .ph-top { background:var(--green); color:#fff; padding:12px 14px; display:flex; align-items:center; gap:10px; }
   .avatar { width:34px; height:34px; border-radius:50%; background:var(--bubble); color:var(--green); font-weight:bold; display:flex; align-items:center; justify-content:center; }
   .ph-top b { font-size:14px; display:block; } .ph-top small { font-size:11px; opacity:.8; }
@@ -24,19 +29,19 @@
   .msg { max-width:82%; padding:8px 11px; border-radius:9px; margin:5px 0; font-size:13.5px; clear:both;
          opacity:0; transform:translateY(8px); transition:all .35s ease; box-shadow:0 1px 1px rgba(0,0,0,.08); }
   .msg.show { opacity:1; transform:none; }
-  .them { background:#fff; float:left; border-top-left-radius:2px; }
-  .us { background:var(--bubble); float:right; border-top-right-radius:2px; }
+  .them { background:#fff; float:left; border-top-left-radius:2px; color:var(--ink);}
+  .us { background:var(--bubble); float:right; border-top-right-radius:2px; color:var(--ink);}
   .sys { background:#fff8e1; float:none; margin:8px auto; text-align:center; font-size:11.5px; max-width:92%; color:#6b5d1f; }
   .chat::after { content:""; display:block; clear:both; }
-  .ph-bar { padding:10px; background:#f0f0f0; display:flex; gap:8px; }
+  .ph-bar { padding:10px; background:#f0f0f0; display:flex; gap:8px; color:var(--ink);}
   .ph-bar button { flex:1; border:0; border-radius:20px; padding:11px; font-size:14px; cursor:pointer; font-weight:600; }
-  #playBtn { background:var(--green); color:#fff; } #skipBtn { background:#ddd; } #paceBtn { background:#ddd; }
+  #playBtn { background:var(--green); color:#fff; } #skipBtn { background:#ddd; color:var(--ink); } #paceBtn { background:#ddd; color:var(--ink); }
 
   /* the statement */
-  .wallet { width:400px; background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 18px 50px rgba(0,0,0,.45); }
+  .wallet { width:400px; background:#fff; color:var(--ink); border-radius:18px; overflow:hidden; box-shadow:0 18px 50px rgba(0,0,0,.45); }
   .w-head { background:linear-gradient(120deg,var(--green),var(--teal)); color:#fff; padding:16px 18px; }
   .w-head h2 { font-size:15px; } .w-head p { font-size:12px; opacity:.85; margin-top:2px; }
-  .pill { display:inline-block; margin-top:10px; font-size:12px; font-weight:700; padding:5px 12px; border-radius:14px; background:#ffffff22; }
+  .pill { display:inline-block; margin-top:10px; font-size:12px; font-weight:700; padding:5px 12px; border-radius:14px; background:#ffffff22; color:var(--ink);}
   .mandate { padding:12px 18px; border-bottom:1px solid #eee; font-size:12.5px; color:#444; background:#fafaf7; }
   .mandate b { color:var(--green); }
   .why { padding:11px 18px; font-size:11.5px; line-height:1.5; color:#4a4a4a; background:#f4f7f4; border-bottom:1px solid #eee; }
@@ -45,12 +50,12 @@
   .r { border:1px solid #e4e4e4; border-left:5px solid var(--ok); border-radius:9px; padding:9px 11px; margin:8px 0;
        font-size:12.5px; opacity:0; transform:translateY(8px); transition:all .35s ease; }
   .r.show { opacity:1; transform:none; }
-  .r.refused { border-left-color:var(--warn); background:#fffaf4; }
+  .r.refused { border-left-color:var(--warn); background:#fffaf4; color:var(--ink); }
   .r.unchecked { opacity:.4; filter:grayscale(1); }
   .r.checking { box-shadow:0 0 0 2px var(--teal); }
   .tag.wait { background:#9aa0a6; }
   .r.checked .seal { color:var(--ok); font-weight:700; }
-  .r.broken { border-left-color:var(--bad); background:#fdecea; }
+  .r.broken { border-left-color:var(--bad); background:#fdecea; color:var(--ink); }
   .r .seal { font-family:monospace; font-size:9.5px; color:#999; word-break:break-all; margin-top:3px; }
   .r .rule { color:#666; font-style:italic; font-size:11.5px; }
   .tag { float:right; font-size:10.5px; padding:2px 8px; border-radius:9px; color:#fff; font-weight:700; }
@@ -100,6 +105,17 @@
       animation-duration:.001ms !important; animation-iteration-count:1 !important;
       transition-duration:.001ms !important; scroll-behavior:auto !important}
   }
+
+  /* Two ways in, and the second one needs no file. */
+  .c-try { display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+           margin:0 0 12px; font-size:13px; color:var(--page-dim); }
+  .c-try button { font:inherit; font-size:13px; cursor:pointer; padding:7px 12px;
+                  min-height:38px; border-radius:8px; border:1px solid #2c3a34;
+                  background:#16211d; color:var(--page-ink); }
+  .c-try button:hover { border-color:var(--teal); }
+  .c-try button:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
+  .c-drop small { display:block; margin-top:5px; font-size:11.5px;
+                  color:var(--page-dim); font-weight:400; }
 </style>
 </head>
 <body>
@@ -108,13 +124,27 @@
   <p>Your operator pays out where you are not. The mandate holds where you cannot stand. Screenshots can lie. Sealed receipts cannot.</p>
 </header>
 <div class="checker" id="checker">
-  <div class="c-head">Check a receipts file</div>
-  <p class="c-say">Drop a file here, or tap to choose one. It is read <b>in your
-  browser</b> &mdash; nothing is uploaded, nothing is stored, and this works with
-  no internet connection.</p>
+  <div class="c-head">Has this record been edited?</div>
+  <p class="c-say">A <b>receipts file</b> is the record a desk hands you of every
+  payment it attempted on your behalf &mdash; the ones it made <i>and</i> the ones
+  it was stopped from making. Ask for yours and drop it below. It is read
+  <b>in your browser</b>: nothing is uploaded, nothing is stored, and this works
+  with no internet connection at all.</p>
+
+  <!-- Most people arriving here have no such file, and telling them to come back
+       with one is the same mistake as telling them to install a wallet. So the
+       page carries two of its own: one honest, one edited. Anyone can see what
+       the answer looks like in a single click, and THEN go and ask for theirs. -->
+  <div class="c-try">
+    <span>No file? See what the answer looks like:</span>
+    <button type="button" id="tryGood">Try an honest record</button>
+    <button type="button" id="tryBad">Try one that was edited</button>
+  </div>
+
   <label class="c-drop" id="cDrop">
     <input type="file" id="cFile" accept=".json,.js,.txt,application/json,text/plain">
-    <span id="cPrompt">Drop <b>receipts.json</b> here &mdash; or tap to choose</span>
+    <span id="cPrompt">Drop your file here &mdash; or tap to choose one<br>
+      <small>usually named <b>receipts.json</b>, but any file will be read and told apart</small></span>
   </label>
   <div class="c-verdict" id="cVerdict" role="status" aria-live="polite" hidden></div>
 </div>
@@ -448,11 +478,32 @@ document.getElementById('tamperBtn').onclick=()=>{
     if(!f) return;
     prompt.textContent='Reading '+f.name+'\u2026';
     const r=new FileReader();
-    r.onload=()=>{ prompt.innerHTML='Drop <b>receipts.json</b> here \u2014 or tap to choose';
+    r.onload=()=>{ prompt.innerHTML='Drop another file here \u2014 or tap to choose';
                    check(f.name, String(r.result||'')); };
     r.onerror=()=>{ prompt.textContent='Could not read that file.'; };
     r.readAsText(f);
   }
+
+  // The no-file path. RECEIPTS is the reference chain this page already ships
+  // for the demo, so the honest example is real output, not a mock-up. The
+  // edited one is that same chain with a single amount changed -- which is the
+  // whole point: one character, and every seal after it stops matching.
+  function example(tampered){
+    const rs = JSON.parse(JSON.stringify(
+      typeof RECEIPTS !== 'undefined' ? RECEIPTS : []));
+    if(!rs.length){ say('unknown','No example is bundled with this page.'); return; }
+    let name = 'example-receipts.json';
+    if(tampered){
+      const i = Math.min(1, rs.length - 1);
+      rs[i].amount = '9999.0';          // one field, nothing else touched
+      name = 'example-receipts-EDITED.json';
+    }
+    prompt.innerHTML = 'Showing a built-in example. Drop your own file any time.';
+    check(name, JSON.stringify(rs, null, 2));
+  }
+  const good = document.getElementById('tryGood'), bad = document.getElementById('tryBad');
+  if(good) good.addEventListener('click', () => example(false));
+  if(bad)  bad.addEventListener('click',  () => example(true));
 
   file.addEventListener('change', e => take(e.target.files[0]));
   ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
