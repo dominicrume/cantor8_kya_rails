@@ -67,6 +67,11 @@ def main():
             print("  FAIL", e)
         print("\nProduction code must be clean. Fix it, or if it is genuinely")
         print("safe, add a `# nosec <RULE> - <reason>` on the line saying why.")
+        print()
+        print("Separate several rules with a SPACE, not a comma. bandit 1.9.4")
+        print("parses `# nosec B603,B607` as B607 only and silently leaves B603")
+        print("reported -- a suppression that half-works, which is worse than")
+        print("one that does not work at all.")
         return 1
     print("\n  PASS production code is clean")
     return 0

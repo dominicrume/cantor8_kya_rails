@@ -176,7 +176,7 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - name: install Daml SDK
         run: |
-          curl -sSL https://get.daml.com | sh -s 3.4.10
+          curl -sSL https://get.daml.com | sh -s 3.4.11
           echo "$HOME/.daml/bin" >> "$GITHUB_PATH"
       - name: build the mandate (deployed package, no test types in it)
         working-directory: step-1-mandate
@@ -221,7 +221,7 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - name: install Daml SDK
         run: |
-          curl -sSL https://get.daml.com | sh -s 3.4.10
+          curl -sSL https://get.daml.com | sh -s 3.4.11
           echo "$HOME/.daml/bin" >> "$GITHUB_PATH"
       - name: deleting any fence must turn a test red
         run: python3 tests/mutation.py

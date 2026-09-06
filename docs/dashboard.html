@@ -1,0 +1,110 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KYA Rails - what currently holds</title><style>
+:root{--bg:#0e1114;--card:#161b21;--line:#242c34;--ink:#e6eaee;--dim:#95a0ab;
+      --ok:#4ea87e;--bad:#d4574c;--warn:#c99a3e;--accent:#6ea8d8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+     font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Helvetica Neue",sans-serif}
+.wrap{max-width:64rem;margin:0 auto;padding:2.5rem 1.1rem 5rem}
+h1{font-size:1.9rem;margin:0 0 .35rem;letter-spacing:-.02em}
+.sub{color:var(--dim);margin:0 0 2rem}
+.top{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);
+     border-radius:8px;overflow:hidden;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));
+     margin-bottom:2rem}
+.top div{background:var(--card);padding:.95rem 1rem}
+.big{font-size:1.7rem;font-weight:650;letter-spacing:-.02em;
+     font-variant-numeric:tabular-nums;line-height:1.1}
+.lbl{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.09em;
+     margin-top:.25rem}
+h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.13em;color:var(--dim);
+   margin:2rem 0 .7rem;font-weight:600}
+table{width:100%;border-collapse:collapse;background:var(--card);
+      border:1px solid var(--line);border-radius:8px;overflow:hidden}
+td{padding:.6rem .85rem;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.s{width:1%;white-space:nowrap;font-weight:650;font-size:12px;letter-spacing:.06em}
+td.n{width:1%;white-space:nowrap;color:var(--dim);font-size:12.5px;
+     font-variant-numeric:tabular-nums;text-align:right}
+td.c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+     color:var(--accent);white-space:nowrap;width:1%}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.why{color:var(--dim);font-size:13.5px}
+.note{background:var(--card);border:1px solid var(--line);border-left:2px solid var(--warn);
+      border-radius:6px;padding:.85rem 1rem;color:var(--dim);font-size:13.5px;margin:1.4rem 0}
+.note b{color:var(--ink)}
+a{color:var(--accent)}
+footer{color:var(--dim);font-size:12.5px;margin-top:2.5rem;line-height:1.7}
+pre{background:var(--card);border:1px solid var(--line);border-radius:6px;
+    padding:.7rem .9rem;overflow-x:auto;font-size:12.5px;color:var(--dim);margin:.5rem 0 0}
+</style></head><body>
+<div class="wrap">
+<h1>KYA Rails: what currently holds</h1>
+<p class="sub">Every number below came from a command that ran on this machine at
+2026-09-06 08:37:10 UTC. Nothing here is cached, and nothing is remembered from a previous run.</p>
+<div class="top"><div><div class="big ok">31<span style='color:var(--dim)'>/31</span></div><div class="lbl">suites green</div></div><div><div class="big ok">92<span style='color:var(--dim)'>/92</span></div><div class="lbl">daml attack scripts</div></div><div><div class="big ok">28/42</div><div class="lbl">choices exercised</div></div><div><div class="big ok">1.1.1</div><div class="lbl">package built</div></div><div><div class="big ok">3.4.11</div><div class="lbl">daml sdk</div></div></div>
+<div class="note"><b>Built is not the same as deployed.</b> This repository builds
+<b>1.1.1</b> on SDK <b>3.4.11</b>. What is vetted on Cantor8 DevNet is <b>1.1.0</b>, built on
+3.4.10 — a different package id, because a different compiler produces a different
+fingerprint. 1.1.1 is tested but not yet uploaded, and this line will say so until
+it is.</div>
+<h2>The format</h2><table>
+<tr><td class="s ok">PASS</td><td class="c">conformance.py</td><td class="why">the Python implementation agrees with all 16 conformance vectors</td><td class="n">16/16</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">conformance.js</td><td class="why">the JavaScript implementation agrees, byte for byte, with the Python one</td><td class="n">16/16</td><td class="n">0.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">cd impl/go &amp;&amp; go run .</td><td class="why">a third implementation, in Go, agrees with both</td><td class="n">16/16</td><td class="n">0.3s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">conformance_any.py -- python3 impl/pipe/reference.py</td><td class="why">any executable can be graded through a pipe, in any language</td><td class="n">16/16</td><td class="n">0.0s</td></tr>
+</table>
+<h2>The ledger</h2><table>
+<tr><td class="s ok">PASS</td><td class="c">fence_lint.py</td><td class="why">every spending fence is present in the Daml</td><td class="n">1 checks</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">anchor_smoke.py</td><td class="why">a forged chain verifies internally and still answers NOT ANCHORED</td><td class="n">10 checks</td><td class="n">0.1s</td></tr>
+</table>
+<h2>The agent</h2><table>
+<tr><td class="s ok">PASS</td><td class="c">mcp_smoke.py</td><td class="why">the model cannot overspend, redirect, or outlive a revoke -- and cannot end its own session</td><td class="n">23 checks</td><td class="n">0.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">mcp_survives_kill.py</td><td class="why">SIGKILL loses no receipts, and buys the agent no cap</td><td class="n">11 checks</td><td class="n">0.2s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">bot_smoke.py</td><td class="why">the WhatsApp bot reads an amount the way a person writes one</td><td class="n">20 checks</td><td class="n">0.1s</td></tr>
+</table>
+<h2>The desk</h2><table>
+<tr><td class="s ok">PASS</td><td class="c">operator_smoke.py</td><td class="why">every refusal the desk answers is also on its record</td><td class="n">6 6</td><td class="n">0.3s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">cycle_smoke.py</td><td class="why">the deal cycle holds at every join a real desk lost money on</td><td class="n">33 checks</td><td class="n">0.3s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">store_smoke.py</td><td class="why">a quote outlives the process, and an edited journal refuses to load</td><td class="n">42 checks</td><td class="n">0.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">route_fuzz.py</td><td class="why">553 malformed requests: nothing dropped, nothing 500s, every 400 names its field</td><td class="n">0 0</td><td class="n">0.4s</td></tr>
+</table>
+<h2>The page</h2><table>
+<tr><td class="s ok">PASS</td><td class="c">checker_smoke.js</td><td class="why">drop a file and it is checked -- and a non-chain is never called tampered</td><td class="n">12 checks</td><td class="n">0.3s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">frontend_offline.js</td><td class="why">neither screen goes silent, or tells the reader something untrue about their money</td><td class="n">21 checks</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">origin_smoke.js</td><td class="why">the page says where a chain came from, not only that it holds</td><td class="n">13 checks</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">standalone_smoke.py</td><td class="why">the standalone build has not drifted from the source page</td><td class="n">25 checks</td><td class="n">0.0s</td></tr>
+</table>
+<h2>The doors</h2><table>
+<tr><td class="s ok">PASS</td><td class="c">meta_smoke.py</td><td class="why">the WhatsApp webhook refuses unsigned, wrongly signed and replayed calls</td><td class="n">54 checks</td><td class="n">0.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">meta_wire_smoke.py</td><td class="why">and refuses them over a real socket, not just in a unit test</td><td class="n">15 checks</td><td class="n">0.6s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">breet_smoke.py</td><td class="why">the deposit webhook checks its secret and its IP allowlist</td><td class="n">30 checks</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">breet_wire_smoke.py</td><td class="why">including the X-Forwarded-For spoof that defeats a naive allowlist</td><td class="n">16 checks</td><td class="n">0.6s</td></tr>
+</table>
+<h2>The rules</h2><table>
+<tr><td class="s ok">PASS</td><td class="c">security_lint.py</td><td class="why">no bandit finding in production code</td><td class="n">1 checks</td><td class="n">0.4s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">complexity_lint.py</td><td class="why">every function is under the ceiling, or says in writing why not</td><td class="n">1 checks</td><td class="n">0.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">deadcode_lint.py</td><td class="why">nothing unreachable, and no import silently overwritten</td><td class="n">1 checks</td><td class="n">0.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">xss_lint.py</td><td class="why">every innerHTML interpolation goes through esc()</td><td class="n">1 checks</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">privacy_matrix.py --check</td><td class="why">who signs, observes and is excluded is documented for every contract</td><td class="n"></td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">readme_citations.py</td><td class="why">every line of Daml the README shows a judge is still that line</td><td class="n">16 checks</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">devhub_entry_check.py</td><td class="why">the Developer Hub listing passes every rule the Foundation publishes</td><td class="n">23 checks</td><td class="n">2.3s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">package_smoke.py</td><td class="why">the installable package refuses what it should refuse</td><td class="n">42 checks</td><td class="n">0.3s</td></tr>
+</table>
+<h2>The tests, tested</h2><table>
+<tr><td class="s ok">PASS</td><td class="c">mutation_py.py</td><td class="why">every refusal at the edges is covered by a named test</td><td class="n">24 of 30</td><td class="n">1.5s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">mutation_suite.py</td><td class="why">23 real defects introduced on purpose; every one makes its suite go red</td><td class="n"></td><td class="n">3.7s</td></tr>
+</table>
+<h2>Reproduce any of it</h2>
+<pre>git clone https://github.com/dominicrume/cantor8_kya_rails
+cd cantor8_kya_rails
+python3 tools/dashboard.py          # regenerates this page from scratch
+cd step-1-mandate/test &amp;&amp; daml test # the 92 attack scripts</pre>
+<footer>
+<b>ALL GREEN</b> &middot; whole run took 26 seconds &middot; generated 2026-09-06 08:37:10 UTC<br>
+Live verifier: <a href="./">dominicrume.github.io/cantor8_kya_rails</a> &middot;
+Source: <a href="https://github.com/dominicrume/cantor8_kya_rails">github.com/dominicrume/cantor8_kya_rails</a><br>
+A green row means the named command exited zero. It does not mean the thing is
+correct — it means a test that is capable of failing did not fail. Which tests are
+capable of failing is what the last group measures.
+</footer></div></body></html>
