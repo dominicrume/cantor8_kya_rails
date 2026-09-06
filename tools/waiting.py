@@ -11,7 +11,7 @@ back to the public API, which is enough to read a public issue.
 """
 import json
 import os
-import subprocess
+import subprocess  # nosec B404 - shelling out to gh is the point
 import sys
 import urllib.request
 
@@ -35,11 +35,26 @@ def api(path):
                 return json.loads(p.stdout)
         except (OSError, ValueError, subprocess.SubprocessError):
             pass
+    url = "https://api.github.com" + path
+    if not url.startswith("https://api.github.com/"):
+        return {"_error": "refusing a URL that is not the GitHub API"}
     try:
-        with urllib.request.urlopen("https://api.github.com" + path, timeout=30) as r:
+        with urllib.request.urlopen(url, timeout=30) as r:   # nosec B310 - checked above
             return json.loads(r.read())
     except Exception as e:                       # noqa: BLE001 - offline is an answer
         return {"_error": str(e)}
+
+
+def replies(repo, number):
+    """Every comment, one line each. Empty when nobody has answered."""
+    out = []
+    for c in api("/repos/%s/issues/%d/comments" % (repo, number)) or []:
+        if isinstance(c, dict) and c.get("user"):
+            first = (c.get("body") or "").strip().splitlines()
+            out.append("      -> %s (%s): %s"
+                       % (c["user"]["login"], c["created_at"][:10],
+                          first[0][:90] if first else ""))
+    return out
 
 
 def show(repo, number, kind, what):
@@ -47,19 +62,13 @@ def show(repo, number, kind, what):
     if thing.get("_error"):
         print("  %s#%d  could not be read: %s" % (repo, number, thing["_error"][:40]))
         return 0
-    state = thing.get("state", "?")
+    merged = " MERGED" if thing.get("pull_request", {}).get("merged_at") else ""
     n = thing.get("comments", 0)
-    merged = " MERGED" if kind == "pull" and thing.get("pull_request", {}).get("merged_at") else ""
-    print("  %-44s %-6s%s  %d comment(s)" % ("%s#%d" % (repo, number), state, merged, n))
+    print("  %-44s %-6s%s  %d comment(s)"
+          % ("%s#%d" % (repo, number), thing.get("state", "?"), merged, n))
     print("      %s" % what)
-    if not n:
-        return 0
-    for c in api("/repos/%s/issues/%d/comments" % (repo, number)) or []:
-        if isinstance(c, dict) and c.get("user"):
-            first = (c.get("body") or "").strip().splitlines()
-            print("      -> %s (%s): %s"
-                  % (c["user"]["login"], c["created_at"][:10],
-                     (first[0][:90] if first else "")))
+    for line in replies(repo, number) if n else []:
+        print(line)
     return n
 
 
