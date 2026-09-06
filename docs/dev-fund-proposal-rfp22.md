@@ -113,6 +113,16 @@ handle rather than document.
 requires no changes to the project under test, and emits both a human report and
 machine-readable output for CI.
 
+A first version already exists and has been run against a project the applicant
+did not write — `tools/daml_mutate.py`, pointed at OpenZeppelin's
+`canton-contracts`. Two defects in the harness were found by doing so, and both
+are the reason Milestone 1 is written the way it is: deleting a fence's LINE
+breaks the enclosing `do` block, so the operator must make the condition vacuous
+instead; and a failed build leaves the previous DAR in place, so a suite then
+passes against code the mutation never reached — which reads exactly like a
+finding and is not one. Both are now checked, and the second is printed with
+every result.
+
 ### 3. Architectural Alignment
 
 **This complements the existing tooling and duplicates none of it.** Stated
@@ -256,11 +266,18 @@ rather than with the tool, because the finding is more useful than the binary.
 ## Motivation
 
 **Who benefits.** Every Daml package whose security depends on an authorisation
-check — which is most of them, since authorisation is what Daml is for. The honest
-estimate is that the tool is *relevant* to nearly all Daml projects and *adopted*
-by far fewer, because mutation testing is slow and its value is invisible until it
-finds something. Milestone 3 is written so the committee pays for the second number
-and not the first.
+check — which is most of them, since authorisation is what Daml is for.
+
+The Foundation's own DevRel survey of 41 active developers (January–February 2026)
+found **75% rate Security & Auditing Tools "Important" (51%) or "Critical" (24%)**,
+and separately notes that Canton lacks unified tooling "comparable to Hardhat or
+Anchor" — a gap that is explicitly about *testing*. This proposal answers the
+second finding in service of the first.
+
+The honest estimate is still that the tool is *relevant* to nearly all Daml
+projects and *adopted* by far fewer, because mutation testing is slow and its
+value is invisible until it finds something. Milestone 3 is written so the
+committee pays for the second number and not the first.
 
 The Foundation's roadmap states it "anticipates approving multiple grants" in the
 Security, Assurance & Incident Readiness area, and RFP 22 specifically names
