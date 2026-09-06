@@ -109,37 +109,58 @@ def verdict(base, after, compiled):
     return "UNCOVERED", "every test still passes without it"
 
 
-def neutered(line):
-    """The fence, made vacuous, without changing the shape of the code.
+def span(lines, i):
+    """[start, end) of the statement beginning at line i.
 
-    DELETING the line was the first operator and it was too crude: a fence that
-    is the last statement in a `do` block cannot be removed without breaking
-    the block, so four of OpenZeppelin's seven came back "module stopped
-    compiling" -- which says nothing about their tests and everything about the
-    operator. `assertMsg msg cond` -> `assertMsg msg True` always compiles, and
-    is exactly "this fence no longer refuses anything".
+    Daml uses layout: a statement continues while the following lines are
+    indented MORE than it. This matters because assertions are commonly
+    written across two lines --
+
+        assertMsg "Input holding instrumentId does not match transfer"
+          (hv.instrumentId == expectedInstrumentId)
+
+    -- and a single-line mutation turns that into `assertMsg "Input True`,
+    which is a syntax error. Thirty of thirty-two fences in OpenZeppelin's
+    canton-token-template came back "stopped compiling" for exactly that
+    reason, and every one was an artefact of the operator rather than a fact
+    about their tests.
     """
-    m = re.match(r"^(\s*assertMsg\s+\S+\s+).*$", line)
-    if m:
-        return m.group(1) + "True"
-    m = re.match(r"^(\s*ensure\s+).*$", line)
-    if m:
-        return m.group(1) + "True"
+    base = len(lines[i]) - len(lines[i].lstrip())
+    j = i + 1
+    while j < len(lines) and lines[j].strip():
+        if len(lines[j]) - len(lines[j].lstrip()) <= base:
+            break
+        j += 1
+    return i, j
+
+
+def neutered(lines, i):
+    """The whole statement replaced by one that refuses nothing.
+
+    Not a rewrite of the condition -- the condition can be an arbitrary Haskell
+    expression across several lines, and a regex has no business parsing one.
+    Replacing the statement keeps the arity and the type and always compiles.
+    """
+    indent = lines[i][:len(lines[i]) - len(lines[i].lstrip())]
+    if re.match(r"^\s*assertMsg\b", lines[i]):
+        return indent + 'assertMsg "mutated" True'
+    if re.match(r"^\s*ensure\b", lines[i]):
+        return indent + "ensure True"
     return None
 
 
 def check_one(path, lineno, text, src, test, base):
     """Neuter one fence, rebuild, run, restore. Returns (state, detail)."""
     original = open(path).read()
-    lines = original.splitlines(keepends=True)
+    lines = original.splitlines()
     if not FENCE.match(lines[lineno - 1]):
         return "STALE", "line %d is no longer a fence" % lineno
-    dead = neutered(lines[lineno - 1].rstrip("\n"))
+    dead = neutered(lines, lineno - 1)
     if dead is None:
         return "STALE", "line %d does not match a fence shape" % lineno
+    start, end = span(lines, lineno - 1)
     try:
-        lines[lineno - 1] = dead + "\n"
-        open(path, "w").write("".join(lines))
+        open(path, "w").write("\n".join(lines[:start] + [dead] + lines[end:]) + "\n")
         compiled, after, _ = build_and_test(src, test)
         return verdict(base, after, compiled)
     finally:
