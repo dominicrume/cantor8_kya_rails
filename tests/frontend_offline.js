@@ -27,6 +27,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const OP = fs.readFileSync(path.join(ROOT, 'step-5-operator/operator.html'), 'utf8');
 const CUST = fs.readFileSync(path.join(ROOT, 'step-5-operator/customer.html'), 'utf8');
+const DESK = fs.readFileSync(path.join(ROOT, 'step-5-operator/desk.html'), 'utf8');
 
 const fails = [];
 function check(ok, what) {
@@ -184,9 +185,49 @@ async function customerChecks() {
         'an unreadable reply says so rather than throwing into a setInterval');
 }
 
+
+/* --------------------------------------------------------------------- */
+/* desk.html: a refusal is worthless without the rule that produced it    */
+/* --------------------------------------------------------------------- */
+function deskRow(receipt, showRule) {
+  const ctx = {console};
+  vm.createContext(ctx);
+  vm.runInContext(fromPage(DESK, 'desk.html', 'const esc =', "[c]));"), ctx);
+  vm.runInContext(fromPage(DESK, 'desk.html', 'function when(at)', 'return at; }\n}'), ctx);
+  vm.runInContext(fromPage(DESK, 'desk.html', 'function receiptRow(r, showRule)',
+                           "+ '</div>';\n}"), ctx);
+  ctx.__r = receipt; ctx.__s = showRule;
+  return vm.runInContext('receiptRow(__r, __s)', ctx);
+}
+
+function deskChecks() {
+  console.log('\ndesk.html - the operating view');
+  const refused = {n: 4, amount: '1.0', currency: 'CC', payee: 'Fraudster Ltd',
+                   outcome: 'REFUSED', rule: 'payee is not on the allow-list',
+                   at: '2026-09-06T17:00:42Z', seal: '856468c0683a9c244f3f0a17'};
+
+  // THE ONE THAT MATTERS. A refusal with no rule is a row that says a payment
+  // did not happen and refuses to say why -- which is the entire product.
+  let html = deskRow(refused, true);
+  check(/payee is not on the allow-list/.test(html),
+        'a refused receipt renders the RULE that refused it');
+  check(/Fraudster Ltd/.test(html), 'and who was asked for');
+  check(/856468c0/.test(html), 'and its seal, so the row can be checked');
+
+  const nasty = Object.assign({}, refused, {payee: '<img src=x onerror=alert(1)>'});
+  html = deskRow(nasty, true);
+  check(!/<img/.test(html) && /&lt;img/.test(html),
+        'a payee containing markup is escaped, not rendered');
+
+  html = deskRow(Object.assign({}, refused, {outcome: 'ACCEPTED', rule: 'under the cap'}), false);
+  check(!/under the cap/.test(html),
+        'a paid receipt does not need a rule and does not show one');
+}
+
 (async () => {
   await operatorChecks();
   await customerChecks();
+  deskChecks();
   console.log();
   if (fails.length) {
     console.log('FRONTEND OFFLINE FAILED - ' + fails.length + ':');

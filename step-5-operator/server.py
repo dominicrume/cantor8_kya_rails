@@ -306,6 +306,18 @@ class Rail:
         self._receipts = 0
         self.restored = self.reload()
 
+    def payees(self):
+        """Who this desk may pay, for the screen. The ledger decides whether a
+        payment happens; this only decides what the operator can choose from."""
+        allowed = allow_list(self.config) if self.config["configured"] else []
+        rows = {c["id"]: c for c in self.config["counterparties"]}
+        if not allowed:
+            allowed = ["customer", "partner"]
+        return [{"key": k,
+                 "name": rows[k]["name"] if k in rows else self.ledger.name(k),
+                 "account": rows[k]["account"] if k in rows else ""}
+                for k in allowed]
+
     def _apply_settings(self, cfg):
         """Rate, band, cap and period limit, from the desk's own file.
 
@@ -446,8 +458,14 @@ class Rail:
                 "period_limit": self.period_limit,
                 "ledger": self.ledger.label,
                 "storage": self.storage_state(),
-                "recipients": [{"key": k, "name": self.ledger.name(k)}
-                               for k in ("customer", "partner")],
+                # From the desk's settings, not a hardcoded pair. The dropdown
+                # showed the demo roles while desk.json named the real
+                # counterparties, so an operator could not pick the people they
+                # had actually configured. Falls back to the demo roles when
+                # nothing is configured, which is what the rest of the desk does.
+                "recipients": self.payees(),
+                "desk": {"name": self.config["desk"]["name"],
+                         "operator": self.config["desk"]["operator"]},
                 "receipts": self.chain.receipts,
                 "approved": self.desk.approved,
                 "quotes": sorted(self.desk.quotes.values(),
@@ -634,7 +652,8 @@ POST_ROUTES = {
 }
 
 # Static pages, and the short forms that survive being pasted into a chat.
-GET_PAGES = {"/": "/operator.html", "/bot": "/bot.html", "/c": "/customer.html"}
+GET_PAGES = {"/": "/operator.html", "/bot": "/bot.html", "/c": "/customer.html",
+             "/desk": "/desk.html"}
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):

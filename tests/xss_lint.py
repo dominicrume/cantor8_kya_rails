@@ -11,6 +11,7 @@ import os, re, sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 PAGES = ["step-5-operator/operator.html", "step-5-operator/customer.html",
+         "step-5-operator/desk.html",
          "step-5-operator/bot.html", "step-3-verify/verifier.html"]
 # Functions that escape, or that cannot carry markup.
 # fmt() escapes first and then renders only *bold*, _italic_ and `code` from
