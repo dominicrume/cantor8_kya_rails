@@ -110,6 +110,9 @@ jobs:
       - name: the quote outlives the process, and its history is tamper-evident
         run: python3 tests/store_smoke.py
 
+      - name: the desk refuses settings it cannot understand, and the ledger enforces them
+        run: python3 tests/desk_config_smoke.py
+
       - name: killing the wallet loses no receipts, and buys the agent no cap
         run: python3 tests/mcp_survives_kill.py
 

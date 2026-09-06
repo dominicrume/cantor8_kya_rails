@@ -52,6 +52,8 @@ SUITES = [
     ("python3 tests/bot_smoke.py", "The agent",
      "the WhatsApp bot reads an amount the way a person writes one"),
 
+    ("python3 tests/desk_config_smoke.py", "The desk",
+     "settings are refused when wrong, and enforced by the ledger when right"),
     ("python3 tests/operator_smoke.py", "The desk",
      "every refusal the desk answers is also on its record"),
     ("python3 tests/cycle_smoke.py", "The desk",

@@ -169,6 +169,18 @@ MUTATIONS = [
      "            pass",
      "python3 tests/mcp_survives_kill.py"),
 
+    ("the desk's allow-list stops reaching the mandate",
+     "step-2-agent/agent.py",
+     '                  "allowed": list(ALLOWED if allowed is None else allowed),',
+     '                  "allowed": list(ALLOWED),',
+     "python3 tests/desk_config_smoke.py"),
+
+    ("a boolean is accepted as a spending cap",
+     "step-9-desk/desk_config.py",
+     "    if isinstance(value, bool) and bool not in kinds:",
+     "    if False:",
+     "python3 tests/desk_config_smoke.py"),
+
     ("a Daml spending fence is deleted",
      "step-1-mandate/daml/KyaMandate.daml",
      '        assertMsg "charge would exceed the cap" (spent + amount <= cap)',
@@ -234,9 +246,29 @@ def restore(backups):
                        cwd=ROOT, capture_output=True)
 
 
+def selected(only):
+    """The rows a filter names, or a refusal.
+
+    A filter that matches nothing used to print "Breaking 0 real things" and
+    then "every one of these breaks something a suite notices" -- true, and
+    worthless: a mistyped filter reported success. Returning None makes it an
+    exit code instead.
+    """
+    rows = [m for m in MUTATIONS if not only or only in m[0] or only in m[1]]
+    if rows:
+        return rows
+    print("No mutation matches %r. Nothing was tested." % only)
+    print("Names available:")
+    for m in MUTATIONS:
+        print("  -", m[0])
+    return None
+
+
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
-    rows = [m for m in MUTATIONS if not only or only in m[0] or only in m[1]]
+    rows = selected(only)
+    if rows is None:
+        return 1
     print("Breaking %d real things, and requiring the suite to notice.\n" % len(rows))
     backups = take_backups(rows)
     results = []
