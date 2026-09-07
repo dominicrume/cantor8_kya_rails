@@ -217,6 +217,12 @@ MUTATIONS = [
      "    for candidate in (DEFAULT_PATH,):",
      "python3 tests/bundle_smoke.py"),
 
+    ("the verifier stops drawing where the chain broke",
+     "step-3-verify/verifier.html",
+     "          +drawChain(rs, bad));",
+     "          );",
+     "node tests/checker_smoke.js"),
+
     ("a Daml spending fence is deleted",
      "step-1-mandate/daml/KyaMandate.daml",
      '        assertMsg "charge would exceed the cap" (spent + amount <= cap)',
