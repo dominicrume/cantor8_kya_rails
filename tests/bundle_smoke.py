@@ -62,10 +62,31 @@ def post(path, body):
 
 
 def build():
+    """Rebuild, and require the committed artefact to have been current.
+
+    dist/kya-desk.py is tracked, so a stale one is a stale one shipped. It
+    happened: mutation_suite mutates a source, rebuilds the bundle to test the
+    mutation, restores the source and did NOT rebuild -- so the committed
+    bundle was built from code with a fence deleted. The download worked, found
+    no desk.json sitting beside it, and said so.
+
+    Comparing the hash before and after a rebuild is the whole guard.
+    """
+    was = digest(BUNDLE)
     r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "build-desk.py")],
                        capture_output=True, text=True, cwd=ROOT)
     check(r.returncode == 0, "tools/build-desk.py builds the bundle")
     check(os.path.exists(BUNDLE), "dist/kya-desk.py exists")
+    check(was is None or was == digest(BUNDLE),
+          "the committed bundle was already current -- rebuilding it changed nothing")
+
+
+def digest(path):
+    if not os.path.exists(path):
+        return None
+    import hashlib
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
 
 
 def elsewhere():
