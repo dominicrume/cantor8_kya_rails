@@ -275,11 +275,21 @@ def restore(backups):
     for p, b in backups.items():
         shutil.copy(b, os.path.join(ROOT, p))
         os.unlink(b)
-    # The generated pages are built from a file that was just mutated, so
-    # rebuild them or the next run compares against a broken artefact.
+    # Every generated artefact is built from a file that was just mutated, so
+    # rebuild them all or the next run compares against a broken one -- and,
+    # worse, a stale one gets committed.
+    #
+    # dist/kya-desk.py was missing from this list and was committed built from
+    # MUTATED source: the mutation that deletes the settings loader's
+    # working-directory lookup ran, bundle_smoke rebuilt the bundle to test it,
+    # the source was restored, and the bundle was not. Somebody downloaded that
+    # bundle, put desk.json beside it, and was told "NO desk.json" with the file
+    # in plain sight. The tool that hunts this exact failure shipped it.
     for mode in ([], ["--fragment"], ["--pages"]):
-        subprocess.run(["python3", "step-3-verify/build-standalone.py"] + mode,
+        subprocess.run(["python3", "step-3-verify/build-standalone.py"] + mode,  # nosec B603 B607
                        cwd=ROOT, capture_output=True)
+    subprocess.run(["python3", "tools/build-desk.py"],  # nosec B603 B607 - literal argv
+                   cwd=ROOT, capture_output=True)
 
 
 def selected(only):
