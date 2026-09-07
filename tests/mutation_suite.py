@@ -211,6 +211,12 @@ MUTATIONS = [
      "color:var(--ink); min-height:100vh; }",
      "python3 tests/contrast_lint.py"),
 
+    ("the bundled desk loses its settings and its journal",
+     "step-9-desk/desk_config.py",
+     '    for candidate in (os.path.join(os.getcwd(), "desk.json"), DEFAULT_PATH):',
+     "    for candidate in (DEFAULT_PATH,):",
+     "python3 tests/bundle_smoke.py"),
+
     ("a Daml spending fence is deleted",
      "step-1-mandate/daml/KyaMandate.daml",
      '        assertMsg "charge would exceed the cap" (spent + amount <= cap)',

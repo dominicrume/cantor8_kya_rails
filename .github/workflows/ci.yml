@@ -110,6 +110,9 @@ jobs:
       - name: the quote outlives the process, and its history is tamper-evident
         run: python3 tests/store_smoke.py
 
+      - name: the whole desk runs from one file, in a directory that is not the repo
+        run: python3 tests/bundle_smoke.py
+
       - name: the operating view shows the float, the refusals and their rules
         run: python3 tests/desk_view_smoke.py
 

@@ -18,6 +18,10 @@ import urllib.request
 WATCHING = [
     ("OpenZeppelin/canton-contracts", 43, "issue",
      "three untested access-control fences"),
+    ("OpenZeppelin/canton-token-template", 9, "issue",
+     "24 of 32 fences with no test behind them"),
+    ("OpenZeppelin/canton-stablecoin", 9, "issue",
+     "25 of 30, including the oracle price guard"),
     ("canton-network-devs/Canton-Developer-Hub", 156, "pull",
      "KYA Rails in the tool catalogue"),
 ]
