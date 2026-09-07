@@ -134,10 +134,24 @@ def _counterparties(cfg):
     return out
 
 
+def found():
+    """Where the operator is standing first, then beside the repository.
+
+    The single-file build runs from any directory, and a desk.json sitting next
+    to it is unmistakably the one meant. Resolving only a path relative to this
+    module found nothing and reported "Unconfigured desk" with the file in
+    plain sight.
+    """
+    for candidate in (os.path.join(os.getcwd(), "desk.json"), DEFAULT_PATH):
+        if os.path.exists(candidate):
+            return candidate
+    return None
+
+
 def load(path=None):
     """The desk's settings, fully checked, or BadConfig naming the field."""
-    path = path or os.environ.get("KYA_DESK") or DEFAULT_PATH
-    if not os.path.exists(path):
+    path = path or os.environ.get("KYA_DESK") or found()
+    if path is None or not os.path.exists(path):
         return dict(FALLBACK, path=None, configured=False)
     try:
         raw = json.load(open(path))
@@ -165,8 +179,13 @@ def describe(cfg):
     """What an operator needs to read before the first real payout."""
     lines = []
     if not cfg["configured"]:
+        # The command differs depending on how the desk was started, and
+        # telling somebody to run a path they do not have is worse than saying
+        # nothing. sys.argv[0] is the thing they actually typed.
+        how = os.path.basename(sys.argv[0]) or "desk_config.py"
         lines.append("NO desk.json -- running unconfigured. Cap is 0, so every")
-        lines.append("payment refuses. Write one: python3 step-9-desk/desk_config.py --example")
+        lines.append("payment refuses. Write one:")
+        lines.append("    python3 %s --example > desk.json" % how)
         return lines
     m, allowed = cfg["money"], allow_list(cfg)
     lines.append("desk:     %s (operator: %s)" % (cfg["desk"]["name"], cfg["desk"]["operator"]))

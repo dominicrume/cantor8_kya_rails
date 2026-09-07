@@ -286,6 +286,21 @@ python3 tests/devnet_anchor.py --check   # does the ledger agree with this file?
 python3 step-2-agent/agent.py --devnet --no-anchor   # publish nothing, and say so
 ```
 
+### Run the whole desk from one file
+
+```bash
+curl -sLO https://raw.githubusercontent.com/dominicrume/cantor8_kya_rails/main/dist/kya-desk.py
+python3 kya-desk.py --example > desk.json    # your counterparties, your cap
+python3 kya-desk.py                          # then open http://localhost:8420/desk
+```
+
+No clone, no install, no dependencies — Python 3.8, which macOS and every Linux
+already ship. `--sources` prints every module inside it, because a single file
+nobody can read is not obviously better than a repository nobody clones.
+
+The journal and the settings live where you are standing. The pages are
+unpacked to a temp folder and are disposable; the audit trail is not.
+
 ### Check a file right now, with nothing installed
 
 **https://dominicrume.github.io/cantor8_kya_rails/**

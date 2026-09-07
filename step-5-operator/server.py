@@ -45,6 +45,12 @@ BREET_TRUST_PROXY = False
 
 DESK = None            # the desk's settings; loaded in main() before anything binds
 
+# Where the journal goes when KYA_STORE says nothing. A module-level name, not
+# an expression inside build_store, so the single-file build in tools/build-desk.py
+# can point it at the operator's working directory instead of a temp folder that
+# vanishes -- the pages there are disposable, the audit trail is not.
+DEFAULT_STORE = os.path.join(HERE, "..", "kya-desk.db")
+
 
 def build_desk():
     """Settings, or a refusal that names the field.
@@ -70,7 +76,7 @@ def build_store(argv):
     """
     if "--ephemeral" in argv:
         return None
-    path = os.environ.get("KYA_STORE") or os.path.join(HERE, "..", "kya-desk.db")
+    path = os.environ.get("KYA_STORE") or DEFAULT_STORE
     return Store(path)
 
 

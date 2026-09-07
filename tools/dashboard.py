@@ -54,6 +54,8 @@ SUITES = [
     ("python3 tests/bot_smoke.py", "The agent",
      "the WhatsApp bot reads an amount the way a person writes one"),
 
+    ("python3 tests/bundle_smoke.py", "The desk",
+     "the whole desk runs from one file, with no repository and nothing installed"),
     ("python3 tests/desk_view_smoke.py", "The desk",
      "the operating view shows the float, the refusals and the rule for each"),
     ("python3 tests/desk_config_smoke.py", "The desk",
