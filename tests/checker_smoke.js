@@ -45,8 +45,14 @@ function check(ok, what) {
 
 // A DOM just big enough for the shipped block to run against.
 function harness() {
+  // querySelectorAll is a real method the page calls on the verdict box to
+  // wire up the chain links. Returning [] keeps the harness honest about what
+  // it does NOT simulate -- clicking a link needs a real DOM -- while letting
+  // the page's own code run to completion, which is the point of lifting it
+  // out of the file rather than re-typing it.
   const node = () => ({textContent: '', innerHTML: '', className: '', hidden: true,
                        _on: {}, classList: {add(){}, remove(){}},
+                       querySelectorAll(){ return []; },
                        addEventListener(e, f){ this._on[e] = f; }});
   const nodes = {cDrop: node(), cFile: node(), cVerdict: node(), cPrompt: node()};
   const ctx = {
@@ -91,12 +97,25 @@ function verdictFor(name, text) {
         'a real chain is accepted');
   check(/does not prove where the file came from/.test(v.innerHTML),
         'and says what a passing check does NOT prove');
+  check((v.innerHTML.match(/class="lnk"/g) || []).length === REAL.length,
+        'an intact chain draws every link unbroken');
+  check(!/lnk broke|lnk after/.test(v.innerHTML),
+        'with nothing marked as broken');
 
   const tampered = JSON.parse(JSON.stringify(REAL));
   tampered[1].amount = '9999.0';
   v = await verdictFor('tampered.json', JSON.stringify(tampered));
   check(/BROKEN at entry 2/.test(v.innerHTML) && v.className.includes('bad'),
         'a tampered chain is BROKEN, and names the entry');
+
+  // The chain is drawn as one tile per entry, so the break is a thing you see
+  // rather than a sentence you parse. The second tile must carry the break.
+  check((v.innerHTML.match(/class="lnk/g) || []).length === REAL.length,
+        'and draws one link per entry (' + REAL.length + ')');
+  check(/class="lnk broke" data-n="2"/.test(v.innerHTML),
+        'with entry 2 marked as the break itself');
+  check(/class="lnk after" data-n="3"/.test(v.innerHTML),
+        'and everything after it marked unreliable, not merely fine');
   check(/ask whoever gave you this file/.test(v.innerHTML),
         'and tells the reader what to do about it');
 

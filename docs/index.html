@@ -117,6 +117,99 @@
   .c-try button:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
   .c-drop small { display:block; margin-top:5px; font-size:11.5px;
                   color:var(--page-dim); font-weight:400; }
+  /* -------------------------------------------------------------------
+     The checker and the origin panel had NO styles at all -- named divs
+     with nothing behind them. Everything ran flush to the left edge at
+     full viewport width, so on a wide screen the body text was 180
+     characters a line and the primary action was indistinguishable from
+     the paragraph above it. Readable, after the contrast fix, and still
+     nobody's idea of a page.
+     ------------------------------------------------------------------- */
+  .sheet { max-width:760px; margin:0 auto; padding:0 20px; }
+
+  .checker { background:#141d19; color:var(--page-ink); border:1px solid #23322b;
+             border-radius:14px; padding:22px 22px 20px; margin:6px 0 16px;
+             box-shadow:0 10px 34px rgba(0,0,0,.35); }
+  .c-head { font-size:21px; font-weight:700; letter-spacing:-.2px; margin-bottom:8px; }
+  .c-say { font-size:14.5px; line-height:1.6; color:var(--page-dim); margin-bottom:16px; }
+  .c-say b { color:var(--page-ink); }
+
+  .c-try { display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+           margin:0 0 14px; font-size:13px; color:var(--page-dim); }
+  .c-try span { margin-right:2px; }
+  .c-try button { font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+                  padding:9px 15px; min-height:40px; border-radius:99px;
+                  border:1px solid #2f4a3f; background:#17241e; color:var(--bubble); }
+  .c-try button:hover { background:#1d3129; border-color:var(--teal); }
+  .c-try button:focus-visible { outline:2px solid var(--teal); outline-offset:2px; }
+
+  /* A drop target has to look like one. The native control was sitting
+     there as "Choose file / No file chosen", which tells nobody what kind
+     of file, and gives a drag no edge to aim at. */
+  .c-drop { display:block; border:2px dashed #2f4a3f; border-radius:12px;
+            background:#111a16; padding:26px 18px; text-align:center;
+            cursor:pointer; color:var(--page-ink); transition:border-color .15s,
+            background .15s; }
+  .c-drop:hover, .c-drop:focus-within { border-color:var(--teal); background:#13201b; }
+  .c-drop.over { border-color:var(--bubble); background:#17251f; }
+  .c-drop input[type=file] { position:absolute; width:1px; height:1px;
+                             opacity:0; pointer-events:none; }
+  #cPrompt { font-size:15px; font-weight:600; }
+  .c-drop small { display:block; margin-top:6px; font-size:12px;
+                  color:var(--page-dim); font-weight:400; }
+
+  .c-verdict { margin-top:14px; padding:15px 16px; border-radius:11px;
+               font-size:14.5px; line-height:1.55; border:1px solid #23322b;
+               background:#111a16; color:var(--page-ink); }
+  .c-verdict b { font-size:16px; }
+  .c-verdict.good    { background:#10261a; border-color:#2c6b45; color:#c9ecd7; }
+  .c-verdict.bad     { background:#2a1512; border-color:#7a342b; color:#f2c8c1; }
+  .c-verdict.unknown { background:#2a2415; border-color:#7a6428; color:#efe0b4; }
+
+  .origin { background:#121a17; color:var(--page-ink); border:1px solid #23322b;
+            border-radius:14px; padding:20px 22px; margin:0 0 18px; }
+  .o-head { font-size:15px; font-weight:700; margin-bottom:6px; }
+  .o-say { font-size:13.5px; line-height:1.6; color:var(--page-dim); margin-bottom:12px; }
+  .o-say b { color:var(--page-ink); }
+  .o-seal { display:block; font-family:ui-monospace,Menlo,monospace; font-size:11.5px;
+            color:var(--bubble); background:#0d1512; border:1px solid #23322b;
+            border-radius:8px; padding:9px 11px; margin:6px 0 12px;
+            word-break:break-all; }
+  #oPaste { width:100%; font-family:ui-monospace,Menlo,monospace; font-size:12px;
+            background:#0d1512; color:var(--page-ink); border:1px solid #2f4a3f;
+            border-radius:9px; padding:10px 11px; resize:vertical; }
+  #oPaste:focus-visible { outline:2px solid var(--teal); outline-offset:1px; }
+  .o-verdict { margin-top:11px; padding:12px 14px; border-radius:10px;
+               font-size:13.5px; background:#0d1512; color:var(--page-dim);
+               border:1px solid #23322b; }
+
+  @media (max-width:520px){
+    .checker, .origin { padding:18px 16px; border-radius:12px; }
+    .c-head { font-size:19px; }
+    .c-try { gap:6px; } .c-try button { flex:1 1 auto; }
+  }
+  /* The chain, as a thing you can see. "BROKEN at entry 2" is a sentence;
+     a row of links with the second one red is the same fact in a glance,
+     and it makes the shape of a hash chain obvious without explaining it. */
+  .chain { display:flex; flex-wrap:wrap; gap:5px; margin:13px 0 4px; }
+  .lnk { width:34px; height:34px; border-radius:8px; border:1px solid #2c6b45;
+         background:#14301f; color:#c9ecd7; font-size:11.5px; font-weight:700;
+         display:flex; align-items:center; justify-content:center; cursor:pointer;
+         font-family:inherit; padding:0; }
+  .lnk:hover { transform:translateY(-1px); }
+  .lnk[aria-pressed="true"] { outline:2px solid var(--bubble); outline-offset:2px; }
+  .lnk:focus-visible { outline:2px solid var(--bubble); outline-offset:2px; }
+  .lnk.broke { background:#3a1a15; border-color:#a24334; color:#f2c8c1; }
+  .lnk.after { background:#241614; border-color:#5c322b; color:#c09a93; }
+  .chain-key { font-size:12px; color:var(--page-dim); margin-bottom:8px; }
+  .entry { margin-top:9px; background:#0d1512; border:1px solid #23322b;
+           border-radius:9px; padding:11px 12px; font-family:ui-monospace,Menlo,monospace;
+           font-size:11.5px; line-height:1.7; color:var(--page-ink);
+           white-space:pre-wrap; word-break:break-word; }
+  .entry .k { color:var(--page-dim); }
+  @media (prefers-reduced-motion: no-preference){
+    .lnk { transition:transform .12s, background .12s; }
+  }
 </style>
 </head>
 <body>
@@ -124,6 +217,7 @@
   <h1>KYA RAILS &middot; Know Your AgenticAI</h1>
   <p>Your operator pays out where you are not. The mandate holds where you cannot stand. Screenshots can lie. Sealed receipts cannot.</p>
 </header>
+<div class="sheet">
 <div class="checker" id="checker">
   <div class="c-head">Has this record been edited?</div>
   <p class="c-say">A <b>receipts file</b> is the record a desk hands you of every
@@ -529,6 +623,42 @@ document.getElementById('tamperBtn').onclick=()=>{
     return rs.some(r => r && typeof r==='object' && 'seal' in r && 'prev' in r);
   }
 
+
+  // A row of links, one per receipt: green while the seals follow, red from
+  // the first that does not. Clicking one shows what that entry actually
+  // says, because "entry 2 is broken" means more when you can read entry 2.
+  function drawChain(rs, bad){
+    const tiles = rs.map((r, i) => {
+      const n = i + 1;
+      const cls = !bad ? '' : (n === bad ? ' broke' : (n > bad ? ' after' : ''));
+      return '<button type="button" class="lnk' + cls + '" data-n="' + n + '"'
+           + ' aria-pressed="false"'
+           + ' title="' + esc(r.what || ('entry ' + n)) + '">' + n + '</button>';
+    }).join('');
+    const key = bad
+      ? 'Entry ' + bad + ' is where the seals stop matching. Click any link to read it.'
+      : 'Every link recomputed from the one before it. Click any to read it.';
+    return '<div class="chain-key">' + key + '</div><div class="chain">' + tiles
+         + '</div><div class="entry" id="cEntry" hidden></div>';
+  }
+
+  function showEntry(rs, n){
+    const r = rs[n - 1];
+    if(!r) return;
+    const box = document.getElementById('cEntry');
+    box.hidden = false;
+    box.innerHTML = Object.keys(r).map(k =>
+      '<span class="k">' + esc(k) + ':</span> ' + esc(String(r[k]))).join('\n');
+  }
+
+  function wireChain(rs){
+    out.querySelectorAll('.lnk').forEach(b => b.addEventListener('click', () => {
+      out.querySelectorAll('.lnk').forEach(o => o.setAttribute('aria-pressed', 'false'));
+      b.setAttribute('aria-pressed', 'true');
+      showEntry(rs, Number(b.dataset.n));
+    }));
+  }
+
   function say(kind, html){ out.hidden=false; out.className='c-verdict '+kind; out.innerHTML=html; }
 
   async function check(name, text){
@@ -558,13 +688,19 @@ document.getElementById('tamperBtn').onclick=()=>{
       say('good','<b>'+esc(name)+'</b> holds. '+rs.length+' entries, every seal '
         +'recomputed in this browser.<br>This proves nothing was <b>edited</b>. '
         +'It does not prove where the file came from &mdash; a forged chain '
-        +'verifies exactly like this.<br>Chain head:<code>'+esc(head)+'</code>');
+        +'verifies exactly like this.<br>Chain head:<code>'+esc(head)+'</code>'
+          +drawChain(rs, 0));
+        wireChain(rs);
+
     } else {
       say('bad','<b>'+esc(name)+'</b> is <b>BROKEN at entry '+bad+'</b>. '
         +'Everything before it follows; that one does not, so it or something '
         +'earlier was changed after the fact. Every entry after it is '
         +'unreliable too.<br>What to do: ask whoever gave you this file for the '
-        +'original, and check its chain head against wherever they published it.');
+        +'original, and check its chain head against wherever they published it.'
+          +drawChain(rs, bad));
+        wireChain(rs);
+
     }
   }
 
