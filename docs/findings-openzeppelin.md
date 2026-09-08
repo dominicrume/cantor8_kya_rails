@@ -34,8 +34,15 @@ So the run also emits its findings as a sealed chain, one entry per fence, with
 the file, the line, the verdict, the rule that produced it and the toolchain
 version inside each seal:
 
-- [`docs/findings/canton-contracts-access-control-v1.json`](findings/canton-contracts-access-control-v1.json)
+- [`canton-contracts-access-control-v1.json`](findings/canton-contracts-access-control-v1.json)
   — 7 entries, head `93e75483…`
+- [`canton-token-template-simple-token.json`](findings/canton-token-template-simple-token.json)
+  — 32 entries, head `53c616fe…`
+
+The second record reproduces this page's own row for `simple-token` — 32 fences,
+42 scripts, 8 covered, 24 uncovered — from a run made weeks later on a clean
+clone. The table above was written by hand from the first run; the record was
+not.
 
 Drop that file on <https://dominicrume.github.io/cantor8_kya_rails/>. Nothing to
 install, no account, and no need to trust this repository: change one verdict
