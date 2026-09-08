@@ -1,12 +1,12 @@
 # Forum post: reply in OpenZeppelin's feedback thread
 
-**Where:** https://forum.canton.network/t/feedback-welcome-openzeppelins-daml-development-stack-is-public-and-open-for-review/9059
+**Where:** https://forum.canton.network/t/feedback-welcome-openzeppelin-s-daml-development-stack-is-public-and-open-for-review/9059
 **As:** a reply in that thread, not a new topic. It carries the invitation this
 answers, and it already has an audience.
 
-**Before posting, confirm:** the issue numbers below. Only `canton-contracts#43`
-is recorded in this repo; the other two were opened later and are not verified
-here.
+**Verified 2026-09-08 via `gh`:** all three issues are open with 0 comments —
+canton-contracts#43, canton-token-template#9, canton-stablecoin#9. The thread is
+open (7 posts, 302 views, last post 3 Sep by Pepe_Blasco, who answers).
 
 ---
 
@@ -31,10 +31,16 @@ whose removal leaves every test green is reported as uncovered.
 | | | **69** | **86** | **17** | **52** |
 
 **These are not vulnerabilities.** Every fence is present and working. The
-finding is that the suites would not notice if one were removed — which matters
-at the next change, not today. `experiments/` also says plainly that it is not
-production-ready; I still think the gap is worth naming because the top-level
-README says those packages are tested in CI.
+finding is that the suites would not notice if one were removed.
+
+That is why I think it's worth raising here rather than leaving in the tracker.
+Upthread you described the reference implementations as *"not products we will
+deploy — complete, audited starting points that teams fork and operate."* A fork
+inherits the tests along with the code, and then changes the code. That's the
+moment an uncovered fence costs something: not today, in your repository, where
+every fence is correct, but in someone else's, six months in, when a refactor
+quietly removes one and 42 green scripts raise no objection. The suite is part
+of what you're handing forks, and it's the part this measures.
 
 **The control that makes the number believable:** some fences come back covered
 in every repository, each naming the script that dies —
@@ -99,8 +105,10 @@ changes it. It checks on a static page with nothing installed:
 All three rows above have now been reproduced from clean clones weeks after the
 runs that produced them, and every column matched.
 
-Filed as
-[canton-contracts#43](https://github.com/OpenZeppelin/canton-contracts/issues/43).
+Filed per repository, with the per-fence detail:
+[canton-contracts#43](https://github.com/OpenZeppelin/canton-contracts/issues/43),
+[canton-token-template#9](https://github.com/OpenZeppelin/canton-token-template/issues/9),
+[canton-stablecoin#9](https://github.com/OpenZeppelin/canton-stablecoin/issues/9).
 I'd genuinely rather be told that some of these are deliberately redundant, or
 covered by a test my harness can't attribute, than be right about the number —
 the tool can't see intent, and that's the limit of what it's claiming.
