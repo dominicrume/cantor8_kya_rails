@@ -1,0 +1,25 @@
+{
+  "_": "The float, before and after real Amulet moved on Cantor8 DevNet. This is a RECORDED measurement, not a live read: it is the balance check from the --devnet --move-coin run of 2026-08-31, kept here so the arithmetic can be verified instead of asserted. Re-measure with `python3 tests/devnet_topup.py` (shows balances, moves nothing), which needs C8_CLIENT_SECRET.",
+  "measured": "2026-08-31",
+  "ledger": "Cantor8 DevNet",
+  "instrument": "Amulet (Canton Coin)",
+  "unit": "CC",
+  "opening": {
+    "_": "The float consolidated into the agent's wallet before the demo.",
+    "kya-agent-1": 5.0,
+    "kya-customer-1": 0.0,
+    "kya-partner-1": 0.0,
+    "kya-unverified-1": 0.0
+  },
+  "closing": {
+    "_": "Read from the ACS after the run.",
+    "kya-agent-1": 1.4,
+    "kya-customer-1": 2.1,
+    "kya-partner-1": 1.5,
+    "kya-unverified-1": 0.0
+  },
+  "must_hold": {
+    "conserved": "opening total == closing total: no coin was created or lost",
+    "unverified_is_zero": "kya-unverified-1 is 0.0 on BOTH sides -- the change-of-account attack moved nothing, which is the whole D1 claim"
+  }
+}

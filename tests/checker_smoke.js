@@ -146,6 +146,40 @@ function verdictFor(name, text) {
   v = await verdictFor('receipts.js', rjs);
   check(/holds/.test(v.innerHTML), 'the reference receipts.js format is read as-is');
 
+  // A findings chain is the same format carrying something that is not money:
+  // `amount` is a line number, `currency` is N/A, and COVERED is the good
+  // outcome. The page has to read all three correctly, because an audit record
+  // that renders "139 N/A" tells the reader they are looking at a payment, and
+  // one that paints COVERED red says every good result is a failure.
+  const findings = JSON.parse(fs.readFileSync(
+    path.join(ROOT, 'docs/findings/canton-contracts-access-control-v1.json'), 'utf8'));
+  v = await verdictFor('findings.json', JSON.stringify(findings));
+  check(/holds/.test(v.innerHTML) && v.className.includes('good'),
+        'an audit findings chain is read by the same page, with nothing installed');
+
+  // The two render helpers, lifted from the page rather than retyped.
+  const rctx = {SYMBOL: {}, console};
+  vm.createContext(rctx);
+  vm.runInContext(fromPage('const SYMBOL =', 'const tagClass = r => GOOD[r.outcome] ? \'ok\' : \'no\';'), rctx);
+  const render = r => vm.runInContext('subject(' + JSON.stringify(r) + ')', rctx);
+  const colour = r => vm.runInContext('tagClass(' + JSON.stringify(r) + ')', rctx);
+
+  const finding = findings.find(r => r.outcome === 'COVERED');
+  const uncovered = findings.find(r => r.outcome === 'UNCOVERED');
+  check(render(finding) === finding.payee + ':' + finding.amount,
+        'a fence renders as file:line, not as an amount of money');
+  check(!/N\/A/.test(render(finding)), '  and "N/A" never appears as a currency');
+  check(colour(finding) === 'ok', 'COVERED is green: the good outcome reads as good');
+  check(colour(uncovered) === 'no', 'UNCOVERED is red');
+
+  // The change must not have moved money.
+  const paid = REAL.find(r => r.outcome === 'ACCEPTED');
+  const refused = REAL.find(r => r.outcome === 'REFUSED');
+  check(/\u20b5/.test(render(paid)) && render(paid).includes(paid.payee),
+        'a payment still renders with its symbol and its payee');
+  check(colour(paid) === 'ok' && colour(refused) === 'no',
+        'ACCEPTED is still green and REFUSED still red');
+
   console.log();
   if (fails.length) {
     console.log('CHECKER SMOKE FAILED - ' + fails.length + ':');

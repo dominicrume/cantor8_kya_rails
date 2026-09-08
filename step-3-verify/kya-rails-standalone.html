@@ -414,6 +414,22 @@ let shownReceipts = 0, playing = false;
 const SYMBOL = {CC:'\u20b5', USD:'$', GBP:'\u00a3', EUR:'\u20ac'};
 const money = r => (SYMBOL[r.currency]||'') + r.amount + ' ' + (r.currency||'CC');
 
+// Not every chain is a payment. The same format carries an audit's findings,
+// where `amount` is a line number and `currency` is N/A -- and rendering that
+// as "139 N/A" tells the reader they are looking at money, which is worse than
+// showing nothing. A chain says which it is by its currency code; the seal
+// does not change either way.
+const isMoney = r => r.currency && r.currency !== 'N/A';
+const subject = r => isMoney(r) ? money(r) + ' \u2192 ' + r.payee
+                                : r.payee + ':' + r.amount;
+
+// ACCEPTED for a payment, COVERED for a fence: both mean the thing being
+// recorded came out the right way, and both must read green. Keying the colour
+// off ACCEPTED alone painted every COVERED fence red -- an audit record in
+// which every good result looked like a failure.
+const GOOD = {ACCEPTED:1, COVERED:1};
+const tagClass = r => GOOD[r.outcome] ? 'ok' : 'no';
+
 // SPEC.md section 4: non-ASCII MUST be escaped to \uXXXX. JSON.stringify emits
 // the raw character, so a page relying on it seals the same receipt to a
 // different hash than Python does -- the chain verifies in one and goes red in
@@ -445,8 +461,8 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g,
 function receiptCard(r, broken){
   const d=document.createElement('div');
   d.className='r '+(r.outcome==='REFUSED'?'refused ':'')+(broken?'broken':'');
-  d.innerHTML='<span class="tag '+(broken?'bad':(r.outcome==='ACCEPTED'?'ok':'no'))+'">'+(broken?'SEAL BROKEN':r.outcome)+'</span>'+
-    '<b>#'+esc(r.n)+' '+esc(r.what)+'</b><br>'+esc(money(r))+' &rarr; '+esc(r.payee)+
+  d.innerHTML='<span class="tag '+(broken?'bad':tagClass(r))+'">'+(broken?'SEAL BROKEN':r.outcome)+'</span>'+
+    '<b>#'+esc(r.n)+' '+esc(r.what)+'</b><br>'+esc(subject(r))+
     ' &middot; '+esc(r.at)+
     '<br><span class="rule">rule: '+esc(r.rule)+'</span>'+
     '<div class="prov">'+esc(r.instrument||'')+' &middot; ledger: '+
@@ -548,7 +564,7 @@ async function verifyAnimated(){
         cards[i].querySelector('.seal').textContent='recomputed here \u2014 does NOT match';
       } else {
         cards[i].classList.add('checked');
-        t.className='tag '+(r.outcome==='ACCEPTED'?'ok':'no'); t.textContent=r.outcome;
+        t.className='tag '+tagClass(r); t.textContent=r.outcome;
         cards[i].querySelector('.seal').innerHTML='\u2713 recomputed here, matches \u00b7 '+esc(String(r.seal).slice(0,30))+'\u2026';
       }
       prev=r.seal;
