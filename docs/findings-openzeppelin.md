@@ -21,8 +21,11 @@ whose removal leaves every test passing is reported as uncovered.
 | `canton-stablecoin` | `stablecoin` | 30 | 27 | 5 | **25** | 0 | 0 |
 | | | **69** | **86** | **17** | **52** | 0 | 0 |
 
-Only `canton-contracts` has been reported, as
-[issue #43](https://github.com/OpenZeppelin/canton-contracts/issues/43).
+All three are reported, one issue per repository — verified open with no reply
+on 2026-09-08:
+[canton-contracts#43](https://github.com/OpenZeppelin/canton-contracts/issues/43),
+[canton-token-template#9](https://github.com/OpenZeppelin/canton-token-template/issues/9),
+[canton-stablecoin#9](https://github.com/OpenZeppelin/canton-stablecoin/issues/9).
 
 ## The record, not the report
 
