@@ -96,8 +96,8 @@ changes it. It checks on a static page with nothing installed:
   https://github.com/dominicrume/cantor8_kya_rails/tree/main/docs/findings
 - Drop one here to check it: https://dominicrume.github.io/cantor8_kya_rails/
 
-Two of the three rows above have now been reproduced from clean clones weeks
-apart, and matched exactly.
+All three rows above have now been reproduced from clean clones weeks after the
+runs that produced them, and every column matched.
 
 Filed as
 [canton-contracts#43](https://github.com/OpenZeppelin/canton-contracts/issues/43).
