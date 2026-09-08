@@ -38,11 +38,13 @@ version inside each seal:
   — 7 entries, head `93e75483…`
 - [`canton-token-template-simple-token.json`](findings/canton-token-template-simple-token.json)
   — 32 entries, head `53c616fe…`
+- [`canton-stablecoin-stablecoin.json`](findings/canton-stablecoin-stablecoin.json)
+  — 30 entries, head `5d9c0a46…`
 
-The second record reproduces this page's own row for `simple-token` — 32 fences,
-42 scripts, 8 covered, 24 uncovered — from a run made weeks later on a clean
-clone. The table above was written by hand from the first run; the record was
-not.
+**All three rows of the table above have now been reproduced** from clean clones
+weeks after the runs that produced them, and every column matched: 7/17/4/3,
+32/42/8/24, 30/27/5/25. The table was typed by a person from the first run. The
+records were not, and they are what you should check.
 
 Drop that file on <https://dominicrume.github.io/cantor8_kya_rails/>. Nothing to
 install, no account, and no need to trust this repository: change one verdict
