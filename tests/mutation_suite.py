@@ -181,6 +181,24 @@ MUTATIONS = [
      "    if False:",
      "python3 tests/desk_config_smoke.py"),
 
+    ("an audit drops the fences that came back covered",
+     "tools/assurance.py",
+     "    for row in rows:\n        stamp_one(chain, row, subject, tools)",
+     "    for row in rows:\n        if row[0] != 'ok':\n            stamp_one(chain, row, subject, tools)",
+     "python3 tests/assurance_smoke.py"),
+
+    ("an uncovered fence is relabelled as covered on the way to the report",
+     "tools/assurance.py",
+     '    outcome = {"ok": "COVERED", "UNCOVERED": "UNCOVERED",',
+     '    outcome = {"ok": "COVERED", "UNCOVERED": "COVERED",',
+     "python3 tests/assurance_smoke.py"),
+
+    ("the rule behind a verdict stops reaching the record",
+     "tools/assurance.py",
+     "        rule=detail[:160],",
+     '        rule="see report",',
+     "python3 tests/assurance_smoke.py"),
+
     ("the customer page stops fitting a phone",
      "step-5-operator/customer.html",
      '<meta name="viewport" content="width=device-width, initial-scale=1">',
@@ -216,6 +234,42 @@ MUTATIONS = [
      '    for candidate in (os.path.join(os.getcwd(), "desk.json"), DEFAULT_PATH):',
      "    for candidate in (DEFAULT_PATH,):",
      "python3 tests/bundle_smoke.py"),
+
+    ("the unverified account is recorded as having received coin",
+     "docs/devnet-balances.json",
+     '    "kya-unverified-1": 0.0\n  },\n  "must_hold"',
+     '    "kya-unverified-1": 0.3\n  },\n  "must_hold"',
+     "python3 tests/balance_lint.py"),
+
+    ("the float stops balancing",
+     "docs/devnet-balances.json",
+     '    "kya-agent-1": 1.4,',
+     '    "kya-agent-1": 1.9,',
+     "python3 tests/balance_lint.py"),
+
+    ("a README count drifts from the file that produces it",
+     "README.md",
+     "**553** requests",
+     "**500** requests",
+     "python3 tests/balance_lint.py"),
+
+    ("the DevNet check goes back to a hardcoded threshold",
+     "tests/devnet_check.py",
+     "NEEDED = needed()",
+     "NEEDED = 3.5",
+     "python3 tests/balance_lint.py"),
+
+    ("a covered fence goes back to being painted red",
+     "step-3-verify/verifier.html",
+     "const GOOD = {ACCEPTED:1, COVERED:1};",
+     "const GOOD = {ACCEPTED:1};",
+     "node tests/checker_smoke.js"),
+
+    ("a line number goes back to being rendered as money",
+     "step-3-verify/verifier.html",
+     "const isMoney = r => r.currency && r.currency !== 'N/A';",
+     "const isMoney = r => true;",
+     "node tests/checker_smoke.js"),
 
     ("the verifier stops drawing where the chain broke",
      "step-3-verify/verifier.html",

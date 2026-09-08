@@ -141,13 +141,13 @@ country and deciding whether to trust the person who produced it.
 | The cycle holds at every join | 33 checks over HTTP, in the order a desk works it |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. 1.0.0, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 16/16 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
-| The tests are themselves tested | `tests/mutation_suite.py` breaks 23 real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
+| The tests are themselves tested | `tests/mutation_suite.py` breaks **41** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **30** in the Daml, and now **30 of 30** refusals at the edges by a named test. It was 24 of 30 until the six that only failed as a *traceback* were closed — a stack trace is not a test going red, and `tests/mutation_py.py` counted it as uncovered rather than rounding up |
 | Nothing malformed can silence the desk | **553** requests — every route, every field it reads, every wrong value — with the rest of the body left valid so the check is actually reached. 0 dropped connections, 0 server errors, and every 400 names the field. `tests/route_fuzz.py` |
 | Neither screen goes quiet, or lies | `tests/frontend_offline.js` runs the pages' own code against a failing network: the operator screen never sits silent, and the customer screen never reports an unreachable desk as *"no deal found"* to someone whose crypto is already in flight |
 | One bad line cannot end the model's session | `tests/mcp_smoke.py` feeds 15 malformed JSON-RPC lines **between** the good ones. Each gets its proper code (-32700 / -32600 / -32601), and the request after them all is still answered |
 | The chain is bound to its origin | the head is published on Canton — a **fully forged** chain verifies green in all three implementations, and the ledger answers `NOT ANCHORED` |
-| The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **42** checks, including a forged journal entry that proves the limit, and four unusable store paths that each say which mistake it is instead of raising a traceback |
+| The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **43** checks, including a forged journal entry that proves the limit, and four unusable store paths that each say which mistake it is instead of raising a traceback |
 | The deposit door | **30** attacks on the adapter + **15** over a real socket, including the X-Forwarded-For spoof that defeats a naive IP allowlist |
 | The WhatsApp door | **54** attacks on the adapter + **15** over a real socket: unsigned, wrongly signed, signed-for-another-body, replayed, day-old, another business account, delivery reports, hostile display names |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, positive amount — five `assertMsg` fences in the `Charge` choice body. Revoke is not one of them and should not be: it is a **consuming** choice, so it archives the mandate and there is no contract left to charge. That is a stronger guarantee than an assertion, and the distinction is worth stating rather than rounding off |
@@ -155,12 +155,37 @@ country and deciding whether to trust the person who produced it.
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
 | Receipt chain | 6 receipts, 2 accepted, 4 refused, chain verifies end to end |
 | Tamper evident | edit one receipt, every later seal breaks |
-| Real Canton Coin moved | 5.0 CC split by mandate-authorised transfers: agent 1.4, recipient 2.1, partner 1.5, **unverified 0.0**, total conserved |
+| Real Canton Coin moved | 5.0 CC split by mandate-authorised transfers, **total conserved and the unverified account left at 0.0** — the arithmetic is [below](#the-float-adds-up), from [docs/devnet-balances.json](docs/devnet-balances.json), checked by `tests/balance_lint.py` |
 
 The expiry proof is the strongest single piece of evidence: **the same mandate,
 same payee, same amount — ACCEPTED at T, REFUSED at T+100s on a real clock.**
 Only time changed. `expiresAt` is just a field until the assertion in `Charge`
 makes it a rule.
+
+### The float adds up
+
+Real Amulet on Cantor8 DevNet, measured 31 August 2026 either side of a
+`--devnet --move-coin` run:
+
+| Party | Opening | Closing | Moved |
+| --- | ---: | ---: | ---: |
+| `kya-agent-1` | 5.0000 | 1.4000 | −3.6000 |
+| `kya-customer-1` | 0.0000 | 2.1000 | +2.1000 |
+| `kya-partner-1` | 0.0000 | 1.5000 | +1.5000 |
+| **`kya-unverified-1`** | **0.0000** | **0.0000** | **0.0000** |
+| **Total** | **5.0000** | **5.0000** | **0.0000** |
+
+Two things are worth reading off it. The totals match, so no coin was created
+or lost. And the account the agent was told to redirect to holds zero on both
+sides — the change-of-account attack moved nothing, which is the whole of D1
+stated as arithmetic rather than as a promise.
+
+The figures live in [docs/devnet-balances.json](docs/devnet-balances.json).
+`tests/balance_lint.py` re-adds every column, checks the table above against
+that file cell by cell, and fails if the unverified account is non-zero on
+either side. It also re-derives every count in the table above from the file
+that produces it — that check exists because two of them had already drifted,
+one by fourteen.
 
 ---
 
@@ -639,6 +664,39 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [docs/complexity.md](docs/complexity.md) | the one function allowed to be complicated, and the reason it is |
 | [tests/vectors.json](tests/vectors.json) | 16 conformance vectors. Where the spec and a vector disagree, the vector wins. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | start here — the most useful contribution is a third implementation |
+
+---
+
+## The same method, pointed at somebody else's code
+
+The tests here answer one question: *would anything notice if a rule were
+removed?* Nothing about that question is specific to this repository, so the
+harness was generalised and run against three of OpenZeppelin's Canton
+repositories — 69 authorisation fences across `canton-contracts`,
+`canton-token-template` and `canton-stablecoin`.
+
+**52 of the 69 can be made vacuous with every test still passing.** These are
+not vulnerabilities: every fence is present and working. The finding is that the
+suites would not notice if one were removed — which matters at the next change,
+not today. Reported as
+[canton-contracts#43](https://github.com/OpenZeppelin/canton-contracts/issues/43),
+with the method, the controls and the three defects the harness had first
+written up in [docs/findings-openzeppelin.md](docs/findings-openzeppelin.md).
+
+The findings are also emitted as a sealed chain — one entry per fence, carrying
+the file, the line, the verdict, the rule and the toolchain version:
+
+```bash
+python3 tools/assurance.py --src PKG --test PKG --for "Their Name"
+```
+
+[The record for `access-control-v1`](docs/findings/canton-contracts-access-control-v1.json)
+drops onto [the verifier page](https://dominicrume.github.io/cantor8_kya_rails/)
+like any other chain. Soften one verdict from `UNCOVERED` to `COVERED` before
+you do, and the page names the entry it broke at — including when the person who
+softened it is the one who wrote the report. An audit firm hands over a PDF you
+believe because of who signed it. This is the same finding, checkable by the
+client without trusting the auditor at all.
 
 ---
 

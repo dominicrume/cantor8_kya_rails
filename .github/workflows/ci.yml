@@ -131,8 +131,14 @@ jobs:
       - name: every line the README shows a judge is still that line
         run: python3 tests/readme_citations.py
 
+      - name: the float adds up, and every number the README shows is still true
+        run: python3 tests/balance_lint.py
+
       - name: no malformed request can make the desk stop answering
         run: python3 tests/route_fuzz.py
+
+      - name: an audit's findings cannot be softened after the fact
+        run: python3 tests/assurance_smoke.py
 
       - name: neither screen goes silent, or lies, when the desk stops answering
         run: node tests/frontend_offline.js

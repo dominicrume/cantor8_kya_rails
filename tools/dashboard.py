@@ -69,6 +69,9 @@ SUITES = [
     ("python3 tests/route_fuzz.py", "The desk",
      "553 malformed requests: nothing dropped, nothing 500s, every 400 names its field"),
 
+    ("python3 tests/assurance_smoke.py", "The desk",
+     "an audit's findings are sealed, so softening one breaks the client's own check"),
+
     ("node tests/checker_smoke.js", "The page",
      "drop a file and it is checked -- and a non-chain is never called tampered"),
     ("node tests/frontend_offline.js", "The page",
@@ -101,7 +104,10 @@ SUITES = [
      "every innerHTML interpolation goes through esc()"),
     ("python3 tests/privacy_matrix.py --check", "The rules",
      "who signs, observes and is excluded is documented for every contract"),
-    ("python3 tests/readme_citations.py", "The rules",
+        ("python3 tests/balance_lint.py", "The page",
+     "the float adds up, and every number the README shows a judge is still true"),
+
+("python3 tests/readme_citations.py", "The rules",
      "every line of Daml the README shows a judge is still that line"),
     ("python3 tests/devhub_entry_check.py", "The rules",
      "the Developer Hub listing passes every rule the Foundation publishes"),

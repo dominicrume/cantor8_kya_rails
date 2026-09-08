@@ -16,7 +16,7 @@ and five red lines about one problem is four lines of noise.
 Nothing here writes to the ledger. It is safe to run any time, and it is NOT
 part of CI: CI has no secret and should not have one.
 """
-import os, sys, time
+import os, re, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "step-2-agent"))
@@ -92,11 +92,41 @@ def check_wallet(dn):
     return check_balance(dn)
 
 
-# agent.py makes two charges the mandate allows: 2.0 then 1.5. With
-# --move-coin each one is a real transfer, so the agent has to hold this much
-# or the second settles short -- and a payout that is authorised but does not
-# settle is the worst outcome in the whole system.
-NEEDED = 3.5
+def needed():
+    """What one --move-coin run actually sends, read from agent.py.
+
+    This was the constant 3.5, from a much older version whose payouts were
+    2.0 and 1.5. The payouts are 0.2 and 0.1 now, and agent.py's own docstring
+    says so -- but the constant stayed, so this check told an operator holding
+    1.4 CC that a run needing 0.3 could not be afforded. It recommended the
+    weaker demo, on arithmetic that was wrong by a factor of eleven, in the
+    exact balance state the project was in.
+
+    A number that describes another file belongs to that file. Reading the
+    payouts rather than restating them is the only version of this that cannot
+    go stale, and a total that cannot be read is a reason to stop, not to
+    guess: a threshold nobody can source is how the 3.5 survived.
+    """
+    src = open(os.path.join(ROOT, "step-2-agent", "agent.py")).read()
+    block = re.search(r"for what, amount, payee in \[(.*?)\]", src, re.S)
+    if not block:
+        raise SystemExit("cannot read agent.py's payouts -- refusing to guess "
+                         "how much coin a run needs.")
+    allowed = [(float(a), p) for a, p in
+               re.findall(r'",\s*([\d.]+),\s*"(\w+)"\)', block.group(1))
+               if p != "unverified"]
+    # The over-cap attack is in that list too and is refused on-ledger, so it
+    # moves nothing. Only what the mandate allows can leave the wallet.
+    cap = float(re.search(r"open_mandate\(cap=([\d.]+)\)", src).group(1))
+    total, spend = 0.0, 0.0
+    for amount, _payee in allowed:
+        if spend + amount <= cap:
+            spend += amount
+            total += amount
+    return round(total, 4)
+
+
+NEEDED = needed()
 
 
 def check_balance(dn):

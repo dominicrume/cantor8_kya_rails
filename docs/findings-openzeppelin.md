@@ -24,6 +24,29 @@ whose removal leaves every test passing is reported as uncovered.
 Only `canton-contracts` has been reported, as
 [issue #43](https://github.com/OpenZeppelin/canton-contracts/issues/43).
 
+## The record, not the report
+
+The table above is a claim in a Markdown file. Anyone with commit access to this
+repository — including its author — can soften a row in it, and the file will
+look exactly the same afterwards.
+
+So the run also emits its findings as a sealed chain, one entry per fence, with
+the file, the line, the verdict, the rule that produced it and the toolchain
+version inside each seal:
+
+- [`docs/findings/canton-contracts-access-control-v1.json`](findings/canton-contracts-access-control-v1.json)
+  — 7 entries, head `93e75483…`
+
+Drop that file on <https://dominicrume.github.io/cantor8_kya_rails/>. Nothing to
+install, no account, and no need to trust this repository: change one verdict
+from `UNCOVERED` to `COVERED` first, and the page names the entry it broke at.
+
+That is the difference between an audit report and an audit record. Produced by
+[`tools/assurance.py`](../tools/assurance.py); the property is tested in
+[`tests/assurance_smoke.py`](../tests/assurance_smoke.py), and
+`tests/mutation_suite.py` verifies that a version of the tool which relabels an
+uncovered fence as covered turns that suite red.
+
 ## Why these numbers are trustworthy
 
 **Some fences come back covered in every repository.** That is the control that
