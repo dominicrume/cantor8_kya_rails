@@ -140,6 +140,9 @@ jobs:
       - name: an audit's findings cannot be softened after the fact
         run: python3 tests/assurance_smoke.py
 
+      - name: the action is callable by a stranger and cannot quietly stop
+        run: python3 tests/action_smoke.py
+
       - name: neither screen goes silent, or lies, when the desk stops answering
         run: node tests/frontend_offline.js
 

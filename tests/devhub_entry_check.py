@@ -131,18 +131,43 @@ def links(entry):
         check(code == 200, "%s is live (%s -> %s)" % (l.get("label"), url[:54], code))
 
 
-def not_a_duplicate(entry):
+def matches_the_listing(entry):
+    """Once we are listed, the question inverts.
+
+    This asked "are we absent?", which is the right question exactly once --
+    before submitting, so a duplicate is not opened. PR #156 was merged on
+    2026-09-08, and from that moment the check was asserting something we had
+    just made false, and would have stayed red forever while telling us
+    nothing.
+
+    What matters now is drift: the live catalogue is the copy a developer
+    reads, and ours is the copy we edit. A description improved here and never
+    carried over is a listing that misdescribes the project, and nothing else
+    in this repository would notice."""
     code, body = fetch(CATALOGUE)
     if code != 200:
-        check(False, "could read the live catalogue to check for a duplicate (%s)" % code)
+        check(False, "could read the live catalogue (%s)" % code)
         return
     tools = json.loads(body)
     tools = tools if isinstance(tools, list) else tools.get("tools", [])
-    names = {t.get("name", "").strip().lower() for t in tools}
-    check(entry["name"].strip().lower() not in names,
-          "not already listed (%d entries in the live catalogue)" % len(tools))
+    mine = [t for t in tools
+            if t.get("name", "").strip().lower() == entry["name"].strip().lower()]
+    check(len(mine) == 1,
+          "listed exactly once (%d entries in the live catalogue)" % len(tools))
     check(entry.get("category") in {t.get("category") for t in tools},
           "category still exists in the live catalogue")
+    if len(mine) == 1:
+        same_as_live(entry, mine[0])
+
+
+def same_as_live(entry, live):
+    """Field by field, ours against theirs."""
+    for field in ("name", "maker", "type", "category", "desc"):
+        check(live.get(field) == entry.get(field),
+              "live `%s` is what we declare here" % field)
+    labelled = lambda t: [(l.get("label"), l.get("url")) for l in t.get("links") or []]
+    check(labelled(entry) == labelled(live),
+          "all %d links match the live listing, in order" % len(labelled(entry)))
 
 
 def main():
@@ -157,7 +182,7 @@ def main():
     description(entry)
     sdk(entry)
     links(entry)
-    not_a_duplicate(entry)
+    matches_the_listing(entry)
 
     print()
     if fails:
@@ -165,7 +190,8 @@ def main():
         for f in fails:
             print("  -", f)
         return 1
-    print("this entry passes every rule the Foundation publishes. Open the PR.")
+    print("this entry passes every rule the Foundation publishes, and the live")
+    print("listing still says what we say here.")
     return 0
 
 

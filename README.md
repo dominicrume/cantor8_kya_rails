@@ -141,7 +141,7 @@ country and deciding whether to trust the person who produced it.
 | The cycle holds at every join | 33 checks over HTTP, in the order a desk works it |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. 1.0.0, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 16/16 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
-| The tests are themselves tested | `tests/mutation_suite.py` breaks **41** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
+| The tests are themselves tested | `tests/mutation_suite.py` breaks **44** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **30** in the Daml, and now **30 of 30** refusals at the edges by a named test. It was 24 of 30 until the six that only failed as a *traceback* were closed — a stack trace is not a test going red, and `tests/mutation_py.py` counted it as uncovered rather than rounding up |
 | Nothing malformed can silence the desk | **553** requests — every route, every field it reads, every wrong value — with the rest of the body left valid so the check is actually reached. 0 dropped connections, 0 server errors, and every 400 names the field. `tests/route_fuzz.py` |
 | Neither screen goes quiet, or lies | `tests/frontend_offline.js` runs the pages' own code against a failing network: the operator screen never sits silent, and the customer screen never reports an unreachable desk as *"no deal found"* to someone whose crypto is already in flight |
@@ -664,6 +664,35 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [docs/complexity.md](docs/complexity.md) | the one function allowed to be complicated, and the reason it is |
 | [tests/vectors.json](tests/vectors.json) | 16 conformance vectors. Where the spec and a vector disagree, the vector wins. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | start here — the most useful contribution is a third implementation |
+
+---
+
+## Run it on your own Daml, in CI
+
+Everything above needs somebody to run it. This does not:
+
+```yaml
+- uses: digital-asset/setup-daml@main          # or however you install the SDK
+- uses: dominicrume/cantor8_kya_rails@main
+  with:
+    src: simple-token
+    test: simple-token-test
+```
+
+On every pull request it makes each `assertMsg` and `ensure` vacuous in turn,
+rebuilds the DAR, re-runs your suite, and writes a table of the fences no test
+noticed into the job summary. The sealed record uploads as the
+`daml-fence-assurance` artifact, and its head seal is printed in the summary so
+the file a reviewer downloads can be matched to the run that made it.
+
+It refuses rather than misleads: with no `daml` on PATH it fails with a named
+error before anything is mutated, because a package reported as having no
+findings and a package nobody checked look identical from the outside.
+
+`fail-on-uncovered` is **off** by default. The first run against a real
+repository is information, and a check that goes red on day one is a check
+somebody disables on day two. Outputs — `fences`, `covered`, `uncovered`,
+`head`, `record` — are there for when you want to gate on it.
 
 ---
 

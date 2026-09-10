@@ -1,0 +1,94 @@
+name: Daml fence assurance
+description: >-
+  Mutation-test the authorisation fences in a Daml package and emit a sealed,
+  hash-chained record of what was checked and what was found — verifiable by
+  anyone with nothing installed.
+author: Rume Dominic
+
+branding:
+  icon: shield
+  color: purple
+
+inputs:
+  src:
+    description: The Daml package holding the contracts.
+    required: true
+  test:
+    description: The package holding the test scripts.
+    required: true
+  subject:
+    description: >-
+      What this record is about, written on every entry. Defaults to the src
+      package name.
+    required: false
+    default: ""
+  out:
+    description: Where to write the sealed record.
+    required: false
+    default: findings.json
+  fail-on-uncovered:
+    description: >-
+      Fail the job when a fence has no test that fails without it. Off by
+      default: the first run against a real repository is information, and a
+      check that goes red on day one is a check somebody disables on day two.
+    required: false
+    default: "false"
+
+outputs:
+  fences:
+    description: How many fences were checked.
+    value: ${{ steps.assure.outputs.fences }}
+  covered:
+    description: How many had a named test go red when made vacuous.
+    value: ${{ steps.assure.outputs.covered }}
+  uncovered:
+    description: How many left every test passing.
+    value: ${{ steps.assure.outputs.uncovered }}
+  head:
+    description: The head seal of the record — names this run, and only this run.
+    value: ${{ steps.assure.outputs.head }}
+  record:
+    description: Path to the sealed record.
+    value: ${{ steps.assure.outputs.record }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check the Daml assistant is on PATH
+      shell: bash
+      run: |
+        if ! command -v daml >/dev/null 2>&1; then
+          echo "::error title=daml not found::This action mutates Daml source and rebuilds the DAR, so it needs the Daml SDK. Install it before this step (for example with digital-asset/setup-daml, or the official installer) and run this again."
+          exit 1
+        fi
+        daml version --no-legacy-assistant-warning 2>/dev/null | head -3 || true
+
+    # Python is stdlib only, which is why there is no install step here and
+    # nothing to pin. The action's own files come from $GITHUB_ACTION_PATH,
+    # so the receipt code that seals the record is the same code the public
+    # verifier page checks against.
+    - name: Mutate every fence and seal the findings
+      id: assure
+      shell: bash
+      run: |
+        set -o pipefail
+        python3 "$GITHUB_ACTION_PATH/tools/assurance.py" \
+          --src "${{ inputs.src }}" \
+          --test "${{ inputs.test }}" \
+          ${{ inputs.subject && format('--for "{0}"', inputs.subject) || '' }} \
+          --out "${{ inputs.out }}"
+        python3 "$GITHUB_ACTION_PATH/tools/assurance_report.py" "${{ inputs.out }}"
+
+    - name: Keep the record with the run
+      uses: actions/upload-artifact@v4
+      with:
+        name: daml-fence-assurance
+        path: ${{ inputs.out }}
+        if-no-files-found: error
+
+    - name: Fail if a fence has no test that fails without it
+      if: inputs.fail-on-uncovered == 'true' && steps.assure.outputs.uncovered != '0'
+      shell: bash
+      run: |
+        echo "::error title=${{ steps.assure.outputs.uncovered }} uncovered fence(s)::Each can be made vacuous with every test still passing. The sealed record is in the daml-fence-assurance artifact."
+        exit 1
