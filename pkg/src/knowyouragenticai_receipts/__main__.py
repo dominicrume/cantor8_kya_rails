@@ -177,6 +177,7 @@ def cmd_version() -> int:
 COMMANDS = {
     "selftest": lambda a: cmd_selftest(), "--selftest": lambda a: cmd_selftest(),
     "example": lambda a: cmd_example(),
+    "refusal": lambda a: cmd_refusal("--json" in a),
     "verify": lambda a: cmd_verify(a[0]) if a else _verify_usage(),
     "-h": lambda a: cmd_help(), "--help": lambda a: cmd_help(),
     "help": lambda a: cmd_help(),
@@ -187,6 +188,13 @@ COMMANDS = {
 def _verify_usage() -> int:
     print("usage: python -m knowyouragenticai_receipts verify <file|->")
     return 2
+
+
+
+def cmd_refusal(as_json: bool) -> int:
+    """The demo that shows a refusal being enforced, not merely logged."""
+    from .refusal_demo import run, run_json
+    return run_json() if as_json else run()
 
 
 def main(argv: list[str] | None = None) -> int:

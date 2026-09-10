@@ -181,6 +181,18 @@ MUTATIONS = [
      "    if False:",
      "python3 tests/desk_config_smoke.py"),
 
+    ("the desk goes back to dropping outcomes it does not know",
+     "step-5-operator/desk.html",
+     "  const other = rs.filter(r => r.outcome !== 'REFUSED' && r.outcome !== 'ACCEPTED');",
+     "  const other = [];",
+     "python3 tests/desk_view_smoke.py"),
+
+    ("the operator screen calls an unknown outcome 'paid' again",
+     "step-5-operator/operator.html",
+     "                            : r.outcome === 'ACCEPTED' ? 'paid &middot; '",
+     "                            : true ? 'paid &middot; '",
+     "python3 tests/desk_view_smoke.py"),
+
     ("a refusal is recorded but the payment goes through anyway",
      "pkg/src/knowyouragenticai_receipts/guard.py",
      "    if not allowed:\n        raise Refused(rule, receipt)",

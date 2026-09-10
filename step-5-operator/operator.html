@@ -252,7 +252,11 @@ function render(s){
     list.innerHTML = s.receipts.slice().reverse().map(r =>
       '<div class="r' + (r.outcome === 'REFUSED' ? ' no' : '') + '">' +
       '<b>' + r.amount + ' ' + r.currency + '</b> &rarr; ' + esc(r.payee) +
-      '<div class="rule">' + (r.outcome === 'REFUSED' ? 'refused &middot; ' : 'paid &middot; ') +
+      // Two-way used to mean anything that was not REFUSED read as "paid" --
+      // so a POLICY entry, which moves no money at all, announced a payment.
+      '<div class="rule">' + (r.outcome === 'REFUSED' ? 'refused &middot; '
+                            : r.outcome === 'ACCEPTED' ? 'paid &middot; '
+                            : esc(r.outcome.toLowerCase()) + ' &middot; ') +
       esc(r.rule) + '</div></div>').join('');
   }
   $('send').disabled = !s.open;
