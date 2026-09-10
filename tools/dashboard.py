@@ -72,6 +72,9 @@ SUITES = [
     ("python3 tests/assurance_smoke.py", "The desk",
      "an audit's findings are sealed, so softening one breaks the client's own check"),
 
+    ("python3 tests/action_smoke.py", "The desk",
+     "the action a stranger runs still calls files that exist, and never softens a finding"),
+
     ("node tests/checker_smoke.js", "The page",
      "drop a file and it is checked -- and a non-chain is never called tampered"),
     ("node tests/frontend_offline.js", "The page",

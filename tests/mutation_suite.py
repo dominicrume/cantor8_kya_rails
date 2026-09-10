@@ -181,6 +181,24 @@ MUTATIONS = [
      "    if False:",
      "python3 tests/desk_config_smoke.py"),
 
+    ("the action stops calling a file that exists",
+     "action.yml",
+     '$GITHUB_ACTION_PATH/tools/assurance_report.py',
+     '$GITHUB_ACTION_PATH/tools/report.py',
+     "python3 tests/action_smoke.py"),
+
+    ("the action stops uploading the record it produced",
+     "action.yml",
+     "        if-no-files-found: error",
+     "        if-no-files-found: ignore",
+     "python3 tests/action_smoke.py"),
+
+    ("the CI summary rounds an uncovered fence away",
+     "tools/assurance_report.py",
+     'bad = [r for r in receipts if r["outcome"] == "UNCOVERED"]',
+     'bad = []',
+     "python3 tests/action_smoke.py"),
+
     ("an audit drops the fences that came back covered",
      "tools/assurance.py",
      "    for row in rows:\n        stamp_one(chain, row, subject, tools)",
