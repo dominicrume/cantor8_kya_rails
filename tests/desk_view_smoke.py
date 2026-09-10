@@ -35,6 +35,31 @@ BASE = "http://127.0.0.1:" + PORT
 fails = []
 
 
+def closed_set_sweep():
+    """No screen may silently drop an outcome it has not seen.
+
+    The desk split receipts into REFUSED and ACCEPTED, so anything else -- a
+    POLICY entry stating the cap the desk is operating under -- landed in
+    neither list and disappeared off the screen. The operator view was worse:
+    it labelled everything that was not REFUSED as "paid", so an entry that
+    moves no money announced a payment.
+
+    Both are the defect COVERED had on the verifier: a set of known values
+    treated as the set of all values. It recurred three times before anyone
+    swept for it, which is why it is asserted here rather than remembered.
+    """
+    desk = open(os.path.join(ROOT, "step-5-operator", "desk.html")).read()
+    op = open(os.path.join(ROOT, "step-5-operator", "operator.html")).read()
+    check("r.outcome !== 'REFUSED' && r.outcome !== 'ACCEPTED'" in desk,
+          "the desk collects outcomes it does not know instead of dropping them")
+    check('id="terms"' in desk, "  and has somewhere on screen to show them")
+    check("r.outcome === 'ACCEPTED' ? 'paid" in op,
+          "the operator screen says 'paid' only for ACCEPTED, never by default")
+    check("esc(r.outcome.toLowerCase())" in op,
+          "  and names an unknown outcome rather than guessing at it")
+
+
+
 def check(ok, what):
     print("  " + ("PASS " if ok else "FAIL ") + what)
     if not ok:
@@ -162,6 +187,10 @@ def main():
     finally:
         proc.terminate()
         proc.wait(timeout=10)
+
+    print()
+    print("no screen silently drops an outcome it has not seen")
+    closed_set_sweep()
 
     print()
     if fails:
