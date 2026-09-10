@@ -72,6 +72,9 @@ SUITES = [
     ("python3 tests/assurance_smoke.py", "The desk",
      "an audit's findings are sealed, so softening one breaks the client's own check"),
 
+    ("python3 tests/policy_smoke.py", "The agent",
+     "the rules the agent ran under are sealed, so nobody can widen them afterwards"),
+
     ("python3 tests/action_smoke.py", "The desk",
      "the action a stranger runs still calls files that exist, and never softens a finding"),
 

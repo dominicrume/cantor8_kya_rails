@@ -160,7 +160,7 @@ function verdictFor(name, text) {
   // The two render helpers, lifted from the page rather than retyped.
   const rctx = {SYMBOL: {}, console};
   vm.createContext(rctx);
-  vm.runInContext(fromPage('const SYMBOL =', 'const tagClass = r => GOOD[r.outcome] ? \'ok\' : \'no\';'), rctx);
+  vm.runInContext(fromPage('const SYMBOL =', "const tagClass = r => NEUTRAL[r.outcome] ? 'rule' : (GOOD[r.outcome] ? 'ok' : 'no');"), rctx);
   const render = r => vm.runInContext('subject(' + JSON.stringify(r) + ')', rctx);
   const colour = r => vm.runInContext('tagClass(' + JSON.stringify(r) + ')', rctx);
 
@@ -179,6 +179,14 @@ function verdictFor(name, text) {
         'a payment still renders with its symbol and its payee');
   check(colour(paid) === 'ok' && colour(refused) === 'no',
         'ACCEPTED is still green and REFUSED still red');
+
+  // A chain may open by stating the rules it ran under. That entry is neither
+  // a pass nor a failure, and painting it red says something was refused when
+  // nothing was -- the same mistake COVERED used to make.
+  const pol = {outcome: 'POLICY', currency: 'USD', amount: '100.00', payee: 'acme'};
+  check(colour(pol) === 'rule', 'a POLICY entry is neither green nor red');
+  check(/^limit /.test(render(pol)),
+        'a policy renders as a LIMIT, not as money that moved to the payee');
 
   console.log();
   if (fails.length) {

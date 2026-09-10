@@ -181,6 +181,36 @@ MUTATIONS = [
      "    if False:",
      "python3 tests/desk_config_smoke.py"),
 
+    ("a refusal is recorded but the payment goes through anyway",
+     "pkg/src/knowyouragenticai_receipts/guard.py",
+     "    if not allowed:\n        raise Refused(rule, receipt)",
+     "    if not allowed:\n        pass",
+     "python3 tests/policy_smoke.py"),
+
+    ("the policy stops being the first entry in the chain",
+     "pkg/src/knowyouragenticai_receipts/policy.py",
+     '            outcome=POLICY,',
+     '            outcome="NOTE",',
+     "python3 tests/policy_smoke.py"),
+
+    ("the cap stops being written into the sealed policy",
+     "pkg/src/knowyouragenticai_receipts/policy.py",
+     '        bits = ["cap=%s %s" % (self.cap, self.currency),',
+     '        bits = ["cap=(see contract)",',
+     "python3 tests/policy_smoke.py"),
+
+    ("a self-attested refusal is labelled like a ledger one",
+     "pkg/src/knowyouragenticai_receipts/guard.py",
+     'SELF_ATTESTED = "self-attested (the operator\'s own process refused)"',
+     'SELF_ATTESTED = "canton devnet (an independent party refused)"',
+     "python3 tests/policy_smoke.py"),
+
+    ("the policy renders as a refusal on the public page",
+     "step-3-verify/verifier.html",
+     "const NEUTRAL = {POLICY:1};",
+     "const NEUTRAL = {};",
+     "node tests/checker_smoke.js"),
+
     ("the action stops calling a file that exists",
      "action.yml",
      '$GITHUB_ACTION_PATH/tools/assurance_report.py',

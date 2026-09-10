@@ -51,7 +51,8 @@ from typing import Any, Iterable, Mapping, Sequence
 
 __version__ = "1.0.0"
 __all__ = ["canonical", "seal", "verify", "assert_ascii", "Chain",
-           "NonAsciiInReceipt", "BrokenChain", "GENESIS"]
+           "NonAsciiInReceipt", "BrokenChain", "GENESIS",
+           "Policy", "PolicyError", "guard", "attempt", "Refused"]
 
 GENESIS = "GENESIS"
 
@@ -257,3 +258,10 @@ class Chain:
         state = "verified" if ok else "BROKEN at %s" % bad
         head = self.head[:8] + "..." if self.receipts else GENESIS
         return "<Chain %d receipts, head %s, %s>" % (len(self.receipts), head, state)
+
+
+# At the bottom, deliberately: policy.py and guard.py import Chain from this
+# module, so importing them any earlier would resolve against a module that is
+# only half defined.
+from .policy import Policy, PolicyError          # noqa: E402
+from .guard import Refused, attempt, guard       # noqa: E402

@@ -60,6 +60,7 @@
   .r .rule { color:#666; font-style:italic; font-size:11.5px; }
   .tag { float:right; font-size:10.5px; padding:2px 8px; border-radius:9px; color:#fff; font-weight:700; }
   .tag.ok { background:var(--ok); } .tag.no { background:var(--warn); } .tag.bad { background:var(--bad); }
+  .tag.rule { background:#5c6b7a; }   /* a policy is neither pass nor fail: it is the terms */
   .w-bar { padding:12px 16px 16px; display:flex; gap:9px; }
   .w-bar button { flex:1; border:0; border-radius:9px; padding:11px; font-size:13px; font-weight:600; cursor:pointer; }
   #verifyBtn { background:var(--green); color:#fff; } #tamperBtn { background:var(--bad); color:#fff; }
@@ -327,15 +328,23 @@ const money = r => (SYMBOL[r.currency]||'') + r.amount + ' ' + (r.currency||'CC'
 // showing nothing. A chain says which it is by its currency code; the seal
 // does not change either way.
 const isMoney = r => r.currency && r.currency !== 'N/A';
-const subject = r => isMoney(r) ? money(r) + ' \u2192 ' + r.payee
-                                : r.payee + ':' + r.amount;
+const subject = r => r.outcome === 'POLICY' ? 'limit ' + money(r) + ' \u00b7 ' + r.payee
+                  : isMoney(r) ? money(r) + ' \u2192 ' + r.payee
+                               : r.payee + ':' + r.amount;
 
 // ACCEPTED for a payment, COVERED for a fence: both mean the thing being
 // recorded came out the right way, and both must read green. Keying the colour
 // off ACCEPTED alone painted every COVERED fence red -- an audit record in
 // which every good result looked like a failure.
 const GOOD = {ACCEPTED:1, COVERED:1};
-const tagClass = r => GOOD[r.outcome] ? 'ok' : 'no';
+
+// A chain may open by stating the rules it was produced under -- entry one,
+// outcome POLICY, carrying the cap and the allow-list. It is not a pass and
+// not a failure, and painting it red says something was refused when nothing
+// was. Same mistake as COVERED, which used to render red for the same reason:
+// a set of good outcomes is not the same thing as a set of outcomes.
+const NEUTRAL = {POLICY:1};
+const tagClass = r => NEUTRAL[r.outcome] ? 'rule' : (GOOD[r.outcome] ? 'ok' : 'no');
 
 // SPEC.md section 4: non-ASCII MUST be escaped to \uXXXX. JSON.stringify emits
 // the raw character, so a page relying on it seals the same receipt to a
