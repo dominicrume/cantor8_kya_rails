@@ -181,6 +181,12 @@ MUTATIONS = [
      "    if False:",
      "python3 tests/desk_config_smoke.py"),
 
+    ("an async agent is recorded before it actually runs",
+     "pkg/src/knowyouragenticai_receipts/guard.py",
+     "        if inspect.iscoroutinefunction(fn):",
+     "        if False:",
+     "python3 tests/release_readiness.py"),
+
     ("the cap check stops being atomic",
      "pkg/src/knowyouragenticai_receipts/guard.py",
      "    with policy.lock:",

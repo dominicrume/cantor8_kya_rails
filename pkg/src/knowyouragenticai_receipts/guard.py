@@ -34,6 +34,7 @@ reader can tell how much to believe it.
 from __future__ import annotations
 
 import functools
+import inspect
 import time
 from typing import Any, Callable, TypeVar
 
@@ -115,8 +116,8 @@ def guard(policy: Policy, chain: Chain, what: str = "",
     def decorate(fn: F) -> F:
         label = what or fn.__name__.replace("_", " ")
 
-        @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def decide(args: tuple[Any, ...], kwargs: dict[str, Any]
+                   ) -> tuple[str, str]:
             bound = _named(fn, args, kwargs)
             for name in (amount_arg, payee_arg):
                 if name not in bound:
@@ -125,8 +126,36 @@ def guard(policy: Policy, chain: Chain, what: str = "",
                         "argument. The guard reads them by name; rename the "
                         "parameter or pass amount_arg/payee_arg."
                         % (fn.__name__, name))
-            return attempt(policy, chain, label,
-                           str(bound[amount_arg]), str(bound[payee_arg]),
+            return str(bound[amount_arg]), str(bound[payee_arg])
+
+        if inspect.iscoroutinefunction(fn):
+            # Agents are mostly async, and the sync wrapper was wrong for them
+            # in the one direction that matters. Calling an `async def` does
+            # not run it -- it builds a coroutine -- so the old wrapper stamped
+            # ACCEPTED and spent the budget the moment the function was
+            # CALLED. A caller who never awaited the result left a receipt
+            # saying a payment was authorised when nothing had happened, and
+            # over-reporting success is the exact failure this library exists
+            # to prevent. Refusals were fine, which made it worse: it only
+            # lied in the flattering direction.
+            #
+            # So the async path does its deciding inside the coroutine. Nothing
+            # is recorded until somebody actually awaits it.
+            @functools.wraps(fn)
+            async def awrapper(*args: Any, **kwargs: Any) -> Any:
+                amount, payee = decide(args, kwargs)
+                with policy.lock:
+                    allowed, rule, receipt = _decide(
+                        policy, chain, label, amount, payee, enforced_by, "")
+                if not allowed:
+                    raise Refused(rule, receipt)
+                return await fn(*args, **kwargs)
+            return awrapper  # type: ignore[return-value]
+
+        @functools.wraps(fn)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            amount, payee = decide(args, kwargs)
+            return attempt(policy, chain, label, amount, payee,
                            run=lambda: fn(*args, **kwargs),
                            enforced_by=enforced_by)
         return wrapper  # type: ignore[return-value]
@@ -139,7 +168,6 @@ def _named(fn: Callable[..., Any], args: tuple[Any, ...],
 
     inspect is stdlib, so this costs nothing the project's constraints forbid.
     """
-    import inspect
     sig = inspect.signature(fn)
     bound = sig.bind_partial(*args, **kwargs)
     bound.apply_defaults()

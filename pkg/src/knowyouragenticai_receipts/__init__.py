@@ -49,7 +49,7 @@ import json
 import time
 from typing import Any, Iterable, Mapping, Sequence
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = ["canonical", "seal", "verify", "assert_ascii", "Chain",
            "NonAsciiInReceipt", "BrokenChain", "GENESIS",
            "Policy", "PolicyError", "guard", "attempt", "Refused"]

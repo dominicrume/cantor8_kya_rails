@@ -15,7 +15,7 @@ can each pass the vectors and still disagree on an input no vector covers.
 
 Run: python3 tests/package_smoke.py
 """
-import importlib.util, json, os, sys, tempfile
+import importlib.util, json, os, re, sys, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "step-2-agent"))
@@ -83,7 +83,21 @@ for probe in ({"what": "Pay ₦500"}, {"rule": "the desk’s limit"},
     check(r_raised == p_raised,
           "both %s %r" % ("reject" if r_raised else "accept", list(probe)[0]))
 
-check(pkg.__version__ == "1.0.0", "the package version is set")
+# A literal here is a constant describing another file, which is how the
+# DevNet check ended up gating on a threshold that was wrong by eleven times.
+# What matters is not which version it is but that the two places agree: a
+# wheel whose metadata and module disagree is one nobody can reason about, and
+# a PyPI version can never be reused once taken.
+_pyproject = open(os.path.join(ROOT, "pkg", "pyproject.toml")).read()
+_declared = re.search(r'^version = "([^"]+)"', _pyproject, re.M)
+check(_declared is not None, "pyproject.toml declares a version")
+if _declared:
+    check(pkg.__version__ == _declared.group(1),
+          "__version__ (%s) is the version pyproject ships (%s)"
+          % (pkg.__version__, _declared.group(1)))
+    check(("## [%s]" % _declared.group(1)) in
+          open(os.path.join(ROOT, "CHANGELOG.md")).read(),
+          "  and the CHANGELOG has an entry for it")
 
 # --- the ten defects found by attacking it before publishing ---------------
 # Each of these was real. They are asserted here so a refactor cannot quietly

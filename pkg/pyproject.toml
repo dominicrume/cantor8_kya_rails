@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "knowyouragenticai-receipts"
-version = "1.0.0"
+version = "1.1.0"
 description = "Let an AI agent pay, and prove what it could not. A tamper-evident record of every payment attempt, including the refusals, for agent-operated wallets. Built for Canton Network; works anywhere. Zero dependencies."
 readme = "README.md"
 requires-python = ">=3.8"

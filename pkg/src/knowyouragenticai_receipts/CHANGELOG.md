@@ -11,7 +11,7 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ---
 
-## [1.1.0] — unreleased
+## [1.1.0] — 2026-09-10
 
 ### Added
 
@@ -45,6 +45,15 @@ meant to outlive the code that wrote them, so that bar is high.
   `COVERED`, `UNCOVERED` and `NOT TESTABLE`. Anyone implementing strictly from
   that line and rejecting unknown values would have called a valid record
   tampered — the one accusation this format must never make by accident.
+
+- **`guard` handles `async def`.** Calling an `async def` does not run it — it
+  builds a coroutine — so the wrapper stamped `ACCEPTED` and spent the budget
+  the moment the function was *called*. A caller who never awaited the result
+  left a receipt saying a payment was authorised when nothing had happened.
+  Refusals were unaffected, which made it worse: it only ever erred in the
+  flattering direction, and over-reporting success is the exact failure this
+  library exists to prevent. The async path now decides inside the coroutine,
+  so nothing is recorded until somebody awaits it.
 
 ### Changed
 
