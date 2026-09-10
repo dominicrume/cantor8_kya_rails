@@ -1,0 +1,143 @@
+# Do this next
+
+Seven steps, in order. Each one says where to go, what to click, and what to
+paste. Nothing here needs any more writing.
+
+Tick a step off by putting an `x` in the box.
+
+---
+
+## [ ] 1. Register for the webinar  (2 minutes, do today)
+
+**Go to:** https://luma.com/xl5u0yt9
+
+Click **Register**. It is free and online.
+
+It is on **Tuesday 16 September 2026, 4:00 PM UK time**.
+
+Put it in your calendar.
+
+---
+
+## [ ] 2. Move your forum post to the right place  (2 minutes, do today)
+
+Your post is in **Outreach**, which almost nobody reads. It has 12 views.
+The same forum's **App Development** category has posts with 300+.
+
+**Go to:** https://forum.canton.network/t/9114
+
+Click the **pencil icon** next to the title.
+
+If you see a category dropdown, change it to **App Development** and save.
+You are done.
+
+If there is no dropdown, reply to your own post and paste this:
+
+```
+Could a moderator move this to App Development? I posted it in Outreach by
+mistake. Thanks.
+```
+
+---
+
+## [ ] 3. Tell OpenZeppelin the tool is now installable  (3 minutes, do today)
+
+**Go to:** https://github.com/OpenZeppelin/canton-contracts/issues/43
+
+Scroll to the bottom, click in the comment box, and paste this:
+
+```
+@pepebndc small update, not a nudge on the finding.
+
+The harness is now `pip install knowyouragenticai-receipts`, and a GitHub
+Action, so it runs against a package without cloning anything of mine:
+
+- uses: dominicrume/cantor8_kya_rails@main
+  with: { src: simple-token, test: simple-token-test }
+
+Posting in case it is more useful as a CI check than as a one-off report.
+No reply needed.
+```
+
+Click **Comment**.
+
+---
+
+## [ ] 4. Ask Mr_Tuddles one question  (2 minutes, do tomorrow — not today)
+
+He builds stablecoins and an "agentic registry" at Pearl Digital. He is the
+closest person in that thread to what we do.
+
+**Go to:** https://forum.canton.network/t/9059
+
+Click **Reply** at the bottom. Paste this:
+
+```
+@Mr_Tuddles you mentioned an agentic registry alongside the stablecoins.
+
+Does anyone ever ask you to prove your agent didn't do something?
+```
+
+That is the whole message. Do not add anything to it.
+
+---
+
+## [ ] 5. Ask Woof one question  (2 minutes, do the day after)
+
+Mykola Ilchuk is Head of R&D there. They run live lending markets.
+
+**Go to:** https://t.me/woof_software
+
+Paste this:
+
+```
+Hi - Rume, from the OpenZeppelin Daml thread on the Canton forum.
+
+One question, if you have a minute: how do you know what your settings were
+last Tuesday?
+
+Asking because I am working on the "prove it afterwards" side of controls.
+Not selling anything.
+```
+
+---
+
+## [ ] 6. Ask your question live at the webinar  (Tuesday 16 September)
+
+Join at 4:00 PM UK time. When they open the Q&A, type this in the chat:
+
+```
+Has anyone ever asked you to prove your system didn't do something?
+What did you show them?
+```
+
+Then stop typing and listen.
+
+Write down their answer word for word. You will need it for step 7.
+
+---
+
+## [ ] 7. Write down what they said  (5 minutes, after each answer)
+
+**Open:** `docs/conversations.md`
+
+Add one row to the table for each person who answered:
+
+```
+| 2026-09-16 | Aki Balogh, BitSafe | webinar Q&A | "<what they said, in their words>" | <what it changed> |
+```
+
+Their words. Not your summary of their words.
+
+---
+
+## What "good" looks like
+
+**Three people describing our problem in their own words** = there is a
+business here, and the next thing to build is obvious.
+
+**Zero** = we have been building for ourselves. That is a real answer, and it
+is much cheaper to find out now than in three months.
+
+Either way, you will know something on 17 September that you do not know
+today.
