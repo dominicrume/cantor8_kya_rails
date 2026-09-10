@@ -1,76 +1,110 @@
 # Changelog
 
-Dates are the day the version was published. The format itself is versioned
-separately in [SPEC.md](../SPEC.md); a change that alters any seal is a new
-*specification* major version, not merely a package one.
+`knowyouragenticai-receipts`. Dates are the day the work landed on `main`, not
+the day it was released — a version with no release date below has not been
+published.
 
-## 1.0.0 — unreleased
+The format follows [Keep a Changelog](https://keepachangelog.com/); the version
+numbers follow [semver](https://semver.org/), which here means a **major** bump
+is reserved for a change that breaks a chain somebody already has. Receipts are
+meant to outlive the code that wrote them, so that bar is high.
 
-First release.
+---
 
-Thirteen things were found and fixed by attacking the package before publishing
-rather than after. Recorded here rather than quietly cleaned up, because
-several are the kind of defect this project exists to argue against.
+## [1.1.0] — unreleased
 
-### Correctness
+### Added
 
-- **`verify()` no longer raises on malformed input.** It used to die with
-  `AttributeError` on a list of strings or nulls — which is exactly the input
-  it exists to handle, since the whole point is checking a file someone else
-  gave you. Malformed input is now a verdict, never an exception.
-- **`Chain.stamp()` refuses to extend a chain that does not verify**
-  (`BrokenChain`). Previously you could tamper with history and keep appending;
-  each new entry looked correct on its own while resting on something that was
-  not.
-- **`amount` must be a string.** Passing `1/3` was accepted and silently stored
-  as `"0.3333333333333333"`. Amounts are strings precisely so that a number
-  cannot be re-formatted differently by different JSON encoders, and the
-  argument now enforces what the documentation always claimed.
-- **The ASCII rule sees nested values.** `{"what": "Pay ₦500"}` was rejected
-  and `{"what": {"note": "Pay ₦500"}}` was not. Nothing sealed wrongly — every
-  implementation escapes nested strings consistently — but the check did not do
-  what its own name said.
-- **`verify()` always returns a usable position.** A receipt missing its `n`
-  used to come back as `(False, None)`; it now falls back to the receipt's
-  1-based place in the list, so an entry too damaged to carry a number can
-  still be located.
+- **`Policy` — the rules an agent ran under, sealed into the chain that records
+  them.** `Policy(cap=..., currency=..., allow=[...])` and `policy.open()` make
+  the policy the first receipt, carrying the cap, allow-list, period and expiry
+  as readable text. Every later entry hashes it through `prev`.
+- **`guard` and `attempt` — enforcement, not annotation.** A decorator around
+  any callable: the policy is checked, the receipt is written, and only then is
+  the function called. On a refusal it raises `Refused` and the wrapped function
+  **does not run**.
+- **`Refused`**, carrying the rule that caused it, so a caller can show the real
+  reason rather than inventing one.
+- **`Chain.save(path)` and `Chain.load(path)`.** `save` verifies before writing,
+  so a file this library wrote is never one it would refuse to read back;
+  `load` verifies before returning, so a tampered chain cannot be extended with
+  every later receipt sealed onto a lie.
+- **Conformance vector 17, `unknown-outcome-is-not-tampering`** — an entry whose
+  `outcome` is not `ACCEPTED` or `REFUSED`, so the rule below is enforced rather
+  than asserted. Python, JavaScript and Go all pass 17/17.
 
-### Interface
+### Fixed
 
-- **`python -m knowyouragenticai_receipts verify <file>`** — check a chain without
-  writing any code. Reads bare JSON or a `const RECEIPTS = [...]` assignment,
-  and says plainly that a passing check proves nothing was *edited*, not where
-  the file came from. Exit 0 holds, 1 broken, 2 unreadable.
-- **`python -m knowyouragenticai_receipts selftest`** — unchanged behaviour, now an
-  explicit subcommand rather than the only thing the module did.
-- **Type hints throughout, and a `py.typed` marker**, so the package type-checks
-  for anyone depending on it.
-- **`repr(chain)`** now reads `<Chain 6 receipts, head 54767e02..., verified>`
-  and says `BROKEN at 3` when it is.
+- **The central claim was not true.** A receipt reading `REFUSED — over the cap`
+  proved the agent was stopped but not what the cap *was*: an operator who set
+  it to a million produced a record indistinguishable from one who set it to
+  five. Sealing the policy is what makes "the agent did not overspend"
+  checkable, and until this release it was not.
+- **The spec contradicted our own records.** `SPEC.md` enumerated `outcome` as
+  `ACCEPTED` or `REFUSED` while shipped records already carried `POLICY`,
+  `COVERED`, `UNCOVERED` and `NOT TESTABLE`. Anyone implementing strictly from
+  that line and rejecting unknown values would have called a valid record
+  tampered — the one accusation this format must never make by accident.
 
-### Adoption
+### Changed
 
-Four things found by using the package as a newcomer rather than as its author.
+- **`Chain.stamp` no longer re-verifies the whole chain on every append.** It
+  did, which is O(n²): 28 seconds to write four thousand receipts, and an agent
+  in a loop reaches four thousand. Verification is now amortised — every stamp
+  still verifies everything below 64 receipts, and above that the full pass
+  happens at doubling points while each append checks the new tail. Twenty
+  thousand receipts now take 0.16s.
 
-- **`currency` is required.** It defaulted to `"CC"` — Canton Coin — so anyone
-  recording dollars sealed them as Canton Coin, permanently and silently. A
-  currency nobody chose is worse than an argument nobody wanted to type.
-- **`allowed()` and `refused()`.** Recording one payment took seven required
-  arguments in vocabulary a newcomer does not have yet. Who authorised the
-  payments and which rail they ran on describe the desk, not the payment, so
-  they are set once on the `Chain`.
-- **A wrongly-shaped file is no longer called tampered.** `{"receipts": [...]}`
-  and `{"exported_at": ..., "data": [...]}` used to come back as `BROKEN at
-  receipt 1`. They are now found and checked. A file that genuinely is not a
-  chain says so, and never says BROKEN — that word is an accusation that
-  someone edited this, and it must not be made falsely. Exit codes: 0 holds,
-  1 broken, 2 not a chain.
-- **`python -m knowyouragenticai_receipts example`** — the whole idea in one runnable command: an agent with a
-  spending limit, four attempts, two stopped, then the record tampered with and
-  caught.
+  The practical difference: a receipt edited **in place** on a long chain is
+  caught within one doubling rather than on the very next append. `verify()`,
+  `save()` and `load()` always check everything, so nothing unverified reaches
+  disk or comes back off it.
 
-### Verified
+- **`Policy` operations are atomic.** `check` → seal → `commit` now runs under a
+  re-entrant lock. Two callers could each be inside the cap on their own reading
+  and over it together; CPython's GIL made the window small enough that eight
+  threads never reproduced it, which is luck rather than a guarantee.
 
-- 16 conformance vectors, in Python, JavaScript and Go.
-- `requires-python = ">=3.8"` is now exercised by a CI matrix rather than
-  asserted. It was previously an untested claim in published metadata.
+- **`guard` reads `amount` and `payee` out of `**kwargs`.** A tool written as
+  `def run(**kw)` — how most tool-calling frameworks shape a handler — used to
+  raise `TypeError`, because the arguments were collected into a nested dict and
+  the guard saw a function with neither.
+
+### Clarified — not a format change
+
+- **`SPEC.md` §4a: `outcome` is an open vocabulary.** Producers MAY use any
+  ASCII value. Verifiers MUST verify **seals, not vocabulary**, MUST NOT report
+  an unknown outcome as a broken chain, and SHOULD NOT colour it as a failure.
+  No seal computed under the old wording differs under the new one.
+
+### Compatibility
+
+Additive only. `Chain`, `canonical`, `seal`, `verify` and `assert_ascii` are
+unchanged, every 1.0.0 chain still verifies, and every 1.0.0 program still runs.
+A policy-sealed chain is an ordinary chain whose first entry happens to be a
+policy — 1.0.0 verifies it correctly without knowing what it is.
+
+---
+
+## [1.0.0] — 2026-09-06
+
+First public release.
+
+### Added
+
+- `canonical`, `seal`, `verify`, `assert_ascii` and `Chain`: the receipt format
+  and its hash chain. Sorted keys, `","`/`":"` separators, non-ASCII escaped,
+  `sha256(canonical(receipt without seal) + prev)`.
+- `NonAsciiInReceipt` and `BrokenChain`, so the two ways a chain goes wrong are
+  distinguishable by type rather than by reading a message.
+- 16 conformance vectors shipped inside the package, runnable offline with
+  `python -m knowyouragenticai_receipts selftest`.
+- `verify` and `example` subcommands.
+
+### Notes
+
+MIT. **Zero dependencies**, stdlib only — a format meant to be re-implemented
+should not oblige anyone to adopt a dependency tree to check it.
+
+[1.1.0]: https://github.com/dominicrume/cantor8_kya_rails
+[1.0.0]: https://pypi.org/project/knowyouragenticai-receipts/1.0.0/

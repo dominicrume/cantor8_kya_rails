@@ -36,4 +36,4 @@ Specification = "https://github.com/dominicrume/cantor8_kya_rails/blob/main/SPEC
 Source = "https://github.com/dominicrume/cantor8_kya_rails"
 
 [tool.setuptools.package-data]
-knowyouragenticai_receipts = ["vectors.json", "py.typed"]
+knowyouragenticai_receipts = ["vectors.json", "py.typed", "CHANGELOG.md"]

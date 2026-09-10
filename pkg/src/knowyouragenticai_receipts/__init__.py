@@ -133,7 +133,7 @@ def _position(r: Any, index: int) -> int:
     otherwise its 1-based place in the list. A receipt too damaged to carry a
     number still has to be locatable."""
     if isinstance(r, Mapping) and isinstance(r.get("n"), int):
-        return r["n"]
+        return int(r["n"])
     return index
 
 
@@ -176,6 +176,23 @@ class Chain:
         self.receipts: list[dict[str, Any]] = [dict(r) for r in (receipts or [])]
         self.approved_by = approved_by
         self.ledger = ledger
+        # How many leading receipts have already been checked. `stamp` used to
+        # verify the WHOLE chain on every append, which is O(n^2): fine at two
+        # thousand receipts, minutes at a hundred thousand, and an agent in a
+        # loop reaches a hundred thousand. Only the unchecked tail is verified
+        # now. The guarantee is unchanged for anything this class wrote; what
+        # it no longer catches is an entry mutated in place AFTER it was
+        # verified, and `verify(chain.receipts)` -- which always checks
+        # everything -- is the answer to that.
+        self._checked = 0
+        # ...but a prefix is only trustworthy if nobody reached in and edited
+        # it, and detecting that costs a full pass. So the full pass still
+        # happens -- just not on every append. Below `_full_at` every stamp
+        # verifies everything, which is the old guarantee at the sizes almost
+        # every chain reaches; above it the threshold doubles, so the total
+        # stays linear instead of quadratic and an edit is still caught within
+        # one doubling rather than never.
+        self._full_at = 64
 
     def allowed(self, what: str, amount: str, currency: str, payee: str,
                 rule: str, **kw: Any) -> dict[str, Any]:
@@ -222,7 +239,8 @@ class Chain:
                 "re-formatted differently by different JSON encoders and the "
                 "seal would not survive the trip. Pass \"%s\"."
                 % (type(amount).__name__, amount))
-        ok, bad = self.verify()
+        ok, bad = (self.verify() if len(self.receipts) < self._full_at
+                   else self._verify_tail())
         if not ok:
             raise BrokenChain(
                 "receipt %s does not verify, so this chain cannot be extended. "
@@ -243,7 +261,70 @@ class Chain:
         return r
 
     def verify(self) -> tuple[bool, int]:
-        return verify(self.receipts)
+        """Check every receipt, always. The full pass, unconditionally."""
+        ok, bad = verify(self.receipts)
+        self._checked = len(self.receipts) if ok else 0
+        if ok and len(self.receipts) >= self._full_at:
+            self._full_at = max(self._full_at * 2, len(self.receipts) * 2)
+        return ok, bad
+
+    def _verify_tail(self) -> tuple[bool, int]:
+        """Check only what has not been checked before.
+
+        Each receipt's seal covers its own body plus the previous seal, so a
+        prefix that verified once still verifies -- unless somebody reached in
+        and edited it, which `verify()` is for.
+        """
+        if self._checked > len(self.receipts):
+            self._checked = 0                      # entries were removed
+        prev = (self.receipts[self._checked - 1]["seal"]
+                if self._checked else GENESIS)
+        for index in range(self._checked, len(self.receipts)):
+            r = self.receipts[index]
+            body = {k: v for k, v in r.items() if k != "seal"}
+            if r.get("prev") != prev or seal(body, prev) != r.get("seal"):
+                self._checked = 0
+                return False, _position(r, index + 1)
+            prev = r["seal"]
+        self._checked = len(self.receipts)
+        return True, 0
+
+    def save(self, path: str) -> str:
+        """Write the chain where somebody else can check it.
+
+        Verifies first: a file this class wrote should never be one it would
+        refuse to read back, and finding that out at write time is cheaper for
+        everyone than finding it out on the verifier page.
+        """
+        ok, bad = self.verify()
+        if not ok:
+            raise BrokenChain(
+                "receipt %s does not verify. Refusing to write a chain that "
+                "will fail the moment anyone checks it." % bad)
+        with open(path, "w") as f:
+            json.dump(self.receipts, f, indent=2)
+            f.write("\n")
+        return path
+
+    @classmethod
+    def load(cls, path: str, **kw: Any) -> "Chain":
+        """Read a chain back, and refuse it if it does not hold.
+
+        Loading without checking would let a tampered file be extended, and
+        every receipt appended afterwards would be sealed onto a lie.
+        """
+        with open(path) as f:
+            receipts = json.load(f)
+        if not isinstance(receipts, list):
+            raise BrokenChain(
+                "%s does not contain a list of receipts." % path)
+        chain = cls(receipts, **kw)
+        ok, bad = chain.verify()
+        if not ok:
+            raise BrokenChain(
+                "%s does not verify: receipt %s. It has been edited since it "
+                "was written." % (path, bad))
+        return chain
 
     @property
     def head(self) -> str:

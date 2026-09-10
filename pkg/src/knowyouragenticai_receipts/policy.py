@@ -24,6 +24,7 @@ see `enforced_by` in guard.py, which never lets the two look alike.
 """
 from __future__ import annotations
 
+import threading
 import time
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable
@@ -80,6 +81,15 @@ class Policy:
         self.note = str(note)
         self._spent = Decimal(0)
         self._window_start = 0.0
+        # check() reads the budget and commit() writes it, with a receipt
+        # sealed in between. Two callers could both pass the check before
+        # either committed, and both would be inside the cap on their own
+        # reading and over it together. CPython's GIL made that window small
+        # enough that eight threads never reproduced it -- which is luck, not
+        # a guarantee, and free-threaded builds remove even the luck. The lock
+        # is re-entrant so a caller may hold it around its own critical
+        # section without deadlocking on ours.
+        self.lock = threading.RLock()
 
     # ---------------------------------------------------------------- text
     def as_text(self) -> str:

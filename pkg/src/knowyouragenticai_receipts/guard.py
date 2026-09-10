@@ -68,6 +68,20 @@ def attempt(policy: Policy, chain: Chain, what: str, amount: str, payee: str,
     rather than a payment nobody can account for. `mcp_survives_kill` makes
     the same argument for the wallet.
     """
+    # Decide, record and commit as one step. Anything less and two callers
+    # can each be under the cap alone and over it together.
+    with policy.lock:
+        allowed, rule, receipt = _decide(policy, chain, what, amount, payee,
+                                         enforced_by, instrument)
+    if not allowed:
+        raise Refused(rule, receipt)
+    return None if run is None else run()
+
+
+def _decide(policy: Policy, chain: Chain, what: str, amount: str, payee: str,
+            enforced_by: str, instrument: str) -> tuple[bool, str, dict[str, Any]]:
+    """The part that must not be interleaved: read the budget, seal the
+    receipt, and spend the budget, with nothing else getting between them."""
     allowed, rule = policy.check(amount, payee)
     receipt = chain.stamp(
         what=what,
@@ -81,12 +95,11 @@ def attempt(policy: Policy, chain: Chain, what: str, amount: str, payee: str,
         ledger=enforced_by,
         at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     )
-    if not allowed:
-        raise Refused(rule, receipt)
     # Counted only once the policy has allowed it, and before the call, so a
     # failure inside `run` cannot hand the agent its budget back.
-    policy.commit(amount)
-    return None if run is None else run()
+    if allowed:
+        policy.commit(amount)
+    return allowed, rule, receipt
 
 
 def guard(policy: Policy, chain: Chain, what: str = "",
@@ -130,4 +143,15 @@ def _named(fn: Callable[..., Any], args: tuple[Any, ...],
     sig = inspect.signature(fn)
     bound = sig.bind_partial(*args, **kwargs)
     bound.apply_defaults()
-    return dict(bound.arguments)
+    named = dict(bound.arguments)
+    # A **kwargs parameter collects everything into one nested dict, so a tool
+    # written as `def run(**kw)` -- which is how most tool-calling frameworks
+    # shape a handler -- looked to the guard like a function with no `amount`
+    # at all. Lift those to the top level, without letting them shadow a real
+    # parameter of the same name.
+    for name, param in sig.parameters.items():
+        if param.kind is inspect.Parameter.VAR_KEYWORD:
+            collected = named.pop(name, {}) or {}
+            for key, value in collected.items():
+                named.setdefault(key, value)
+    return named

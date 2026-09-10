@@ -233,4 +233,6 @@ you can make to this spec. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-Version 1.0. Changes that alter any seal require a new major version.
+Version **1.1**. Changes that alter any seal require a new MAJOR version; 1.1 alters none.
+
+1.0 -> 1.1 added §4a, which states that `outcome` is an open vocabulary and that a verifier must check seals rather than vocabulary. Every 1.0 seal is unchanged and every 1.0 chain still verifies, so this is a minor version: it tells a 1.0 implementer that they may see values they do not recognise, and that rejecting one would be a false accusation rather than a finding.

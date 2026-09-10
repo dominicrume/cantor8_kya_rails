@@ -114,7 +114,7 @@ def _report_broken(where: str, bad: int) -> int:
     return 1
 
 
-def _check_case(case: dict) -> tuple[bool, str]:
+def _check_case(case: dict[str, Any]) -> tuple[bool, str]:
     kind = case["kind"]
     if kind == "canonical":
         got = canonical(case["body"])
