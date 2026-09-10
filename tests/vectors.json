@@ -3568,6 +3568,28 @@
       ],
       "verdict": "FAIL",
       "fail_at": 3
+    },
+    {
+      "name": "unknown-outcome-is-not-tampering",
+      "kind": "seal",
+      "why": "outcome is an open vocabulary (SPEC 4a). A verifier that rejects POLICY -- or any value it has not seen -- calls a valid record tampered, which is the accusation this format must never make by accident. Seal it like any other field.",
+      "body": {
+        "n": 1,
+        "what": "policy in force",
+        "amount": "100.00",
+        "currency": "USD",
+        "instrument": "policy",
+        "payee": "acme",
+        "rule": "cap=100.00 USD; allow=[acme]",
+        "outcome": "POLICY",
+        "approved_by": "the principal, before the agent ran",
+        "ledger": "self-attested (no ledger)",
+        "at": "2026-01-01T00:00:00Z",
+        "prev": "GENESIS"
+      },
+      "prev": "GENESIS",
+      "canonical": "{\"amount\":\"100.00\",\"approved_by\":\"the principal, before the agent ran\",\"at\":\"2026-01-01T00:00:00Z\",\"currency\":\"USD\",\"instrument\":\"policy\",\"ledger\":\"self-attested (no ledger)\",\"n\":1,\"outcome\":\"POLICY\",\"payee\":\"acme\",\"prev\":\"GENESIS\",\"rule\":\"cap=100.00 USD; allow=[acme]\",\"what\":\"policy in force\"}",
+      "seal": "ac6c90336a41311be6f2da6094d9fd23a08345e00c64cf454358629d780ed242"
     }
   ]
 }
