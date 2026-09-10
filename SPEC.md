@@ -37,7 +37,7 @@ A receipt is a JSON object. These fields are REQUIRED:
 | `instrument` | string | what was actually moved, or a statement that nothing was |
 | `payee` | string | the counterparty the action was directed at |
 | `rule` | string | the rule that allowed or refused it, in the decider's own words |
-| `outcome` | string | `ACCEPTED` or `REFUSED` |
+| `outcome` | string | what was decided. `ACCEPTED` / `REFUSED` for an action; other values are permitted — see §4a |
 | `approved_by` | string | the authority the action was taken under |
 | `ledger` | string | **which system decided.** See §6. |
 | `at` | string | UTC timestamp, `YYYY-MM-DDTHH:MM:SSZ` |
@@ -104,6 +104,32 @@ non-ASCII, so it MUST NOT be used directly. See §5.
 between languages: Python emits `1e-07`, JavaScript emits `1e-7`. A decimal
 carried as a JSON number is not guaranteed to survive a round trip through two
 languages with the same bytes. Carry it as a string and it always does.
+
+
+### 4a. `outcome` is an open vocabulary, and a verifier MUST NOT reject one it does not know
+
+`ACCEPTED` and `REFUSED` are the values for an action that was attempted. They
+are not the only legal values, and this table used to imply they were.
+
+A chain may open by stating the rules it was produced under — one entry,
+`outcome` `POLICY`, carrying the cap and the allow-list as text — so that
+"the agent did not overspend" can be checked against what "over" meant. The
+same format carries audit findings, where an entry is `COVERED`,
+`UNCOVERED` or `NOT TESTABLE`.
+
+Therefore:
+
+- A producer MAY use any ASCII `outcome`. It is sealed like every other field.
+- A verifier MUST verify **seals**, not vocabulary. An unknown `outcome` is not
+  a broken chain and MUST NOT be reported as one. Saying "tampered" about a
+  record that is merely newer than your implementation is a false accusation,
+  and §3's rule against that applies here too.
+- A verifier MAY display an unknown `outcome` verbatim, and SHOULD NOT colour
+  it as a failure. `POLICY` is neither a pass nor a failure; painting it red
+  tells the reader something was refused when nothing was.
+
+This is a clarification, not a format change: no seal computed under the old
+wording differs under this one.
 
 ## 5. ASCII is mandatory in hashed fields
 
