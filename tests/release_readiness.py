@@ -222,6 +222,77 @@ except TypeError as e:
     check("guarded on" in str(e) and "no such argument" in str(e),
           "a function missing those names fails loudly, naming the argument")
 
+# ------------------------------------------------------------------- async
+print()
+print("an async agent is recorded when it runs, not when it is called")
+
+import asyncio                                                # noqa: E402
+
+ap = Policy(cap="100.00", currency="USD", allow=["acme"])
+ac = ap.open()
+async_ran = []
+
+
+@guard(ap, ac)
+async def async_pay(amount, payee):
+    async_ran.append(amount)
+    return "sent"
+
+
+# Calling an `async def` does not run it -- it builds a coroutine. The wrapper
+# used to stamp ACCEPTED and spend the budget at CALL time, so a caller who
+# never awaited left a receipt claiming a payment that never happened. It only
+# ever lied in the flattering direction, which is the worst kind.
+never_awaited = async_pay("40.00", "acme")
+check(len(ac.receipts) == 1,
+      "calling without awaiting records nothing (%d receipt, the policy)"
+      % len(ac.receipts))
+never_awaited.close()
+
+check(asyncio.run(async_pay("40.00", "acme")) == "sent", "awaiting it runs and returns")
+check(ac.receipts[-1]["outcome"] == "ACCEPTED", "  and is recorded ACCEPTED")
+check(async_ran == ["40.00"], "  and the body ran exactly once")
+
+
+async def _over_cap():
+    try:
+        await async_pay("90.00", "acme")
+        return ""
+    except Refused as e:
+        return e.rule
+
+
+check("cap" in asyncio.run(_over_cap()), "an async call over the cap is refused")
+check(async_ran == ["40.00"], "  and the refused body never ran")
+
+
+async def _swarm():
+    p2 = Policy(cap="100.00", currency="USD", allow=["acme"])
+    c2 = p2.open()
+    got = []
+
+    @guard(p2, c2)
+    async def pay(amount, payee):
+        await asyncio.sleep(0.01)
+        got.append(amount)
+        return "ok"
+
+    async def one():
+        try:
+            await pay("60.00", "acme")
+        except Refused:
+            pass
+
+    await asyncio.gather(*[one() for _ in range(8)])
+    return got, c2
+
+
+got, c2 = asyncio.run(_swarm())
+check(sum(float(a) for a in got) <= 100.0,
+      "8 concurrent asyncio tasks x 60.00 stay inside a 100.00 cap (paid %.2f)"
+      % sum(float(a) for a in got))
+check(verify(c2.receipts)[0], "  and the chain they wrote together verifies")
+
 # ------------------------------------------------------------------ stamping
 print()
 print("stamping does not get slower as the chain grows")
