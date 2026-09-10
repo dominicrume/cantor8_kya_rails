@@ -19,26 +19,22 @@ Put it in your calendar.
 
 ---
 
-## [ ] 2. Move your forum post to the right place  (2 minutes, do today)
+## [x] 2. Move your forum post to the right place  — DONE 2026-09-10
 
-Your post is in **Outreach**, which almost nobody reads. It has 12 views.
-The same forum's **App Development** category has posts with 300+.
+Moved to **App Development** and retitled:
 
-**Go to:** https://forum.canton.network/t/9114
+> **How do you prove your app didn't do something?**
+> https://forum.canton.network/t/9114
 
-Click the **pencil icon** next to the title.
+The retitle mattered more than the move. Outreach takes 13 new topics a week
+and is for announcements; App Development takes 4 and is for questions, and
+its answers come from other builders, DevRel and the Community Tech Partners.
+The old post opened with "I've been building" and put its question last. The
+new one asks in the title, at the top, and at the bottom, and carries one link
+instead of four.
 
-If you see a category dropdown, change it to **App Development** and save.
-You are done.
-
-If there is no dropdown, reply to your own post and paste this:
-
-```
-Could a moderator move this to App Development? I posted it in Outreach by
-mistake. Thanks.
-```
-
----
+Still to do on it: it has **no tags**. Add `discuss` — pencil icon, tags
+field. That is how people browsing by tag find it.
 
 ## [ ] 3. Tell OpenZeppelin the tool is now installable  (3 minutes, do today)
 
