@@ -141,7 +141,7 @@ country and deciding whether to trust the person who produced it.
 | The cycle holds at every join | 33 checks over HTTP, in the order a desk works it |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. 1.0.0, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 16/16 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
-| The tests are themselves tested | `tests/mutation_suite.py` breaks **44** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
+| The tests are themselves tested | `tests/mutation_suite.py` breaks **49** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **30** in the Daml, and now **30 of 30** refusals at the edges by a named test. It was 24 of 30 until the six that only failed as a *traceback* were closed — a stack trace is not a test going red, and `tests/mutation_py.py` counted it as uncovered rather than rounding up |
 | Nothing malformed can silence the desk | **553** requests — every route, every field it reads, every wrong value — with the rest of the body left valid so the check is actually reached. 0 dropped connections, 0 server errors, and every 400 names the field. `tests/route_fuzz.py` |
 | Neither screen goes quiet, or lies | `tests/frontend_offline.js` runs the pages' own code against a failing network: the operator screen never sits silent, and the customer screen never reports an unreachable desk as *"no deal found"* to someone whose crypto is already in flight |
@@ -664,6 +664,58 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [docs/complexity.md](docs/complexity.md) | the one function allowed to be complicated, and the reason it is |
 | [tests/vectors.json](tests/vectors.json) | 16 conformance vectors. Where the spec and a vector disagree, the vector wins. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | start here — the most useful contribution is a third implementation |
+
+---
+
+## Prove an agent *didn't* do the thing it wasn't allowed to do
+
+Logs show what an agent did. Almost nothing shows what it **tried** and was
+stopped from doing, in a form you can hand to somebody who doesn't trust you.
+
+```python
+from knowyouragenticai_receipts import Policy, guard, Refused
+
+policy = Policy(cap="100.00", currency="USD", allow=["acme"], period_seconds=86400)
+chain  = policy.open()          # entry 1 IS the policy
+
+@guard(policy, chain, what="refund a customer")
+def refund(amount, payee):
+    return stripe.refunds.create(amount=amount, destination=payee)
+
+refund("40.00", "acme")         # runs, recorded ACCEPTED
+refund("90.00", "acme")         # raises Refused, never reaches Stripe
+refund("1.00", "stranger")      # raises Refused, never reaches Stripe
+```
+
+No ledger, no chain, no Canton. Stdlib only.
+
+**The point is the first entry.** A receipt reading `REFUSED — over the cap`
+proves the agent was stopped; it does not prove what the cap *was*. An operator
+who set it to a million produces a record indistinguishable from one who set it
+to five, so "the agent didn't overspend" stayed unprovable — the one thing this
+format exists to prove.
+
+The policy is now receipt #1, carrying the rules as readable text. Every later
+entry hashes it through `prev`:
+
+| what someone tries afterwards | result |
+|---|---|
+| raise the cap | chain breaks at entry 1 |
+| widen the allow-list | chain breaks at entry 1 |
+| swap the currency | chain breaks at entry 1 |
+| soften a refusal | chain breaks at that entry |
+| delete the policy | chain stops verifying |
+
+The verifier needed no changes — it already refuses a chain whose first entry
+moved.
+
+**Who refused is on the record.** A Python guard is the operator's own process
+saying no, and it is labelled `self-attested`. A Daml fence is an independent
+party saying no. The two are never written the same way, because the reader's
+whole job is deciding how much to believe it. That is why the spending rules in
+this repository stay in `KyaMandate.daml` and are not reimplemented here —
+`guard` is for agents that have no ledger at all, and it says so on every line
+it writes.
 
 ---
 
