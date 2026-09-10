@@ -44,11 +44,24 @@ whose agent can spend, refund, message customers, or call a paid API.
 
 Not "would you use this". People are polite, and a yes costs them nothing.
 
-> **What do you do today if you need to show someone that your agent *didn't*
-> do something it wasn't allowed to do?**
+> **Has anyone ever asked you to prove your system *didn't* do something?**
 
-Then stop talking. If the answer is "nothing" or "I'd grep the logs", ask what
-happens when the person asking is a customer, an auditor, or a regulator.
+Then stop talking.
+
+If they say yes, ask what they showed. If they say no, ask who would ask first.
+
+The question above went through a worse draft, and the reason it was worse is
+worth keeping: it explained our idea back to them before asking anything. Every
+clause of setup is a clause the other person has to agree with before they can
+answer, and a question nobody can answer in one breath is a question that gets
+a polite reply instead of a true one.
+
+Rules for the next one:
+
+- One sentence. One question mark.
+- No words they would have to be inside this project to understand.
+- Nothing about what we built. They can ask.
+- Their answer should be a fact about their week, not an opinion about our idea.
 
 Three people describing our problem in their own words means there is a
 business here. Zero means we have been building for ourselves, which is the
