@@ -36,7 +36,7 @@ instead of four.
 Still to do on it: it has **no tags**. Add `discuss` — pencil icon, tags
 field. That is how people browsing by tag find it.
 
-## [ ] 3. Tell OpenZeppelin the tool is now installable  (3 minutes, do today)
+## [x] 3. Tell OpenZeppelin the tool is now installable  — DONE 2026-09-10
 
 **Go to:** https://github.com/OpenZeppelin/canton-contracts/issues/43
 
@@ -59,7 +59,7 @@ Click **Comment**.
 
 ---
 
-## [ ] 4. Ask Mr_Tuddles one question  (2 minutes, do tomorrow — not today)
+## [ ] 4. Ask Mr_Tuddles one question  (2 minutes — DUE NOW)
 
 He builds stablecoins and an "agentic registry" at Pearl Digital. He is the
 closest person in that thread to what we do.
