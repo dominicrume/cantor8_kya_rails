@@ -3,6 +3,7 @@ LICENSE
 MANIFEST.in
 README.md
 pyproject.toml
+src/knowyouragenticai_receipts/CHANGELOG.md
 src/knowyouragenticai_receipts/__init__.py
 src/knowyouragenticai_receipts/__main__.py
 src/knowyouragenticai_receipts/example.py

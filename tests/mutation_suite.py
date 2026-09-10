@@ -181,6 +181,24 @@ MUTATIONS = [
      "    if False:",
      "python3 tests/desk_config_smoke.py"),
 
+    ("the cap check stops being atomic",
+     "pkg/src/knowyouragenticai_receipts/guard.py",
+     "    with policy.lock:",
+     "    if True:",
+     "python3 tests/release_readiness.py"),
+
+    ("a **kwargs tool loses its amount again",
+     "pkg/src/knowyouragenticai_receipts/guard.py",
+     "        if param.kind is inspect.Parameter.VAR_KEYWORD:",
+     "        if False:",
+     "python3 tests/release_readiness.py"),
+
+    ("a tampered chain can be loaded and extended",
+     "pkg/src/knowyouragenticai_receipts/__init__.py",
+     "        ok, bad = chain.verify()\n        if not ok:\n            raise BrokenChain(\n                \"%s does not verify",
+     "        ok, bad = True, 0\n        if not ok:\n            raise BrokenChain(\n                \"%s does not verify",
+     "python3 tests/release_readiness.py"),
+
     ("the desk goes back to dropping outcomes it does not know",
      "step-5-operator/desk.html",
      "  const other = rs.filter(r => r.outcome !== 'REFUSED' && r.outcome !== 'ACCEPTED');",

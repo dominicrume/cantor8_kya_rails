@@ -14,6 +14,8 @@ That last part is the point. An ordinary log would contain the two payments
 that went through. The question anyone checking your system actually asks is
 about the other two.
 """
+from __future__ import annotations
+
 from . import Chain
 
 # What the agent is allowed to do. In a real system these live somewhere the
@@ -26,11 +28,11 @@ ALLOW_LIST = {"Acme Ltd", "Bolt Logistics"}
 class Desk:
     """A tiny stand-in for whatever actually holds your money."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.chain = Chain(approved_by="finance", ledger="stripe")
         self.spent = 0.0
 
-    def attempt(self, what, amount, payee):
+    def attempt(self, what: str, amount: str, payee: str) -> None:
         """Try one payment. Record it either way -- that is the whole idea."""
         value = float(amount)
         if payee not in ALLOW_LIST:

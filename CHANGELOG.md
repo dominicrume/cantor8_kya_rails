@@ -25,6 +25,10 @@ meant to outlive the code that wrote them, so that bar is high.
   **does not run**.
 - **`Refused`**, carrying the rule that caused it, so a caller can show the real
   reason rather than inventing one.
+- **`Chain.save(path)` and `Chain.load(path)`.** `save` verifies before writing,
+  so a file this library wrote is never one it would refuse to read back;
+  `load` verifies before returning, so a tampered chain cannot be extended with
+  every later receipt sealed onto a lie.
 - **Conformance vector 17, `unknown-outcome-is-not-tampering`** — an entry whose
   `outcome` is not `ACCEPTED` or `REFUSED`, so the rule below is enforced rather
   than asserted. Python, JavaScript and Go all pass 17/17.
@@ -41,6 +45,30 @@ meant to outlive the code that wrote them, so that bar is high.
   `COVERED`, `UNCOVERED` and `NOT TESTABLE`. Anyone implementing strictly from
   that line and rejecting unknown values would have called a valid record
   tampered — the one accusation this format must never make by accident.
+
+### Changed
+
+- **`Chain.stamp` no longer re-verifies the whole chain on every append.** It
+  did, which is O(n²): 28 seconds to write four thousand receipts, and an agent
+  in a loop reaches four thousand. Verification is now amortised — every stamp
+  still verifies everything below 64 receipts, and above that the full pass
+  happens at doubling points while each append checks the new tail. Twenty
+  thousand receipts now take 0.16s.
+
+  The practical difference: a receipt edited **in place** on a long chain is
+  caught within one doubling rather than on the very next append. `verify()`,
+  `save()` and `load()` always check everything, so nothing unverified reaches
+  disk or comes back off it.
+
+- **`Policy` operations are atomic.** `check` → seal → `commit` now runs under a
+  re-entrant lock. Two callers could each be inside the cap on their own reading
+  and over it together; CPython's GIL made the window small enough that eight
+  threads never reproduced it, which is luck rather than a guarantee.
+
+- **`guard` reads `amount` and `payee` out of `**kwargs`.** A tool written as
+  `def run(**kw)` — how most tool-calling frameworks shape a handler — used to
+  raise `TypeError`, because the arguments were collected into a nested dict and
+  the guard saw a function with neither.
 
 ### Clarified — not a format change
 
