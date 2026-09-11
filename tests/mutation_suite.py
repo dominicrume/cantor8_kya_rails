@@ -27,6 +27,8 @@ notice the defect in production.
 Slow: one suite run per mutation. That is the price of knowing.
 """
 import os
+import time
+import json
 import shutil
 import subprocess
 import sys
@@ -180,6 +182,24 @@ MUTATIONS = [
      "    if isinstance(value, bool) and bool not in kinds:",
      "    if False:",
      "python3 tests/desk_config_smoke.py"),
+
+    ("a commit goes through while a mutation run is still in progress",
+     "tools/pre-commit",
+     'if [ -d ".mutation-in-progress" ]; then',
+     'if [ -d ".never-exists" ]; then',
+     "python3 tests/mutation_guard_smoke.py"),
+
+    ("a killed harness run against somebody else's code is never healed",
+     "tools/daml_mutate.py",
+     "                shutil.copy(bak, os.path.join(src, rel))   # heal",
+     "                pass   # heal",
+     "python3 tests/mutation_guard_smoke.py"),
+
+    ("a mutation left in a file is no longer noticed at the commit gate",
+     "tools/mutation_fingerprints.py",
+     "    if replace and replace in cur and find not in cur:",
+     "    if False:",
+     "python3 tests/mutation_guard_smoke.py"),
 
     ("a chain can assert its own assurance level again",
      "pkg/src/knowyouragenticai_receipts/__init__.py",
@@ -440,21 +460,63 @@ def check_one(row, backups):
     return "ok" if red else "blind"
 
 
-def take_backups(rows):
-    """The only copies of these files while they are deliberately broken."""
+PROGRESS = os.path.join(ROOT, ".mutation-in-progress")
+
+
+def heal(progress=None):
+    """Put back whatever a killed run left mutated, BEFORE anything else.
+
+    restore() runs in a finally, and a SIGKILL -- which is what a timeout
+    delivers -- never runs a finally. Twice in one night that left a file
+    mutated in the working tree: a Daml spending fence deleted, and the D1
+    balances reading the opposite of the claim. The second one was committed
+    and pushed, because the backups were in a random temp directory nobody
+    could find and nothing at the commit gate knew a run had been interrupted.
+
+    So backups now live in a KNOWN place inside the repository, with a
+    manifest, and this runs first: if the directory exists, a previous run
+    died, and its files are put back from the manifest before a single new
+    mutation is made. tools/pre-commit refuses to commit while it exists.
+    """
+    progress = progress or PROGRESS
+    manifest = os.path.join(progress, "manifest.json")
+    if not os.path.isdir(progress):
+        return 0
+    healed = 0
+    if os.path.exists(manifest):
+        for rel, bak in json.load(open(manifest)).get("files", {}).items():
+            if os.path.exists(bak):
+                shutil.copy(bak, os.path.join(ROOT, rel))
+                healed += 1
+    shutil.rmtree(progress, ignore_errors=True)
+    if healed:
+        print("  healed %d file(s) a previous, interrupted run left mutated" % healed)
+    return healed
+
+
+def take_backups(rows, progress=None):
+    """The only copies of these files while they are deliberately broken --
+    in a known directory, with a manifest, so an interrupted run can be undone
+    by heal() and cannot be committed past tools/pre-commit."""
+    progress = progress or PROGRESS
+    os.makedirs(progress, exist_ok=True)
     backups = {}
-    for p in sorted({m[1] for m in rows}):
-        fd, tmp = tempfile.mkstemp(suffix=os.path.basename(p))
-        os.close(fd)
-        shutil.copy(os.path.join(ROOT, p), tmp)
-        backups[p] = tmp
+    for i, p in enumerate(sorted({m[1] for m in rows})):
+        bak = os.path.join(progress, "%03d-%s.bak" % (i, os.path.basename(p)))
+        shutil.copy(os.path.join(ROOT, p), bak)
+        backups[p] = bak
+    with open(os.path.join(progress, "manifest.json"), "w") as f:
+        json.dump({"started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                   "files": backups}, f, indent=2)
     return backups
 
 
-def restore(backups):
+def restore(backups, progress=None):
+    progress = progress or PROGRESS
     for p, b in backups.items():
         shutil.copy(b, os.path.join(ROOT, p))
-        os.unlink(b)
+    # The directory going away IS the "run finished cleanly" signal.
+    shutil.rmtree(progress, ignore_errors=True)
     # Every generated artefact is built from a file that was just mutated, so
     # rebuild them all or the next run compares against a broken one -- and,
     # worse, a stale one gets committed.
@@ -496,6 +558,7 @@ def main():
     if rows is None:
         return 1
     print("Breaking %d real things, and requiring the suite to notice.\n" % len(rows))
+    heal()
     backups = take_backups(rows)
     results = []
     try:

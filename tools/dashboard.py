@@ -75,6 +75,9 @@ SUITES = [
     ("python3 tests/ecosystem_scan_smoke.py", "The desk",
      "the scan counts files and says so, and never writes a token into a public number"),
 
+    ("python3 tests/mutation_guard_smoke.py", "The desk",
+     "a killed mutation run heals on the next one, and cannot be committed meanwhile"),
+
     ("python3 tests/assurance_level_smoke.py", "The page",
      "the level is what the verifier established, not what the document claims"),
 
