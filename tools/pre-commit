@@ -16,6 +16,27 @@
 #
 # Takes well under a second. It reads the fence list out of the mutation
 # harness, so it cannot drift from what that harness tests.
+# The balances file is the D1 claim as arithmetic. A killed mutation run left
+# it reading 0.3 for the unverified account -- the opposite of the claim -- and
+# because only the fence lint stood here, that went into a48ffdf and was
+# pushed. The README table beside it still said 0.0, so the public repository
+# contradicted itself for hours. balance_lint re-adds the columns and checks
+# every README count against the file that produces it, in about three
+# seconds; that is what a pre-commit hook is for.
+if ! python3 tests/balance_lint.py > /dev/null; then
+    python3 tests/balance_lint.py | grep -E "^\s+FAIL|^  - "
+    echo
+    echo "COMMIT REFUSED: the float does not add up, or a README number has"
+    echo "drifted from the file that produces it."
+    echo
+    echo "If tests/mutation_suite.py is running, wait for it to finish -- it"
+    echo "puts the file back. If it is not, something was left mutated, or a"
+    echo "count changed and the README was not updated."
+    echo
+    echo "To commit anyway, knowing all of that: git commit --no-verify"
+    exit 1
+fi
+
 if ! python3 tests/fence_lint.py; then
     echo
     echo "COMMIT REFUSED: a spending rule is missing from a contract."

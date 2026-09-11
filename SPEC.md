@@ -1,4 +1,4 @@
-# KYA Receipt Chain, version 1.0
+# KYA Receipt Chain, version 1.2
 
 A wire format for **tamper-evident receipts of agent actions, including the
 actions that were refused.**
@@ -169,6 +169,49 @@ and `DevNet (real Canton, package 6d13f9948206)` against the live ledger.
 
 A receipt that does not name its decider is not a receipt. It is a claim.
 
+**`ledger` is the producer's own words, and a verifier MUST treat it as such.**
+It is display text: sealed, therefore unchangeable after the fact, and entirely
+unsubstantiated. A producer may write `Canton DevNet, an independent validator
+refused this` into a chain that no ledger ever saw, and every seal will still
+verify — because the seal covers the bytes, not the truth of them. What a
+verifier is allowed to conclude from that string is governed by §6a, and the
+answer is: nothing.
+
+## 6a. Assurance level — derived, never declared
+
+A chain that holds tells you nothing was edited. It does not tell you who
+decided, and those are answered in the strongest word the format has —
+"verified" — unless they are told apart. This section tells them apart.
+
+**The level is computed by the verifier from what it has substantiated. It is
+never read from a field.** That distinction is the whole mechanism: a level a
+producer could write down is a level a producer could assert into being, and
+the format would then record an over-claim instead of preventing it.
+
+| Level | What the verifier has established |
+| --- | --- |
+| `self-attested` | The seals hold. Nothing about origin. The party who wrote this record is the party it is about. |
+| `anchored` | The above, **and** the reader has independently confirmed the head seal and receipt count against an origin the producer does not control (§8). |
+
+Rules:
+
+- A verifier **MUST** report `self-attested` by default, including when
+  `ledger`, `approved_by`, `instrument` or any other field says otherwise.
+- A verifier **MUST NOT** report `anchored` on the strength of anything inside
+  the document. The confirmation has to come from outside it, supplied by the
+  reader.
+- A verifier **MUST NOT** report a level it did not establish, and **MUST NOT**
+  offer a level the reader could mistake for one it did establish.
+- A conforming verifier **SHOULD** show the level beside the verdict, because
+  "holds" without it is the ambiguity this section exists to remove.
+
+There is deliberately no `ledger-enforced` level. Whether a Daml assertion
+actually ran is not a property of the document, cannot be recovered from it,
+and no commitment scheme reaches it — the same limit that stops a proof of
+solvency establishing that the assets exist. A receipt records a decision; it
+does not make one. `self-attested` and `anchored` are the only two things a
+reader with the file can be told without being told something false.
+
 ## 7. Verification
 
 ```
@@ -233,6 +276,9 @@ you can make to this spec. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-Version **1.1**. Changes that alter any seal require a new MAJOR version; 1.1 alters none.
+Version **1.2**. Changes that alter any seal require a new MAJOR version; neither 1.1 nor 1.2 alters one.
 
 1.0 -> 1.1 added §4a, which states that `outcome` is an open vocabulary and that a verifier must check seals rather than vocabulary. Every 1.0 seal is unchanged and every 1.0 chain still verifies, so this is a minor version: it tells a 1.0 implementer that they may see values they do not recognise, and that rejecting one would be a false accusation rather than a finding.
+
+
+1.1 -> 1.2 added §6a: the assurance level is derived by the verifier from what it substantiated, never read from a field, and there is deliberately no `ledger-enforced` level. Vector 18 makes it binding -- a receipt whose every field claims an independent decider, sealed correctly, that must still verify as `self-attested`. Every 1.0 and 1.1 seal is unchanged.

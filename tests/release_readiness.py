@@ -360,12 +360,24 @@ check(os.path.exists(os.path.join(pkg, "CHANGELOG.md")),
 vectors = json.load(open(os.path.join(pkg, "vectors.json")))
 repo_vectors = json.load(open(os.path.join(ROOT, "tests", "vectors.json")))
 check(vectors == repo_vectors, "the packaged vectors are the repository's")
-check(vectors["spec_version"] == "1.1",
-      "the vectors declare spec 1.1 (open outcome vocabulary)")
+# Not a literal. A version pinned here is a constant describing another file,
+# and it went stale the first time the spec moved -- the drift balance_lint
+# exists to catch. What matters is that the two documents that each claim a
+# version claim the SAME one.
+import re as _re
 spec = open(os.path.join(ROOT, "SPEC.md")).read()
-check("Version **1.1**" in spec, "SPEC.md says 1.1")
-check("alters none" in spec,
-      "  and says the change alters no seal, which is why it is not 2.0")
+_m = _re.search(r"Version \*\*(\d+\.\d+)\*\*", spec)
+_t = _re.match(r"# KYA Receipt Chain, version (\d+\.\d+)", spec)
+check(_m is not None and _t is not None, "SPEC.md states a version, in the title and the footer")
+if _m and _t:
+    # The title read 1.0 for the whole of 1.1: the version lived in three
+    # places and nothing asked whether they agreed.
+    check(_t.group(1) == _m.group(1),
+          "  the title (%s) and the footer (%s) agree" % (_t.group(1), _m.group(1)))
+    check(vectors["spec_version"] == _m.group(1),
+          "  and the vectors declare that same version (%s)" % _m.group(1))
+check("alters" in spec and "MAJOR" in spec,
+      "  and the spec says a seal change is what would make it 2.0")
 
 print()
 if fails:
