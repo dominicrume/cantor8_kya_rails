@@ -181,6 +181,24 @@ MUTATIONS = [
      "    if False:",
      "python3 tests/desk_config_smoke.py"),
 
+    ("the scan stops searching for one of the two fence words",
+     "tools/ecosystem_scan.py",
+     'FENCES = ("assertMsg", "ensure")',
+     'FENCES = ("assertMsg",)',
+     "python3 tests/ecosystem_scan_smoke.py"),
+
+    ("a file matched by both words is counted twice",
+     "tools/ecosystem_scan.py",
+     "    return {k: len(v) for k, v in found.items()}, None",
+     "    return {k: len(v) * 2 for k, v in found.items()}, None",
+     "python3 tests/ecosystem_scan_smoke.py"),
+
+    ("the harness goes back to mutating the tests it is measuring",
+     "tools/daml_mutate.py",
+     '    root = os.path.join(pkg, under) if under else os.path.join(pkg, "daml")',
+     '    root = os.path.join(pkg, "daml")',
+     "python3 tests/mutation.py"),
+
     ("an async agent is recorded before it actually runs",
      "pkg/src/knowyouragenticai_receipts/guard.py",
      "        if inspect.iscoroutinefunction(fn):",

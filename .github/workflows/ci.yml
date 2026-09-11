@@ -146,6 +146,9 @@ jobs:
       - name: the cap holds under concurrency and a tampered file is refused
         run: python3 tests/release_readiness.py
 
+      - name: the ecosystem scan reports an empty result as a result
+        run: python3 tests/ecosystem_scan_smoke.py
+
       - name: the types we promise with py.typed actually check
         run: |
           python3 -m pip install --quiet mypy
