@@ -52,9 +52,18 @@ def daml(args, cwd):
         return False, "could not run daml: %s" % e
 
 
-def sources(pkg):
-    """Every .daml file the package compiles, skipping build output."""
-    root = os.path.join(pkg, "daml")
+def sources(pkg, under=None):
+    """Every .daml file to consider, skipping build output.
+
+    `under` separates WHERE THE PROJECT BUILDS from WHAT GETS MUTATED, and it
+    exists because daml-finance needed it. Its root builds the whole thing, so
+    --src must point there, but the tree also holds 28 fences inside test
+    scripts and 22 in vendored packages. Making a test's own assertion vacuous
+    breaks the test rather than testing the fence, and the result would have
+    been reported as a finding against somebody else's code. A layout with one
+    package and one daml/ directory never shows this; a real library does.
+    """
+    root = os.path.join(pkg, under) if under else os.path.join(pkg, "daml")
     root = root if os.path.isdir(root) else pkg
     out = []
     for dp, dn, fn in os.walk(root):
@@ -63,10 +72,10 @@ def sources(pkg):
     return out
 
 
-def fences(pkg):
+def fences(pkg, under=None):
     """(path, line number, text) for every assertMsg and ensure in the source."""
     found = []
-    for path in sources(pkg):
+    for path in sources(pkg, under):
         for n, line in enumerate(open(path).read().splitlines(), 1):
             if FENCE.match(line):
                 found.append((path, n, line.strip()))
@@ -243,9 +252,11 @@ def main(argv):
     ap.add_argument("--src", required=True, help="the Daml package holding the contracts")
     ap.add_argument("--test", required=True, help="the package holding the test scripts")
     ap.add_argument("--only", help="only fences whose text contains this")
+    ap.add_argument("--under", help="mutate only files under this path inside --src "
+                                    "(the project still builds from --src)")
     a = ap.parse_args(argv)
 
-    found = [f for f in fences(a.src) if not a.only or a.only in f[2]]
+    found = [f for f in fences(a.src, a.under) if not a.only or a.only in f[2]]
     if not found:
         print("No fences found in %s. Nothing was tested." % a.src)
         return 1

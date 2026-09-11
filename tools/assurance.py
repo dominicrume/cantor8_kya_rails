@@ -76,8 +76,8 @@ def summary(rows):
     return counts
 
 
-def run(src, test, subject, out_path):
-    found = daml_mutate.fences(src)
+def run(src, test, subject, out_path, under=None):
+    found = daml_mutate.fences(src, under)
     if not found:
         print("No fences in %s. Nothing to assure." % src)
         return 1
@@ -134,9 +134,13 @@ def main(argv):
     ap.add_argument("--test", required=True, help="the package holding the test scripts")
     ap.add_argument("--for", dest="subject", help="who or what this is about")
     ap.add_argument("--out", default="findings.json", help="where to write the record")
+    ap.add_argument("--under", help="mutate only files under this path inside --src; "
+                                    "the project still builds from --src. A library whose "
+                                    "tests live in the same tree needs this, or the run "
+                                    "mutates the tests it is measuring.")
     a = ap.parse_args(argv)
     subject = a.subject or os.path.basename(os.path.abspath(a.src))
-    return run(a.src, a.test, subject, a.out)
+    return run(a.src, a.test, subject, a.out, a.under)
 
 
 if __name__ == "__main__":

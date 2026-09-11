@@ -52,8 +52,8 @@ pre{background:var(--card);border:1px solid var(--line);border-radius:6px;
 screen an operator actually works from is <b>/desk</b> on a running desk: the
 float, what was refused and why, and the payout form.<br><br>
 Every number below came from a command that ran on this machine at
-2026-09-10 18:43:08 UTC. Nothing here is cached, and nothing is remembered from a previous run.</p>
-<div class="top"><div><div class="big ok">41<span style='color:var(--dim)'>/41</span></div><div class="lbl">suites green</div></div><div><div class="big ok">92<span style='color:var(--dim)'>/92</span></div><div class="lbl">daml attack scripts</div></div><div><div class="big ok">28/42</div><div class="lbl">choices exercised</div></div><div><div class="big ok">1.1.1</div><div class="lbl">package built</div></div><div><div class="big ok">3.4.11</div><div class="lbl">daml sdk</div></div></div>
+2026-09-11 00:17:49 UTC. Nothing here is cached, and nothing is remembered from a previous run.</p>
+<div class="top"><div><div class="big bad">39<span style='color:var(--dim)'>/42</span></div><div class="lbl">suites green</div></div><div><div class="big ok">92<span style='color:var(--dim)'>/92</span></div><div class="lbl">daml attack scripts</div></div><div><div class="big ok">28/42</div><div class="lbl">choices exercised</div></div><div><div class="big ok">1.1.1</div><div class="lbl">package built</div></div><div><div class="big ok">3.4.11</div><div class="lbl">daml sdk</div></div></div>
 <div class="note"><b>Built is not the same as deployed.</b> This repository builds
 <b>1.1.1</b> on SDK <b>3.4.11</b>. What is vetted on Cantor8 DevNet is <b>1.1.0</b>, built on
 3.4.10 — a different package id, because a different compiler produces a different
@@ -61,7 +61,7 @@ fingerprint. 1.1.1 is tested but not yet uploaded, and this line will say so unt
 it is.</div>
 <h2>The format</h2><table>
 <tr><td class="s ok">PASS</td><td class="c">conformance.py</td><td class="why">the Python implementation agrees with all 16 conformance vectors</td><td class="n">17/17</td><td class="n">0.0s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">conformance.js</td><td class="why">the JavaScript implementation agrees, byte for byte, with the Python one</td><td class="n">17/17</td><td class="n">0.2s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">conformance.js</td><td class="why">the JavaScript implementation agrees, byte for byte, with the Python one</td><td class="n">17/17</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">cd impl/go &amp;&amp; go run .</td><td class="why">a third implementation, in Go, agrees with both</td><td class="n">17/17</td><td class="n">0.2s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">conformance_any.py -- python3 impl/pipe/reference.py</td><td class="why">any executable can be graded through a pipe, in any language</td><td class="n">17/17</td><td class="n">0.0s</td></tr>
 </table>
@@ -77,44 +77,45 @@ it is.</div>
 <tr><td class="s ok">PASS</td><td class="c">policy_smoke.py</td><td class="why">the rules the agent ran under are sealed, so nobody can widen them afterwards</td><td class="n">30 checks</td><td class="n">0.0s</td></tr>
 </table>
 <h2>The desk</h2><table>
-<tr><td class="s ok">PASS</td><td class="c">bundle_smoke.py</td><td class="why">the whole desk runs from one file, with no repository and nothing installed</td><td class="n">17 checks</td><td class="n">0.5s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">desk_view_smoke.py</td><td class="why">the operating view shows the float, the refusals and the rule for each</td><td class="n">0 of 5</td><td class="n">0.4s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">desk_config_smoke.py</td><td class="why">settings are refused when wrong, and enforced by the ledger when right</td><td class="n">21 checks</td><td class="n">0.1s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">operator_smoke.py</td><td class="why">every refusal the desk answers is also on its record</td><td class="n">6 6</td><td class="n">0.4s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">bundle_smoke.py</td><td class="why">the whole desk runs from one file, with no repository and nothing installed</td><td class="n">17 checks</td><td class="n">0.4s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">desk_view_smoke.py</td><td class="why">the operating view shows the float, the refusals and the rule for each</td><td class="n">0 of 5</td><td class="n">0.3s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">desk_config_smoke.py</td><td class="why">settings are refused when wrong, and enforced by the ledger when right</td><td class="n">21 checks</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">operator_smoke.py</td><td class="why">every refusal the desk answers is also on its record</td><td class="n">6 6</td><td class="n">0.3s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">cycle_smoke.py</td><td class="why">the deal cycle holds at every join a real desk lost money on</td><td class="n">33 checks</td><td class="n">0.3s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">store_smoke.py</td><td class="why">a quote outlives the process, and an edited journal refuses to load</td><td class="n">43 checks</td><td class="n">0.1s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">route_fuzz.py</td><td class="why">553 malformed requests: nothing dropped, nothing 500s, every 400 names its field</td><td class="n">0 0</td><td class="n">0.5s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">assurance_smoke.py</td><td class="why">an audit&#x27;s findings are sealed, so softening one breaks the client&#x27;s own check</td><td class="n">26 checks</td><td class="n">0.8s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">route_fuzz.py</td><td class="why">553 malformed requests: nothing dropped, nothing 500s, every 400 names its field</td><td class="n">0 0</td><td class="n">0.4s</td></tr>
+<tr><td class="s bad">FAIL</td><td class="c">assurance_smoke.py</td><td class="why">an audit&#x27;s findings are sealed, so softening one breaks the client&#x27;s own check</td><td class="n">16 checks</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">ecosystem_scan_smoke.py</td><td class="why">the scan counts files and says so, and never writes a token into a public number</td><td class="n">23 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">action_smoke.py</td><td class="why">the action a stranger runs still calls files that exist, and never softens a finding</td><td class="n">32 checks</td><td class="n">0.1s</td></tr>
 </table>
 <h2>The page</h2><table>
 <tr><td class="s ok">PASS</td><td class="c">checker_smoke.js</td><td class="why">drop a file and it is checked -- and a non-chain is never called tampered</td><td class="n">26 checks</td><td class="n">0.3s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">frontend_offline.js</td><td class="why">neither screen goes silent, or tells the reader something untrue about their money</td><td class="n">26 checks</td><td class="n">0.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">frontend_offline.js</td><td class="why">neither screen goes silent, or tells the reader something untrue about their money</td><td class="n">26 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">origin_smoke.js</td><td class="why">the page says where a chain came from, not only that it holds</td><td class="n">13 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">contrast_lint.py</td><td class="why">no text anywhere is invisible against its own background</td><td class="n"></td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">a11y_lint.py</td><td class="why">every page is a document, readable on a phone, and usable without a mouse</td><td class="n">61 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">standalone_smoke.py</td><td class="why">the standalone build has not drifted from the source page</td><td class="n">25 checks</td><td class="n">0.0s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">balance_lint.py</td><td class="why">the float adds up, and every number the README shows a judge is still true</td><td class="n">4 of 4</td><td class="n">2.6s</td></tr>
+<tr><td class="s bad">FAIL</td><td class="c">balance_lint.py</td><td class="why">the float adds up, and every number the README shows a judge is still true</td><td class="n">4 of 4</td><td class="n">2.5s</td></tr>
 </table>
 <h2>The doors</h2><table>
 <tr><td class="s ok">PASS</td><td class="c">meta_smoke.py</td><td class="why">the WhatsApp webhook refuses unsigned, wrongly signed and replayed calls</td><td class="n">55 checks</td><td class="n">0.1s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">meta_wire_smoke.py</td><td class="why">and refuses them over a real socket, not just in a unit test</td><td class="n">15 checks</td><td class="n">0.6s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">breet_smoke.py</td><td class="why">the deposit webhook checks its secret and its IP allowlist</td><td class="n">31 checks</td><td class="n">0.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">breet_smoke.py</td><td class="why">the deposit webhook checks its secret and its IP allowlist</td><td class="n">31 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">breet_wire_smoke.py</td><td class="why">including the X-Forwarded-For spoof that defeats a naive allowlist</td><td class="n">16 checks</td><td class="n">0.6s</td></tr>
 </table>
 <h2>The rules</h2><table>
-<tr><td class="s ok">PASS</td><td class="c">security_lint.py</td><td class="why">no bandit finding in production code</td><td class="n">1 checks</td><td class="n">1.8s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">security_lint.py</td><td class="why">no bandit finding in production code</td><td class="n">1 checks</td><td class="n">0.8s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">complexity_lint.py</td><td class="why">every function is under the ceiling, or says in writing why not</td><td class="n">1 checks</td><td class="n">0.1s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">deadcode_lint.py</td><td class="why">nothing unreachable, and no import silently overwritten</td><td class="n">1 checks</td><td class="n">0.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">deadcode_lint.py</td><td class="why">nothing unreachable, and no import silently overwritten</td><td class="n">1 checks</td><td class="n">0.2s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">xss_lint.py</td><td class="why">every innerHTML interpolation goes through esc()</td><td class="n">1 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">privacy_matrix.py --check</td><td class="why">who signs, observes and is excluded is documented for every contract</td><td class="n"></td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">readme_citations.py</td><td class="why">every line of Daml the README shows a judge is still that line</td><td class="n">16 checks</td><td class="n">0.0s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">devhub_entry_check.py</td><td class="why">the Developer Hub listing passes every rule the Foundation publishes</td><td class="n">31 checks</td><td class="n">3.5s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">package_smoke.py</td><td class="why">the installable package refuses what it should refuse</td><td class="n">44 checks</td><td class="n">0.4s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">devhub_entry_check.py</td><td class="why">the Developer Hub listing passes every rule the Foundation publishes</td><td class="n">31 checks</td><td class="n">2.5s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">package_smoke.py</td><td class="why">the installable package refuses what it should refuse</td><td class="n">44 checks</td><td class="n">0.3s</td></tr>
 </table>
 <h2>The tests, tested</h2><table>
-<tr><td class="s ok">PASS</td><td class="c">mutation_py.py</td><td class="why">every refusal at the edges is covered by a named test</td><td class="n"></td><td class="n">1.7s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">mutation_suite.py</td><td class="why">23 real defects introduced on purpose; every one makes its suite go red</td><td class="n"></td><td class="n">18.8s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">mutation_py.py</td><td class="why">every refusal at the edges is covered by a named test</td><td class="n"></td><td class="n">1.8s</td></tr>
+<tr><td class="s bad">FAIL</td><td class="c">mutation_suite.py</td><td class="why">23 real defects introduced on purpose; every one makes its suite go red</td><td class="n"></td><td class="n">813.1s</td></tr>
 </table>
 <h2>Reproduce any of it</h2>
 <pre>git clone https://github.com/dominicrume/cantor8_kya_rails
@@ -122,7 +123,7 @@ cd cantor8_kya_rails
 python3 tools/dashboard.py          # regenerates this page from scratch
 cd step-1-mandate/test &amp;&amp; daml test # the 92 attack scripts</pre>
 <footer>
-<b>ALL GREEN</b> &middot; whole run took 55 seconds &middot; generated 2026-09-10 18:43:08 UTC<br>
+<b>SOMETHING IS RED</b> &middot; whole run took 846 seconds &middot; generated 2026-09-11 00:17:49 UTC<br>
 Live verifier: <a href="./">dominicrume.github.io/cantor8_kya_rails</a> &middot;
 Source: <a href="https://github.com/dominicrume/cantor8_kya_rails">github.com/dominicrume/cantor8_kya_rails</a><br>
 A green row means the named command exited zero. It does not mean the thing is

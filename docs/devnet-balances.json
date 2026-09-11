@@ -16,7 +16,7 @@
     "kya-agent-1": 1.4,
     "kya-customer-1": 2.1,
     "kya-partner-1": 1.5,
-    "kya-unverified-1": 0.0
+    "kya-unverified-1": 0.3
   },
   "must_hold": {
     "conserved": "opening total == closing total: no coin was created or lost",

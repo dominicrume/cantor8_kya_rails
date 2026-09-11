@@ -132,10 +132,24 @@ check(canonical(body) == canonical(dict(reversed(list(body.items())))),
       "canonical form does not depend on key order, so neither does the seal")
 
 print()
+print("the harness is told what to mutate, separately from where to build")
+seen = {}
+_f = assurance.daml_mutate.fences
+assurance.daml_mutate.fences = lambda pkg, under=None: seen.setdefault("under", under) or [
+    ("x.daml", 1, "assertMsg x")]
+assurance.daml_mutate.build_and_test = lambda s, t: (True, {"A:b"}, "")
+assurance.daml_mutate.run_all = lambda *a: ROWS
+_p = os.path.join(tempfile.mkdtemp(), "u.json")
+assurance.run("src", "test", "subject", _p, "src/main/daml")
+assurance.daml_mutate.fences = _f
+check(seen.get("under") == "src/main/daml",
+      "--under reaches the fence scan, so a library's own tests are not mutated")
+
+print()
 print("a record that does not verify is never written")
 bad_path = os.path.join(tempfile.mkdtemp(), "findings.json")
 _saved = assurance.daml_mutate.run_all, assurance.daml_mutate.build_and_test, assurance.daml_mutate.fences
-assurance.daml_mutate.fences = lambda pkg: [("x.daml", 1, "assertMsg x")]
+assurance.daml_mutate.fences = lambda pkg, under=None: [("x.daml", 1, "assertMsg x")]
 assurance.daml_mutate.build_and_test = lambda s, t: (True, {"A:b"}, "")
 assurance.daml_mutate.run_all = lambda *a: ROWS
 try:
@@ -151,7 +165,7 @@ try:
     check(rc == 2, "a project that does not build cleanly is refused, not reported on")
     check(not os.path.exists(bad_path + ".2"), "and nothing is written")
 
-    assurance.daml_mutate.fences = lambda pkg: []
+    assurance.daml_mutate.fences = lambda pkg, under=None: []
     rc = assurance.run("src", "test", "subject", bad_path + ".3")
     check(rc == 1, "nothing to assure is said, not reported as clean")
     check(not os.path.exists(bad_path + ".3"), "and nothing is written")
@@ -162,7 +176,7 @@ try:
     class Broken(Chain):
         def verify(self):
             return False, 2
-    assurance.daml_mutate.fences = lambda pkg: [("x.daml", 1, "assertMsg x")]
+    assurance.daml_mutate.fences = lambda pkg, under=None: [("x.daml", 1, "assertMsg x")]
     assurance.daml_mutate.build_and_test = lambda s, t: (True, {"A:b"}, "")
     _chain, assurance.Chain = assurance.Chain, Broken
     try:

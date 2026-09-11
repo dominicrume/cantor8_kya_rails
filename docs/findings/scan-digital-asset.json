@@ -1,0 +1,19 @@
+{
+  "scope": "org:digital-asset",
+  "scanned_at": "2026-09-10T23:51:17Z",
+  "daml_repos": 48,
+  "with_fences": {
+    "digital-asset/daml": 56,
+    "digital-asset/cn-quickstart": 1,
+    "digital-asset/daml-finance": 72,
+    "digital-asset/daml-finance-app": 12,
+    "digital-asset/rln": 3,
+    "digital-asset/tlms-cd-code-demo": 21,
+    "digital-asset/canton": 8,
+    "digital-asset/examples": 1,
+    "digital-asset/certification-damlfundamentals-testingindaml-lab-solution": 1,
+    "digital-asset/ex-secure-canton-infra": 3,
+    "digital-asset/dazl-client": 3,
+    "digital-asset/daml-ctl": 1
+  }
+}
