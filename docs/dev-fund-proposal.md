@@ -153,9 +153,9 @@ on DevNet, so the upgrade path is exercised rather than assumed.
 
 ## Milestones and Deliverables
 
-Sixteen weeks, four milestones. **Half the funding is build, half unlocks only on
-demonstrated use by parties other than the applicant.** Milestones 3 and 4 pay for
-adoption, not for artefacts.
+Sixteen weeks, four milestones. Milestones 1 and 2 deliver the specification and the
+library; Milestones 3 and 4 are accepted on demonstrated use by parties other than
+the applicant, named and checkable — they pay for adoption, not for artefacts.
 
 ### Milestone 1: Specification hardening and independent conformance
 - **Estimated Delivery:** Week 4
@@ -239,8 +239,10 @@ verifier, already built and public before this proposal — and continued mainte
 - Milestone 3 *(Adoption by Canton applications)*: 75,000 CC upon committee acceptance
 - Milestone 4 *(Operational adoption and handover)*: 75,000 CC upon final release and acceptance
 
-**150,000 CC — half the grant — is contingent on adoption by parties other than the
-applicant.** If nobody adopts it, that half is not paid.
+Milestones 3 and 4 are accepted on adoption by parties other than the applicant —
+two Canton applications outside the applicant's control emitting records that pass
+the conformance suite, named and independently checkable. Nothing is paid for a
+milestone that is not delivered, which is what the structure above already means.
 
 The independent Daml review in Milestone 2 is a third-party cost and is quoted inside
 the Milestone 2 figure rather than as a separate line, so the committee is asked to
@@ -304,9 +306,10 @@ applicant wrote all three. Nobody outside has adopted it yet. The applicant's pr
 published tooling has 2,471 total PyPI downloads with 880 in the last thirty days,
 a figure that includes CI and mirror traffic and should not be read as 2,471 people.
 
-That is precisely why Milestones 3 and 4 are adoption-gated. The committee should
-not take the applicant's word for demand, and this proposal is structured so that
-it does not have to: if nobody adopts it, half the grant is not paid.
+That is precisely why Milestones 3 and 4 are accepted on adoption rather than on
+effort. The committee should not take the applicant's word for demand, and this
+proposal is structured so that it does not have to: those milestones name the
+adopting applications, and they are checkable by anyone.
 
 ---
 
