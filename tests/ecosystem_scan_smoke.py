@@ -124,8 +124,36 @@ print("no token ever reaches the file it writes")
 body = open(out_path).read().lower()
 for secret in ("fake-token-not-real", "authorization", "bearer", "ghp_", "gh_token"):
     check(secret not in body, "the output carries no %r" % secret)
-check(set(json.load(open(out_path))) == {"scope", "scanned_at", "daml_repos", "with_fences"},
-      "the output has exactly the four fields it documents")
+check(set(json.load(open(out_path))) ==
+      {"scope", "scanned_at", "daml_repos", "with_fences", "liveness"},
+      "the output has exactly the five fields it documents")
+
+print()
+print("a frozen repository is not a target, however many fences it has")
+
+
+def aged(days, outside=0, answered=0, archived=False):
+    import datetime
+    when = (datetime.date.today() - datetime.timedelta(days=days)).isoformat()
+    return {"last_commit": when, "archived": archived,
+            "outside_issues": outside, "answered": answered}
+
+
+for days, label, want in [(10, "committed last week", "YES"),
+                          (200, "quiet for 200 days", "WEAK"),
+                          (500, "frozen for 500 days", "NO")]:
+    verdict, why = scan.worth_it(aged(days, outside=2, answered=1))
+    check(verdict == want, "%s -> %s (%s)" % (label, verdict, why[:38]))
+
+check(scan.worth_it({"archived": True})[0] == "NO", "an archived repo is never a target")
+check(scan.worth_it(aged(10, outside=4, answered=0))[0] == "WEAK",
+      "active but never answers an outsider -> WEAK, because we would be the outsider")
+check(scan.worth_it({"error": "403"})[0] == "?", "an unreadable repo is unknown, not a yes")
+
+# The case that cost three hours: many fences, long dead.
+verdict, why = scan.worth_it(aged(520, outside=4, answered=1))
+check(verdict == "NO" and "nobody would read" in why,
+      "daml-finance's actual shape is refused, and the reason says why")
 
 print()
 print("without a token it refuses rather than half-scanning")
