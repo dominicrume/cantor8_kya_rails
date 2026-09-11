@@ -16,6 +16,41 @@
 #
 # Takes well under a second. It reads the fence list out of the mutation
 # harness, so it cannot drift from what that harness tests.
+# A mutation run deliberately breaks files, then puts them back in a finally.
+# A SIGKILL never runs a finally. Twice in one night that left a file mutated
+# in the working tree, and once it was committed and pushed. The harness now
+# keeps its backups in a known directory with a manifest; while that directory
+# exists, a run is either still going or died -- and either way, nothing in
+# the tree can be trusted enough to commit.
+if [ -d ".mutation-in-progress" ]; then
+    echo "COMMIT REFUSED: a mutation run is in progress, or was killed and left"
+    echo "these files deliberately broken:"
+    python3 -c 'import json; [print("  -", k) for k in json.load(open(".mutation-in-progress/manifest.json"))["files"]]' 2>/dev/null
+    echo
+    echo "If tests/mutation_suite.py is running, wait for it. If it is not, run"
+    echo "it again -- it heals first -- or heal without running anything:"
+    echo "  python3 -c 'import sys; sys.path.insert(0, \"tests\"); import mutation_suite as m; m.heal()'"
+    echo
+    echo "To commit anyway, knowing all of that: git commit --no-verify"
+    exit 1
+fi
+
+# The marker directory can be gone while a mutation is still in a file. A run
+# of the guard's own smoke test, executed as a mutation row, shared the outer
+# run's marker directory and deleted its backups; the outer run crashed before
+# restoring, and this hook's guard line above was left reading ".never-exists"
+# -- the guard, disabled by its own test, one commit away from shipping. So a
+# second check asks the question the other way round: is any mutation the
+# suite knows how to make currently present in the file it targets?
+if ! python3 tools/mutation_fingerprints.py; then
+    echo
+    echo "COMMIT REFUSED: a file still carries a mutation the harness never took back."
+    echo "Put the line named above back, then commit."
+    echo
+    echo "To commit anyway, knowing all of that: git commit --no-verify"
+    exit 1
+fi
+
 # The balances file is the D1 claim as arithmetic. A killed mutation run left
 # it reading 0.3 for the unverified account -- the opposite of the claim -- and
 # because only the fence lint stood here, that went into a48ffdf and was

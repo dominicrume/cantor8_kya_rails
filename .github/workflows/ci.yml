@@ -149,6 +149,9 @@ jobs:
       - name: a chain cannot assert its own assurance level
         run: python3 tests/assurance_level_smoke.py
 
+      - name: a killed mutation run is healed, and refused at the commit gate meanwhile
+        run: python3 tests/mutation_guard_smoke.py
+
       - name: the ecosystem scan reports an empty result as a result
         run: python3 tests/ecosystem_scan_smoke.py
 

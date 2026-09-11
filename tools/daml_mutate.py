@@ -31,12 +31,12 @@ Three things make a naive version worse than useless, and each is handled:
   the restored source before exit.
 """
 import argparse
+import json
 import os
 import re
 import shutil
 import subprocess  # nosec B404 - running daml IS what this tool does
 import sys
-import tempfile
 
 FENCE = re.compile(r"^\s*(assertMsg|ensure)\b")
 
@@ -195,6 +195,9 @@ def how_to_verify():
     print("A failed build leaves the old DAR in place and the suite then passes")
     print("against code the mutation never reached -- which reads exactly like a")
     print("finding and is not one.")
+    print()
+    print("If a run of this tool is ever killed, run it again with --heal before")
+    print("anything else: it puts the target's files back from its own backups.")
 
 
 def buckets(rows):
@@ -223,28 +226,83 @@ def report(rows, baseline_n):
     return 0
 
 
+def progress_dir(src):
+    return os.path.join(src, ".mutation-in-progress")
+
+
+def heal(src):
+    """Put back what an interrupted run left mutated, before touching anything.
+
+    The restore below runs in a finally, and a SIGKILL -- a timeout, a closed
+    laptop, a lost SSH session -- never runs a finally. This harness runs
+    against OTHER PEOPLE'S repositories, so what a killed run leaves behind is
+    a stranger's working tree with a fence deleted and no record of why. That
+    happened against digital-asset/daml-finance and had to be undone by hand
+    with git checkout, which only works because it was a git clone.
+
+    Backups therefore live in a known directory inside the target, with a
+    manifest, and this runs first. Returns how many files it put back.
+    """
+    d = progress_dir(src)
+    manifest = os.path.join(d, "manifest.json")
+    if not os.path.isdir(d):
+        return 0
+    healed = 0
+    if os.path.exists(manifest):
+        for rel, bak in json.load(open(manifest)).get("files", {}).items():
+            if os.path.exists(bak):
+                shutil.copy(bak, os.path.join(src, rel))   # heal
+                healed += 1
+    shutil.rmtree(d, ignore_errors=True)
+    return healed
+
+
+def backup_all(paths, src):
+    """Every file about to be mutated, copied somewhere the next run can find."""
+    d = progress_dir(src)
+    os.makedirs(d, exist_ok=True)
+    files = {}
+    for i, path in enumerate(sorted(paths)):
+        rel = os.path.relpath(path, src)
+        bak = os.path.join(d, "%03d-%s.bak" % (i, os.path.basename(path)))
+        shutil.copy(path, bak)
+        files[rel] = bak
+    with open(os.path.join(d, "manifest.json"), "w") as f:
+        json.dump({"files": files}, f, indent=2)
+    return files
+
+
 def run_all(found, src, test, base):
     """Every fence in turn, with the sources restored whatever happens and the
     DAR rebuilt from the restored source before returning. A run that leaves
-    either behind corrupts every run after it."""
-    rows, backups = [], {}
+    either behind corrupts every run after it -- and if it is killed, heal()
+    on the next run puts the files back before anything else happens."""
+    if heal(src):
+        print("  healed files a previous, interrupted run had left mutated")
+    rows = []
+    files = backup_all({f[0] for f in found}, src)
     try:
-        for path in {f[0] for f in found}:
-            fd, tmp = tempfile.mkstemp(suffix=".daml")
-            os.close(fd)
-            shutil.copy(path, tmp)
-            backups[path] = tmp
         for path, lineno, text in found:
             state, detail = check_one(path, lineno, text, src, test, base)
             where = "%s:%d  %s" % (os.path.basename(path), lineno, text[:52])
             print("  %-10s %-64s %s" % (state, where, detail[:40]))
             rows.append((state, where, detail))
     finally:
-        for path, tmp in backups.items():
-            shutil.copy(tmp, path)
-            os.unlink(tmp)
+        for rel, bak in files.items():
+            shutil.copy(bak, os.path.join(src, rel))
+        shutil.rmtree(progress_dir(src), ignore_errors=True)
         daml(["build"], src)
     return rows
+
+
+def heal_and_report(src):
+    """`--heal`: put a target's files back and say what happened. Its own
+    function so main() stays under the complexity ceiling -- and because a
+    person running this on somebody else's tree after a crash wants one
+    command that does one thing."""
+    n = heal(src)
+    print("healed %d file(s)." % n if n else "nothing to heal in %s." % src)
+    return 0
 
 
 def main(argv):
@@ -254,7 +312,12 @@ def main(argv):
     ap.add_argument("--only", help="only fences whose text contains this")
     ap.add_argument("--under", help="mutate only files under this path inside --src "
                                     "(the project still builds from --src)")
+    ap.add_argument("--heal", action="store_true",
+                    help="put back whatever an interrupted run left mutated in --src, and exit")
     a = ap.parse_args(argv)
+
+    if a.heal:
+        return heal_and_report(a.src)
 
     found = [f for f in fences(a.src, a.under) if not a.only or a.only in f[2]]
     if not found:
