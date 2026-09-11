@@ -13,6 +13,55 @@ the ledger REFUSES, produces a sealed receipt a human can read and anyone can ve
 - Seal each receipt over the previous seal. Chain must verify end to end.
 - Say what is mocked, out loud, in the demo. Overclaiming loses; honesty scores.
 
+## The rule that outranks the others
+
+**Never do anything that is the opposite of becoming worth championing.**
+
+Nothing here gets built, filed, published or sent unless it would still have
+been the right thing to do if the other side never reciprocated. That is the
+whole test, and it is a single question asked before every outward action:
+
+> *Would I still do this if they never replied, never funded it, and never
+> knew my name?*
+
+If the answer is no, it is leverage wearing the costume of a contribution, and
+it fails even when it works -- because the people worth being championed by can
+tell the difference, and they are the only audience that matters.
+
+This rule was written after breaking it. Three hours went into mutation testing
+`digital-asset/daml-finance` -- 71 fences in a company's flagship library -- so
+that 71 unrequested findings could be handed to an organisation whose signature
+the Dev Fund requires. OpenZeppelin had ASKED: *"clone the repos, open an issue
+with how it works for what you're building."* Digital Asset asked for nothing,
+and the repository had been frozen for seventeen months. An uninvited audit of
+dormant code, delivered by someone who then appears in your funding queue, is
+not a gift. The run was stopped and their working tree restored.
+
+What it forbids, concretely:
+
+- **Uninvited work aimed at someone we need something from.** Invited work is a
+  contribution. The same work uninvited, timed to a request, is pressure.
+- **Volume.** Five messages in an afternoon is a campaign, not five
+  conversations. Two across a week is two conversations.
+- **Chasing.** An update is welcome; "did you see this?" is a debt collector.
+  Every message says what it adds and asks for nothing.
+- **Publishing what we learned about people whose help we want.** The Dev Fund
+  measurements in `docs/dev-fund-reality.md` are true and useful and stay
+  internal. Knowing a thing does not require saying it out loud.
+- **Being wrong in public about somebody else's code.** A false finding filed
+  against a stranger's repository is the single most expensive mistake
+  available here. Verify by hand, check the DAR hash changed, and say what the
+  tool cannot see.
+
+What it requires:
+
+- Fix things for other people where our own problem is the smallest part.
+  `Canton-Developer-Hub#160` renders the links of nineteen entries; ours is one
+  of them, and the pull request is written about the other eighteen.
+- Take corrections faster than we give them.
+- Publish the limits beside the claims -- `docs/what-this-proves.md` is more
+  persuasive than any feature list, because it is the part nobody fakes.
+
 ## Must never
 - No production keys, no real funds, no Vorem wallets. Testnet and LocalNet only.
 - No secrets in this repo. Ever.

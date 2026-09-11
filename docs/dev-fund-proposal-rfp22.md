@@ -156,8 +156,9 @@ dependency to any package, and produces no on-ledger artefact.
 
 ## Milestones and Deliverables
 
-Twelve weeks, four milestones. **Half the funding is contingent on Daml projects
-outside the applicant's control running it and acting on the output.**
+Twelve weeks, four milestones. Milestones 3 and 4 are accepted on Daml projects
+outside the applicant's control running it and acting on the output — named in the
+submission, and checkable by anyone.
 
 ### Milestone 1: Standalone harness, and whether it should exist separately
 - **Estimated Delivery:** Week 3
@@ -237,8 +238,10 @@ maintenance.
 - Milestone 3 *(Adoption by Daml projects)*: 50,000 CC upon committee acceptance
 - Milestone 4 *(Handover)*: 50,000 CC upon final release and acceptance
 
-**100,000 CC — half the grant — is contingent on adoption by parties other than the
-applicant.** If no external project runs it, that half is not paid.
+Milestones 3 and 4 are accepted on adoption by parties other than the applicant —
+external Daml projects running the harness and acting on its output, named in the
+submission and independently checkable. Nothing is paid for a milestone that is not
+delivered, which is what the structure above already means.
 
 ### Volatility Stipulation
 

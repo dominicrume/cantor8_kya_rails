@@ -1,7 +1,99 @@
 {
   "scope": "topic:canton-network",
-  "scanned_at": "2026-09-11T00:50:11Z",
+  "scanned_at": "2026-09-11T01:05:32Z",
   "daml_repos": 46,
-  "with_fences": {},
-  "liveness": {}
+  "with_fences": {
+    "Rocky-exchange/Canton-Assurance-Layer": 3,
+    "sneg55/irsforge": 63,
+    "agrixm/daml-medical-record": 3,
+    "stablecoinxyz/canton-wallet-demo": 1,
+    "kinjaljain04/daml-iou-contract": 2,
+    "kinjaljain04/daml-medical-record": 1,
+    "urkella12/shadowsync-canton-ideathon": 2,
+    "yaminidesai/RWA-Tokenization": 10,
+    "plagtech/spraay-canton": 1
+  },
+  "liveness": {
+    "sneg55/irsforge": {
+      "last_commit": "2026-06-23",
+      "archived": false,
+      "outside_issues": 0,
+      "answered": 0,
+      "stars": 1,
+      "verdict": "YES",
+      "why": "active (80 days), 0/0 outside issues answered"
+    },
+    "yaminidesai/RWA-Tokenization": {
+      "last_commit": "2026-05-26",
+      "archived": false,
+      "outside_issues": 0,
+      "answered": 0,
+      "stars": 0,
+      "verdict": "YES",
+      "why": "active (108 days), 0/0 outside issues answered"
+    },
+    "Rocky-exchange/Canton-Assurance-Layer": {
+      "last_commit": "2026-08-11",
+      "archived": false,
+      "outside_issues": 0,
+      "answered": 0,
+      "stars": 8,
+      "verdict": "YES",
+      "why": "active (31 days), 0/0 outside issues answered"
+    },
+    "agrixm/daml-medical-record": {
+      "last_commit": "2026-03-31",
+      "archived": false,
+      "outside_issues": 0,
+      "answered": 0,
+      "stars": 1,
+      "verdict": "YES",
+      "why": "active (164 days), 0/0 outside issues answered"
+    },
+    "kinjaljain04/daml-iou-contract": {
+      "last_commit": "2026-03-28",
+      "archived": false,
+      "outside_issues": 0,
+      "answered": 0,
+      "stars": 0,
+      "verdict": "YES",
+      "why": "active (167 days), 0/0 outside issues answered"
+    },
+    "urkella12/shadowsync-canton-ideathon": {
+      "last_commit": "2025-12-05",
+      "archived": false,
+      "outside_issues": 0,
+      "answered": 0,
+      "stars": 0,
+      "verdict": "WEAK",
+      "why": "last commit 280 days ago"
+    },
+    "stablecoinxyz/canton-wallet-demo": {
+      "last_commit": "2025-10-13",
+      "archived": false,
+      "outside_issues": 1,
+      "answered": 0,
+      "stars": 1,
+      "verdict": "WEAK",
+      "why": "last commit 333 days ago"
+    },
+    "kinjaljain04/daml-medical-record": {
+      "last_commit": "2026-03-30",
+      "archived": false,
+      "outside_issues": 0,
+      "answered": 0,
+      "stars": 0,
+      "verdict": "YES",
+      "why": "active (165 days), 0/0 outside issues answered"
+    },
+    "plagtech/spraay-canton": {
+      "last_commit": "2026-05-25",
+      "archived": false,
+      "outside_issues": 0,
+      "answered": 0,
+      "stars": 0,
+      "verdict": "YES",
+      "why": "active (109 days), 0/0 outside issues answered"
+    }
+  }
 }
