@@ -146,6 +146,42 @@ function verdictFor(name, text) {
   v = await verdictFor('receipts.js', rjs);
   check(/holds/.test(v.innerHTML), 'the reference receipts.js format is read as-is');
 
+  // SPEC 6a. A verifier reports the level it ESTABLISHED. It cannot establish
+  // origin from the file it was handed, so the answer is always self-attested
+  // -- and when the file's own fields insist otherwise, the page has to say so,
+  // because a reader who sees "Canton DevNet" inside a receipt and "holds" from
+  // us will put those together into something neither of us said.
+  check(/self-attested/.test(v.innerHTML),
+        'the verdict names the assurance level, not just that it holds');
+
+  // The chain must genuinely HOLD, or this asserts nothing: a broken chain
+  // never reaches the verdict the warning lives on, and the check would pass
+  // on the wrong branch. So reseal it with the page's own seal function -- a
+  // perfectly valid chain whose every entry claims a ledger that never saw it.
+  const liar = JSON.parse(JSON.stringify(REAL));
+  let prevSeal = 'GENESIS';
+  for (const r of liar) {
+    r.ledger = 'Canton DevNet (real Canton) - an independent party decided this';
+    r.prev = prevSeal;
+    const body = {}; Object.keys(r).filter(k => k !== 'seal').sort()
+      .forEach(k => { body[k] = r[k]; });
+    // Sealed here with Node's crypto rather than through the page: this is
+    // building a FIXTURE, not testing the seal. What is under test is what the
+    // page concludes about it, and the page recomputes every seal itself.
+    // Every field is ASCII, so plain stringify over sorted keys is byte-exact.
+    r.seal = crypto.createHash('sha256')
+      .update(JSON.stringify(body) + prevSeal).digest('hex');
+    prevSeal = r.seal;
+  }
+  v = await verdictFor('claims-a-ledger.json', JSON.stringify(liar));
+  check(/holds/.test(v.innerHTML), 'the lying chain genuinely holds -- its seals are correct');
+  check(/Read this before you rely on it/.test(v.innerHTML),
+        '  and is still flagged, because nothing substantiated the claim');
+
+  v = await verdictFor('receipts.js', rjs);
+  check(!/Read this before you rely on it/.test(v.innerHTML),
+        'an honest self-attested chain gets no such warning');
+
   // A findings chain is the same format carrying something that is not money:
   // `amount` is a line number, `currency` is N/A, and COVERED is the good
   // outcome. The page has to read all three correctly, because an audit record

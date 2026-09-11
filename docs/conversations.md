@@ -1,11 +1,10 @@
 # Conversations with people who might use this
 
-**Count: 0.**
+**Count: 1.**
 
 That number is the point of this file. Everything else in this repository is a
 thing we decided to build. This is the only page that records what somebody
-outside it actually said, and while it reads zero, every design decision here
-rests on a guess.
+outside it actually said. It read zero for the first thirteen days.
 
 It is kept in the repo rather than a notebook because the repo is the thing we
 look at every day, and a zero in a private note is a zero nobody has to explain.
@@ -22,7 +21,7 @@ telling you what they do today about agent spend counts.
 
 | date | who | where | what they said, in their words | what it changed |
 |---|---|---|---|---|
-| | | | | |
+| 2026-09-11 | Mr_Tuddles, Pearl Digital (P3 contracts, agentic registry) | forum.canton.network/t/9059, reply to post #9 | "Yes, we support deterministic settlement by agents. what do you have in mind?" | First reply to the one-sentence question, four hours after it was asked. He answered yes to *does anyone ask you to prove your agent didn't do something* and then asked what we have in mind. Next message: one sentence of ours, one question about his -- what happens to a refused settlement attempt in his system today. |
 
 ## Who to ask first
 

@@ -181,6 +181,24 @@ MUTATIONS = [
      "    if False:",
      "python3 tests/desk_config_smoke.py"),
 
+    ("a chain can assert its own assurance level again",
+     "pkg/src/knowyouragenticai_receipts/__init__.py",
+     "    return ANCHORED if anchor_confirmed else SELF_ATTESTED",
+     "    return str(receipts[0].get('ledger', SELF_ATTESTED))",
+     "python3 tests/assurance_level_smoke.py"),
+
+    ("the page stops naming what it actually established",
+     "step-3-verify/verifier.html",
+     "+'recomputed in this browser.<br>Assurance: <b>self-attested</b> '",
+     "+'recomputed in this browser. '",
+     "node tests/checker_smoke.js"),
+
+    ("an unsubstantiated independence claim stops being flagged",
+     "step-3-verify/verifier.html",
+     "    if(!claims.length) return '';",
+     "    return '';",
+     "node tests/checker_smoke.js"),
+
     ("the scan stops searching for one of the two fence words",
      "tools/ecosystem_scan.py",
      'FENCES = ("assertMsg", "ensure")',
@@ -197,7 +215,7 @@ MUTATIONS = [
      "tools/daml_mutate.py",
      '    root = os.path.join(pkg, under) if under else os.path.join(pkg, "daml")',
      '    root = os.path.join(pkg, "daml")',
-     "python3 tests/mutation.py"),
+     "python3 tests/assurance_smoke.py"),
 
     ("an async agent is recorded before it actually runs",
      "pkg/src/knowyouragenticai_receipts/guard.py",

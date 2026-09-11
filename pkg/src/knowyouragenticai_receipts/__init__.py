@@ -52,7 +52,8 @@ from typing import Any, Iterable, Mapping, Sequence
 __version__ = "1.1.0"
 __all__ = ["canonical", "seal", "verify", "assert_ascii", "Chain",
            "NonAsciiInReceipt", "BrokenChain", "GENESIS",
-           "Policy", "PolicyError", "guard", "attempt", "Refused"]
+           "Policy", "PolicyError", "guard", "attempt", "Refused",
+           "assurance", "SELF_ATTESTED", "ANCHORED"]
 
 GENESIS = "GENESIS"
 
@@ -135,6 +136,37 @@ def _position(r: Any, index: int) -> int:
     if isinstance(r, Mapping) and isinstance(r.get("n"), int):
         return int(r["n"])
     return index
+
+
+SELF_ATTESTED = "self-attested"
+ANCHORED = "anchored"
+
+
+def assurance(receipts: Sequence[Any], anchor_confirmed: bool = False) -> str:
+    """What this chain has actually established — computed, never read.
+
+    SPEC 6a. A chain that holds proves nothing was edited. It does not prove
+    who decided, and saying "verified" for both tells the reader something
+    false about the second in the strongest word the format has.
+
+    The level is DERIVED. Nothing in the document can raise it, because a level
+    a producer could write down is a level a producer could assert into being,
+    and the format would then record the over-claim rather than prevent it.
+    `ledger` may read "Canton DevNet, an independent validator refused this" in
+    a chain no ledger ever saw; every seal still verifies, and this still
+    returns `self-attested`.
+
+    `anchor_confirmed` is the reader's own finding, obtained outside the file —
+    the head seal and receipt count checked against an origin the producer does
+    not control. It is a parameter and not a field for exactly that reason.
+
+    There is no `ledger-enforced` level. Whether an assertion actually ran is
+    not a property of the document and no commitment scheme reaches it.
+    """
+    ok, _bad = verify(receipts)
+    if not ok:
+        return "unverified"
+    return ANCHORED if anchor_confirmed else SELF_ATTESTED
 
 
 def verify(receipts: Sequence[Any]) -> tuple[bool, int]:

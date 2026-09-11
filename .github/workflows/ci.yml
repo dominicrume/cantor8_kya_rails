@@ -146,6 +146,9 @@ jobs:
       - name: the cap holds under concurrency and a tampered file is refused
         run: python3 tests/release_readiness.py
 
+      - name: a chain cannot assert its own assurance level
+        run: python3 tests/assurance_level_smoke.py
+
       - name: the ecosystem scan reports an empty result as a result
         run: python3 tests/ecosystem_scan_smoke.py
 

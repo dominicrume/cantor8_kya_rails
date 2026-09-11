@@ -614,6 +614,28 @@ document.getElementById('tamperBtn').onclick=()=>{
 // is the least likely to have Python, and asking them to install it is asking
 // them to do three things that have nothing to do with their question.
 (function checker(){
+  // SPEC 6a. The level a reader is told is the level this page ESTABLISHED, and
+  // a page cannot establish origin from the file it was handed. So the verdict
+  // always says self-attested -- and when the file's own fields insist otherwise,
+  // it says that too, because a reader who sees "Canton DevNet" written inside a
+  // receipt and "holds" written by us will put those together into something
+  // neither of us said. A level a producer can write down is a level a producer
+  // can assert into being; naming the mismatch is what stops the format
+  // recording the over-claim instead of preventing it.
+  const INDEPENDENCE = /\b(canton|devnet|mainnet|testnet|ledger|validator|on-chain|onchain|independent)\b/i;
+  function overclaim(rs){
+    const claims = rs.filter(r => INDEPENDENCE.test(String(r.ledger || '')) &&
+                                  !/mock|self-attested|simulat/i.test(String(r.ledger || '')));
+    if(!claims.length) return '';
+    return '<br><br><b>Read this before you rely on it.</b> '
+      + claims.length + ' of ' + rs.length + ' entries name an independent decider '
+      + 'inside the record &mdash; for example <code>' + esc(String(claims[0].ledger).slice(0,64))
+      + '</code>. That text is the producer\u2019s own words, sealed but '
+      + 'unsubstantiated: this page has not checked it and cannot. Confirm the head '
+      + 'seal and the entry count against that ledger yourself, below, before '
+      + 'treating this as anything more than self-attested.';
+  }
+
   const drop=document.getElementById('cDrop'), file=document.getElementById('cFile');
   const out=document.getElementById('cVerdict'), prompt=document.getElementById('cPrompt');
   if(!drop) return;
@@ -710,9 +732,11 @@ document.getElementById('tamperBtn').onclick=()=>{
     if(bad===0){
       const head = rs[rs.length-1].seal || '';
       say('good','<b>'+esc(name)+'</b> holds. '+rs.length+' entries, every seal '
-        +'recomputed in this browser.<br>This proves nothing was <b>edited</b>. '
-        +'It does not prove where the file came from &mdash; a forged chain '
-        +'verifies exactly like this.<br>Chain head:<code>'+esc(head)+'</code>'
+        +'recomputed in this browser.<br>Assurance: <b>self-attested</b> '
+        +'&mdash; this proves nothing was <b>edited</b>. It does not prove where '
+        +'the file came from; a forged chain verifies exactly like this.'
+        + overclaim(rs)
+        +'<br>Chain head:<code>'+esc(head)+'</code>'
           +drawChain(rs, 0));
         wireChain(rs);
 

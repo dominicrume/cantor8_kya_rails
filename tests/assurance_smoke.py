@@ -132,6 +132,23 @@ check(canonical(body) == canonical(dict(reversed(list(body.items())))),
       "canonical form does not depend on key order, so neither does the seal")
 
 print()
+print("--under really does keep a library's own tests out of the mutation set")
+import tempfile as _tf
+_root = _tf.mkdtemp()
+for rel, text in (("src/main/daml/Vault.daml", 'x = do\n  assertMsg "cap" (a <= cap)\n'),
+                  ("src/test/daml/VaultTest.daml", 'y = do\n  assertMsg "test helper" True\n'),
+                  ("packages/vendored/daml/Dep.daml", 'z = do\n  assertMsg "vendored" True\n')):
+    _p = os.path.join(_root, rel); os.makedirs(os.path.dirname(_p), exist_ok=True)
+    open(_p, "w").write(text)
+_all = assurance.daml_mutate.fences(_root)
+_main = assurance.daml_mutate.fences(_root, "src/main/daml")
+check(len(_all) == 3, "without --under the whole tree is a candidate (%d fences)" % len(_all))
+check(len(_main) == 1 and _main[0][0].endswith("Vault.daml"),
+      "with --under src/main/daml only the library's own fence remains (%d)" % len(_main))
+check(not any("Test" in f[0] or "vendored" in f[0] for f in _main),
+      "  no test file and no vendored package is in the mutation set")
+
+print()
 print("the harness is told what to mutate, separately from where to build")
 seen = {}
 _f = assurance.daml_mutate.fences
