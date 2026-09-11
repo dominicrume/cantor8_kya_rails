@@ -1,0 +1,7 @@
+{
+  "scope": "topic:canton-network",
+  "scanned_at": "2026-09-11T00:50:11Z",
+  "daml_repos": 46,
+  "with_fences": {},
+  "liveness": {}
+}

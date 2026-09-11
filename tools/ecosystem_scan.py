@@ -90,24 +90,162 @@ def repos_by_topic(topic, tok):
     return [] if "_error" in d else d.get("items", [])
 
 
-def fence_files(scope, tok):
-    """How many .daml files in `scope` contain a fence, and where.
+def fence_files(scopes, tok):
+    """How many .daml files in each scope contain a fence, and where.
 
     Code search matches whole words, so this counts FILES rather than fences --
     it is a triage signal, not a measurement. The measurement needs the
     repository on disk and is what assurance.py does.
+
+    `scopes` is a list of qualifiers code search actually understands. That
+    word ACTUALLY matters: this took a single `topic:canton-network` scope at
+    first, and code search does not support `topic:`. It does not error on one
+    either -- it returns total_count 0. So the tool answered "no fences in 46
+    repositories, nothing here to measure", confidently, about a question the
+    API had never been asked. An unanswerable question reported as an empty
+    answer is the precise failure this file's own docstring promises not to
+    commit, and it committed it within an hour of being written.
     """
     found = {}
-    for word in FENCES:
-        q = urllib.parse.quote("%s %s extension:daml" % (word, scope))
-        d = get("/search/code?q=%s&per_page=100" % q, tok)
-        if "_error" in d:
-            return None, d["_error"]
-        for item in d.get("items", []):
-            name = item["repository"]["full_name"]
-            found.setdefault(name, set()).add(item["path"])
-        time.sleep(3)                       # code search is rate-limited hard
+    for scope in scopes:
+        for word in FENCES:
+            q = urllib.parse.quote("%s %s extension:daml" % (word, scope))
+            d = get("/search/code?q=%s&per_page=100" % q, tok)
+            if "_error" in d:
+                return None, d["_error"]
+            for item in d.get("items", []):
+                name = item["repository"]["full_name"]
+                found.setdefault(name, set()).add(item["path"])
+            time.sleep(3)                   # code search is rate-limited hard
     return {k: len(v) for k, v in found.items()}, None
+
+
+def searchable_scopes(org, repos):
+    """Qualifiers code search understands, for the thing the user asked about.
+
+    `org:` it understands. `topic:` it does not, and says so by returning
+    nothing rather than by failing -- so a topic scan has to be expanded into
+    one `repo:` per repository before it is asked.
+    """
+    if org:
+        return ["org:%s" % org]
+    return ["repo:%s" % r["full_name"] for r in repos]
+
+
+def liveness(full_name, tok):
+    """Is anyone home?
+
+    The first target this tool picked had 71 fences, an Apache licence and an
+    owner on the Dev Fund's champion list. It was also frozen: last commit to
+    main seventeen months earlier, four issues ever opened from outside, one
+    ever answered. Three hours of mutation testing were spent before anyone
+    asked whether a finding delivered there would be read by a human.
+
+    Fences say there is something to measure. These say whether measuring it
+    will reach anybody, which is the constraint that actually binds.
+    """
+    repo = get("/repos/%s" % full_name, tok)
+    if "_error" in repo:
+        return {"error": repo["_error"]}
+    commits = get("/repos/%s/commits?sha=%s&per_page=1"
+                  % (full_name, repo.get("default_branch", "main")), tok)
+    last = (commits[0]["commit"]["author"]["date"][:10]
+            if isinstance(commits, list) and commits else "")
+    outside, answered = outsider_issues(full_name, tok)
+    return {"last_commit": last, "archived": repo.get("archived"),
+            "outside_issues": outside, "answered": answered,
+            "stars": repo.get("stargazers_count", 0)}
+
+
+def outsider_issues(full_name, tok):
+    """(raised by outsiders, of those answered).
+
+    Issues from the owning organisation say nothing about whether a stranger
+    gets heard, and a stranger is what we would be.
+    """
+    issues = get("/repos/%s/issues?state=all&per_page=30" % full_name, tok)
+    if not isinstance(issues, list):
+        return 0, 0
+    org = full_name.split("/")[0].lower().split("-")[0]
+    outside = [i for i in issues
+               if not i.get("pull_request")
+               and not _insider((i.get("user") or {}).get("login", ""), org)]
+    return len(outside), len([i for i in outside if i.get("comments", 0)])
+
+
+def _insider(login, org):
+    login = login.lower()
+    return login.endswith("-da") or (org and org in login)
+
+
+def days_since(date_str):
+    if not date_str:
+        return 9999
+    import datetime
+    try:
+        d = datetime.date(*[int(x) for x in date_str.split("-")])
+        return (datetime.date.today() - d).days
+    except ValueError:
+        return 9999
+
+
+def worth_it(live):
+    """One line a person can act on, and the reason."""
+    if live.get("error"):
+        return "?", live["error"]
+    if live.get("archived"):
+        return "NO", "archived"
+    age = days_since(live.get("last_commit"))
+    if age > 365:
+        return "NO", "last commit %d days ago -- nobody would read a finding" % age
+    if age > 180:
+        return "WEAK", "last commit %d days ago" % age
+    if live.get("outside_issues") and not live.get("answered"):
+        return "WEAK", "%d outside issues, none answered" % live["outside_issues"]
+    return "YES", "active (%d days), %d/%d outside issues answered" % (
+        age, live.get("answered", 0), live.get("outside_issues", 0))
+
+
+def score_all(with_fences, tok, limit=12):
+    """The busiest repositories first -- liveness costs three API calls each."""
+    live = {}
+    for name in sorted(with_fences, key=lambda n: -with_fences[n])[:limit]:
+        info = liveness(name, tok)
+        info["verdict"], info["why"] = worth_it(info)
+        live[name] = info
+        time.sleep(1)
+    return live
+
+
+def scan_scope(org, topic, tok):
+    """Everything the scan knows about one org or topic, or why it does not."""
+    scope = "org:%s" % org if org else "topic:%s" % topic
+    repos = repos_of(org, tok) if org else repos_by_topic(topic, tok)
+    print("scanning %s -- %d repository/ies" % (scope, len(repos)))
+    with_fences, err = search_fences(org, repos, tok)
+    if err:
+        return None, err
+    return {"scope": scope,
+            "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "daml_repos": len(repos), "with_fences": with_fences,
+            "liveness": score_all(with_fences, tok)}, None
+
+
+def refuse_without_token():
+    print("No GitHub token. Code search needs one; set GITHUB_TOKEN or run")
+    print("`gh auth login`. Repository listing would work without it, but a")
+    print("scan that silently skips the fence count is a scan that lies.")
+
+
+def search_fences(org, repos, tok):
+    """Ask the question in a form the API can answer, or say we could not."""
+    scopes = searchable_scopes(org, repos)
+    if not scopes:
+        return None, "no repositories matched, so there was nothing to search"
+    if not org:
+        print("  expanding to %d repo: queries -- code search does not "
+              "understand topic:" % len(scopes))
+    return fence_files(scopes, tok)
 
 
 def report(rows, scope):
@@ -124,9 +262,26 @@ def report(rows, scope):
         print("  %5d               %s" % (n, name))
     print()
     print("  The count is FILES, not fences, and it is triage rather than")
-    print("  measurement. Point assurance.py at the top of this list:")
-    top = max(rows["with_fences"], key=rows["with_fences"].get)
-    print("    python3 tools/assurance.py --src PKG --test PKG --for \"%s\"" % top)
+    print("  measurement.")
+    if rows.get("liveness"):
+        print()
+        print("  Is anyone home? A finding in a frozen repository reaches nobody.")
+        print()
+        print("  worth it  repository                                  why")
+        order = {"YES": 0, "WEAK": 1, "NO": 2, "?": 3}
+        for name in sorted(rows["liveness"], key=lambda n: (
+                order.get(rows["liveness"][n]["verdict"], 9),
+                -rows["with_fences"].get(n, 0))):
+            v = rows["liveness"][name]
+            print("  %-9s %-42s %s" % (v["verdict"], name[:42], v["why"][:44]))
+        live = [n for n, v in rows["liveness"].items() if v["verdict"] == "YES"]
+        if live:
+            print()
+            print("  Start here: %s" % live[0])
+        else:
+            print()
+            print("  None of these are worth a mutation run today. That is a")
+            print("  result: it costs two minutes and saves a weekend.")
 
 
 def main(argv):
@@ -140,23 +295,15 @@ def main(argv):
 
     tok = token()
     if not tok:
-        print("No GitHub token. Code search needs one; set GITHUB_TOKEN or run")
-        print("`gh auth login`. Repository listing would work without it, but a")
-        print("scan that silently skips the fence count is a scan that lies.")
+        refuse_without_token()
         return 2
 
-    scope = "org:%s" % a.org if a.org else "topic:%s" % a.topic
-    repos = repos_of(a.org, tok) if a.org else repos_by_topic(a.topic, tok)
-    print("scanning %s -- %d repository/ies" % (scope, len(repos)))
-
-    with_fences, err = fence_files(scope, tok)
+    rows, err = scan_scope(a.org, a.topic, tok)
     if err:
         print("  the fence search failed: %s" % err)
         return 3
 
-    rows = {"scope": scope, "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "daml_repos": len(repos), "with_fences": with_fences}
-    report(rows, scope)
+    report(rows, rows["scope"])
     if a.json:
         with open(a.json, "w") as f:
             json.dump(rows, f, indent=2)
