@@ -196,17 +196,42 @@ def daml_facts():
     if not os.path.isdir(test_dir):
         return None
     try:
+        # Rebuild the mandate first. The test package takes it as a
+        # data-dependency on a built DAR, so without this the card reports on
+        # whatever was last compiled rather than on the source in the tree.
+        b = subprocess.run(  # nosec B603 B607 - argv is literal; daml is on PATH
+            ["daml", "build", "--no-legacy-assistant-warning"],
+            cwd=os.path.dirname(test_dir), capture_output=True, text=True,
+            timeout=1800)
+        if b.returncode != 0:
+            return {"scripts": 0, "failed": 1, "exercised": "?", "percent": "?",
+                    "choices": "?", "ok": False}
         p = subprocess.run(  # nosec B603 B607 - argv is literal; daml is on PATH
             ["daml", "test", "--all", "--show-coverage", "--no-legacy-assistant-warning"],
             cwd=test_dir, capture_output=True, text=True, timeout=1800)
     except (OSError, subprocess.TimeoutExpired):
         return None                    # no Daml toolchain here; say so, do not guess
-    out = p.stdout + p.stderr
+    return _daml_numbers(p.stdout + p.stderr, p.returncode)
+
+
+def _daml_numbers(out, code):
+    """The figures, pulled out of a finished run.
+
+    Split from daml_facts when adding the rebuild pushed that function over the
+    complexity ceiling. It is the right seam: above is about running the tools,
+    this is about reading what they said, and this half can be exercised
+    against captured output without a Daml toolchain.
+    """
     scripts = out.count(": ok,")
+    failed = len(re.findall(r": (failed|error)", out))
     m = re.search(r"(\d+) \(\s*([\d.]+)%\) exercised in any tests", out)
-    return {"scripts": scripts, "failed": len(re.findall(r": (failed|error)", out)),
+    total = re.search(r"(\d+) of (\d+) choices", out)
+    return {"scripts": scripts, "failed": failed,
             "exercised": m.group(1) if m else "?", "percent": m.group(2) if m else "?",
-            "ok": p.returncode == 0 and scripts > 0}
+            "choices": total.group(2) if total else "?",
+            # `failed` was computed here and never used. It is used now: a run
+            # that reports a failed script is not ok, whatever it exits with.
+            "ok": code == 0 and scripts > 0 and failed == 0}
 
 
 def versions():
@@ -298,9 +323,14 @@ def cards(results, daml, vers):
     return [
         ("%d%s/%d</span>" % (green, dim, total), "suites green",
          "ok" if green == total else "bad"),
-        ("%d%s/92</span>" % (daml["scripts"] if daml else 0, dim),
+        # No hardcoded denominator. It said /92 while the suite ran 100, which
+        # is the same defect as the complexity number this repository already
+        # stopped quoting: a figure that goes stale every time the thing it
+        # describes grows, and reads as a shortfall when it is growth.
+        ("%d" % (daml["scripts"] if daml else 0),
          "daml attack scripts", daml_ok),
-        ((daml["exercised"] + "/42") if daml else "not run", "choices exercised", daml_ok),
+        ((daml["exercised"] + " of %s" % daml["choices"]) if daml else "not run",
+         "choices exercised", daml_ok),
         (vers["built"], "package built", "ok"),
         (vers["sdk"], "daml sdk", "ok"),
     ]
@@ -329,7 +359,7 @@ it is.</div>
 <pre>git clone https://github.com/dominicrume/cantor8_kya_rails
 cd cantor8_kya_rails
 python3 tools/dashboard.py          # regenerates this page from scratch
-cd step-1-mandate/test &amp;&amp; daml test # the 92 attack scripts</pre>
+python3 tests/daml_tests.py         # the ledger's own attack scripts</pre>
 <footer>
 <b>%s</b> &middot; whole run took %.0f seconds &middot; generated %s<br>
 Live verifier: <a href="./">dominicrume.github.io/cantor8_kya_rails</a> &middot;
