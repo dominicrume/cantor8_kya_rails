@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """No address in this repository may be one a wallet would accept.
 
-The customer screen is the one a real person opens on a phone, with their
+The screen this was written for has moved to the kya-desk repository. The
+scanner stayed, on purpose. A real address got in here because nobody was
+looking for one, and that is a fact about attention, not about which directory
+the file lived in. The next person to add a wallet example to a doc, a test
+fixture or a demo will not be thinking about this either.
+
+The customer screen was the one a real person opened on a phone with their
 wallet in the other hand. It renders a QR code, "Send exactly 500 USDT", "To
 this address", a copy button, and two carefully written warnings about picking
 the right network -- all of which make it MORE credible, not less.
@@ -175,14 +181,22 @@ check(not spendable,
          ": " + "; ".join("%s %s in %s" % s for s in spendable[:3])))
 
 print()
-print("and the screen a person would be looking at says what it is")
-customer = open(os.path.join(ROOT, "step-5-operator", "customer.html")).read()
-check("DEMO ONLY" in customer, "the customer page carries a DEMO ONLY banner")
-check("Do not send money" in customer, "  and says it in those words")
-# Before the address, not after it. A warning under the QR is a warning read
-# second.
-check(customer.index("DEMO ONLY") < customer.index("depositAddress"),
-      "  and it is rendered BEFORE the address, not below it")
+print("and there is no screen here that shows one to a person")
+# The customer screen moved to the kya-desk repository on 2026-09-12, and the
+# banner assertions moved with it. This scanner did NOT move: it stays as
+# standing insurance, because the reason a real address got into this
+# repository was that nobody was looking, and that is a property of attention
+# rather than of which directory the file was in.
+pages = [os.path.join(base, n)
+         for base, dirs, names in os.walk(ROOT)
+         if not any(d in base for d in SKIP_DIRS)
+         for n in names if n.endswith(".html")]
+check(bool(pages), "there are pages to check (%d)" % len(pages))
+asks = [os.path.relpath(p, ROOT) for p in pages
+        if "depositAddress" in open(p, errors="ignore").read()]
+check(not asks,
+      "none of them asks anybody to send money"
+      + (": %s" % asks if asks else ""))
 
 print()
 # The validators have to be able to say yes, or "none of them is spendable"
@@ -224,5 +238,4 @@ if fails:
     for f in fails:
         print("  - " + f)
     sys.exit(1)
-print("nothing here can receive money, and the one screen a person opens")
-print("says so before it shows them anything.")
+print("nothing here can receive money, and no page here asks anyone to send it.")

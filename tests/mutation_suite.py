@@ -66,53 +66,11 @@ MUTATIONS = [
     # caught this table when the row existed. The scanner proves itself instead,
     # inside that file, by scanning a temporary file it writes and then deletes.
 
-    ("the customer screen stops saying it is a demo",
-     "step-5-operator/customer.html",
-     "'<div class=\"mocked\"><b>DEMO ONLY.</b> This is not a real payment request. ' +",
-     "'' +",
-     "python3 tests/no_real_addresses.py"),
-
-    ("the QR encodes a payment request nobody agreed to",
-     "step-5-operator/customer.html",
-     "    q.addData(text);",
-     "    text = 'tron:' + text + '?amount=' + 999;\n    q.addData(text);",
-     "python3 tests/cycle_smoke.py"),
-
-    ("the deposit address disappears from the customer page",
-     "step-5-operator/customer.html",
-     "'<div class=\"val\">' + esc(d.depositAddress) + '</div>' +",
-     "'' +",
-     "python3 tests/cycle_smoke.py"),
-
-    ("the WhatsApp webhook stops checking signatures",
-     "step-7-providers/meta.py",
-     "            self._authenticate(headers, raw)",
-     "            pass",
-     "python3 tests/meta_smoke.py"),
-
-    ("the deposit webhook stops checking the IP allowlist",
-     "step-7-providers/breet.py",
-     "        if self.require_ip and src_ip not in self.allow_ips:",
-     "        if False:",
-     "python3 tests/breet_wire_smoke.py"),
-
     ("the audit trail is never written",
      "step-2-agent/kya_chain.py",
      "        self.receipts.append(r)",
      "        pass",
      "python3 tests/mcp_smoke.py"),
-
-    ("the desk stops persisting anything",
-     "step-5-operator/server.py",
-     "        if self.store is None:\n            return\n        for entry in self.transcript",
-     "        if True:\n            return\n        for entry in self.transcript",
-     "python3 tests/store_smoke.py"),
-
-    ("the journal stops refusing an edited history",
-     "step-8-store/store.py",
-     "        if not ok and strict:",
-     "        if False:",
-     "python3 tests/store_smoke.py"),
 
     ("the model is offered a tool that raises its own cap",
      "step-4-mcp/kya_mcp.py",
@@ -121,35 +79,11 @@ MUTATIONS = [
      ' "inputSchema": {"type": "object", "properties": {}}},\n    {"name": "open_mandate"',
      "python3 tests/mcp_smoke.py"),
 
-    ("an unescaped template literal reaches the DOM",
-     "step-5-operator/operator.html",
-     "$('ledger').textContent = s.ledger;",
-     "$('ledger').innerHTML = `<i>${s.ledger}</i>`;",
-     "python3 tests/xss_lint.py"),
-
-    ("the bot stops accepting an amount with its unit",
-     "step-6-whatsapp/bot.py",
-     r"(\d+(?:\.\d+)?)\s*(?:[a-z]{2,5})?",
-     r"(\d+(?:\.\d+)?)",
-     "python3 tests/bot_smoke.py"),
-
     ("the package silently defaults the currency again",
      "pkg/src/knowyouragenticai_receipts/__init__.py",
      "    def stamp(self, what: str, amount: str, currency: str, payee: str,",
      "    def stamp(self, what: str, amount: str, payee: str, currency: str = \"CC\",",
      "python3 tests/package_smoke.py"),
-
-    ("a route stops rejecting infinity as an amount",
-     "step-5-operator/server.py",
-     "    if number != number or number in (float(\"inf\"), float(\"-inf\")):",
-     "    if False:",
-     "python3 tests/route_fuzz.py"),
-
-    ("the error boundary around every route is removed",
-     "step-5-operator/server.py",
-     "        except Exception as e:                       # noqa: BLE001 - the boundary",
-     "        except ZeroDivisionError as e:",
-     "python3 tests/route_fuzz.py"),
 
     ("an unknown payee crashes instead of being recorded",
      "step-2-agent/agent.py",
@@ -157,29 +91,11 @@ MUTATIONS = [
      "        return NAMES[role]",
      "python3 tests/operator_smoke.py"),
 
-    ("the customer page calls a downed desk a missing deal",
-     "step-5-operator/customer.html",
-     "  if (res.status === 404){",
-     "  if (!res.ok){",
-     "node tests/frontend_offline.js"),
-
-    ("the operator page goes silent when the desk stops answering",
-     "step-5-operator/operator.html",
-     "    setLink(false, 'The connection failed.');\n    return {error: 'the desk could not be reached, so nothing was sent'};",
-     "    throw e;",
-     "node tests/frontend_offline.js"),
-
     ("one malformed line ends the model's session with the wallet",
      "step-4-mcp/kya_mcp.py",
      "    if not isinstance(msg, dict):",
      "    if False:",
      "python3 tests/mcp_smoke.py"),
-
-    ("an unusable store path becomes a traceback again",
-     "step-8-store/store.py",
-     "            raise Unusable(_why_unusable(path, e)) from e",
-     "            raise",
-     "python3 tests/store_smoke.py"),
 
     ("the wallet stops writing receipts through to its journal",
      "step-4-mcp/kya_mcp.py",
@@ -197,12 +113,6 @@ MUTATIONS = [
      "step-2-agent/agent.py",
      '                  "allowed": list(ALLOWED if allowed is None else allowed),',
      '                  "allowed": list(ALLOWED),',
-     "python3 tests/desk_config_smoke.py"),
-
-    ("a boolean is accepted as a spending cap",
-     "step-9-desk/desk_config.py",
-     "    if isinstance(value, bool) and bool not in kinds:",
-     "    if False:",
      "python3 tests/desk_config_smoke.py"),
 
     ("a commit goes through while a mutation run is still in progress",
@@ -324,18 +234,6 @@ MUTATIONS = [
      "        ok, bad = True, 0\n        if not ok:\n            raise BrokenChain(\n                \"%s does not verify",
      "python3 tests/release_readiness.py"),
 
-    ("the desk goes back to dropping outcomes it does not know",
-     "step-5-operator/desk.html",
-     "  const other = rs.filter(r => r.outcome !== 'REFUSED' && r.outcome !== 'ACCEPTED');",
-     "  const other = [];",
-     "python3 tests/desk_view_smoke.py"),
-
-    ("the operator screen calls an unknown outcome 'paid' again",
-     "step-5-operator/operator.html",
-     "                            : r.outcome === 'ACCEPTED' ? 'paid &middot; '",
-     "                            : true ? 'paid &middot; '",
-     "python3 tests/desk_view_smoke.py"),
-
     ("a refusal is recorded but the payment goes through anyway",
      "pkg/src/knowyouragenticai_receipts/guard.py",
      "    if not allowed:\n        raise Refused(rule, receipt)",
@@ -402,41 +300,11 @@ MUTATIONS = [
      '        rule="see report",',
      "python3 tests/assurance_smoke.py"),
 
-    ("the customer page stops fitting a phone",
-     "step-5-operator/customer.html",
-     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-     "",
-     "python3 tests/a11y_lint.py"),
-
-    ("the payout button loses its keyboard focus ring",
-     "step-5-operator/operator.html",
-     "  a:focus-visible, button:focus-visible, [tabindex]:focus-visible,",
-     "  a:no-such-state, [tabindex]:no-such-state,",
-     "python3 tests/a11y_lint.py"),
-
-    ("the payee list stops coming from the desk's settings",
-     "step-5-operator/server.py",
-     '                "recipients": self.payees(),',
-     '                "recipients": [{"key": k, "name": k} for k in ("customer", "partner")],',
-     "python3 tests/desk_view_smoke.py"),
-
-    ("the operating view stops showing why something was refused",
-     "step-5-operator/desk.html",
-     "    + (showRule ? '<div class=\"rule\">' + esc(r.rule) + '</div>' : '')",
-     "    + ''",
-     "node tests/frontend_offline.js"),
-
     ("the verifier's text goes invisible against its own background",
      "step-3-verify/verifier.html",
      "color:var(--page-ink); min-height:100vh; }",
      "color:var(--ink); min-height:100vh; }",
      "python3 tests/contrast_lint.py"),
-
-    ("the bundled desk loses its settings and its journal",
-     "step-9-desk/desk_config.py",
-     '    for candidate in (os.path.join(os.getcwd(), "desk.json"), DEFAULT_PATH):',
-     "    for candidate in (DEFAULT_PATH,):",
-     "python3 tests/bundle_smoke.py"),
 
     ("the unverified account is recorded as having received coin",
      "docs/devnet-balances.json",
@@ -452,8 +320,8 @@ MUTATIONS = [
 
     ("a README count drifts from the file that produces it",
      "README.md",
-     "**553** requests",
-     "**500** requests",
+     "**32** in the Daml",
+     "**31** in the Daml",
      "python3 tests/balance_lint.py"),
 
     ("the DevNet check goes back to a hardcoded threshold",
@@ -879,8 +747,6 @@ def restore(backups, progress=None, expected=None):
     for mode in ([], ["--fragment"], ["--pages"]):
         subprocess.run(["python3", "step-3-verify/build-standalone.py"] + mode,  # nosec B603 B607
                        cwd=ROOT, capture_output=True)
-    subprocess.run(["python3", "tools/build-desk.py"],  # nosec B603 B607 - literal argv
-                   cwd=ROOT, capture_output=True)
 
 
 def selected(only):

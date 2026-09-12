@@ -27,9 +27,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PAGES = ["step-3-verify/verifier.html", "step-5-operator/operator.html",
-         "step-5-operator/customer.html", "step-5-operator/desk.html",
-         "docs/index.html"]
+PAGES = ["step-3-verify/verifier.html", "docs/index.html"]
 
 AA_BODY = 4.5
 

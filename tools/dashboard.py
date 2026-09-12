@@ -54,7 +54,9 @@ SUITES = [
     # The real-rail code was the only code here no suite could run.
     # The customer screen shows a QR, an amount and an address to a real person
     # holding a real wallet. For weeks those addresses were real.
-    ("python3 tests/no_real_addresses.py", "The desk",
+    ("python3 tests/journal_smoke.py", "The agent",
+     "a killed process loses no receipts, and an edited journal is refused"),
+    ("python3 tests/no_real_addresses.py", "The agent",
      "no address anywhere can receive money, and the screen says so first"),
     ("python3 tests/mirror_boundaries.py", "The ledger",
      "the Python mirror refuses at exactly the boundaries the Daml does"),
@@ -68,23 +70,7 @@ SUITES = [
      "the model cannot overspend, redirect, or outlive a revoke -- and cannot end its own session"),
     ("python3 tests/mcp_survives_kill.py", "The agent",
      "SIGKILL loses no receipts, and buys the agent no cap"),
-    ("python3 tests/bot_smoke.py", "The agent",
-     "the WhatsApp bot reads an amount the way a person writes one"),
 
-    ("python3 tests/bundle_smoke.py", "The desk",
-     "the whole desk runs from one file, with no repository and nothing installed"),
-    ("python3 tests/desk_view_smoke.py", "The desk",
-     "the operating view shows the float, the refusals and the rule for each"),
-    ("python3 tests/desk_config_smoke.py", "The desk",
-     "settings are refused when wrong, and enforced by the ledger when right"),
-    ("python3 tests/operator_smoke.py", "The desk",
-     "every refusal the desk answers is also on its record"),
-    ("python3 tests/cycle_smoke.py", "The desk",
-     "the deal cycle holds at every join a real desk lost money on"),
-    ("python3 tests/store_smoke.py", "The desk",
-     "a quote outlives the process, and an edited journal refuses to load"),
-    ("python3 tests/route_fuzz.py", "The desk",
-     "553 malformed requests: nothing dropped, nothing 500s, every 400 names its field"),
 
     ("python3 tests/assurance_smoke.py", "The desk",
      "an audit's findings are sealed, so softening one breaks the client's own check"),
@@ -112,8 +98,6 @@ SUITES = [
 
     ("node tests/checker_smoke.js", "The page",
      "drop a file and it is checked -- and a non-chain is never called tampered"),
-    ("node tests/frontend_offline.js", "The page",
-     "neither screen goes silent, or tells the reader something untrue about their money"),
     ("node tests/origin_smoke.js", "The page",
      "the page says where a chain came from, not only that it holds"),
     ("python3 tests/contrast_lint.py", "The page",
@@ -123,14 +107,6 @@ SUITES = [
     ("python3 tests/standalone_smoke.py", "The page",
      "the standalone build has not drifted from the source page"),
 
-    ("python3 tests/meta_smoke.py", "The doors",
-     "the WhatsApp webhook refuses unsigned, wrongly signed and replayed calls"),
-    ("python3 tests/meta_wire_smoke.py", "The doors",
-     "and refuses them over a real socket, not just in a unit test"),
-    ("python3 tests/breet_smoke.py", "The doors",
-     "the deposit webhook checks its secret and its IP allowlist"),
-    ("python3 tests/breet_wire_smoke.py", "The doors",
-     "including the X-Forwarded-For spoof that defeats a naive allowlist"),
 
     ("python3 tests/security_lint.py", "The rules",
      "no bandit finding in production code"),

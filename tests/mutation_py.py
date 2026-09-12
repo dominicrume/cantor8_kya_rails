@@ -24,9 +24,7 @@ import ast, os, shutil, subprocess, sys, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TARGETS = [
-    ("step-7-providers/meta.py",  "tests/meta_smoke.py"),
-    ("step-7-providers/breet.py", "tests/breet_smoke.py"),
-    ("step-8-store/store.py",     "tests/store_smoke.py"),
+    ("step-8-store/store.py",     "tests/journal_smoke.py"),
 ]
 
 # The refusal each file raises when it will not act. Different names, same
