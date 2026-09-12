@@ -60,6 +60,13 @@ SUITES = [
      "no address anywhere can receive money, and the screen says so first"),
     ("python3 tests/mirror_boundaries.py", "The ledger",
      "the Python mirror refuses at exactly the boundaries the Daml does"),
+    # The DevNet run itself cannot be in the float: it needs a secret this
+    # machine does not have. Its dry run can, and that is what stops the tool
+    # from rotting in the weeks before the secret comes back.
+    ("python3 tools/prove_refusal_on_devnet.py --dry-run", "The ledger",
+     "the one command that puts a refusal on DevNet still works, minus the network"),
+    ("python3 tests/devnet_run_smoke.py", "The ledger",
+     "four failures that all say REFUSED are told apart before one is written down"),
     ("python3 tests/devnet_parse_smoke.py", "The ledger",
      "the DevNet path reads the rule off the contract, and claims no "
      "reference for a refusal that was never committed"),
