@@ -31,12 +31,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # (path, must it be a standalone document?, ids that change after an action)
 PAGES = [
+    # cVerdict, not the drop zone. The verdict is the thing that CHANGES after
+    # an action, and it is the one a screen reader has to hear: "this file has
+    # been edited" is useless if only sighted users get it. The drop zone and
+    # the file input never change their own text.
     ("step-3-verify/verifier.html", True, ["cVerdict"]),
-    ("step-5-operator/operator.html", True, ["answer", "link"]),
-    ("step-5-operator/customer.html", True, ["body", "stale"]),
-    ("step-5-operator/desk.html", True, ["alerts", "answer"]),
-    ("docs/build.html", True, []),
-    ("docs/index.html", True, []),
 ]
 
 fails = []

@@ -129,13 +129,14 @@ CLAIMS = [
     (r"breaks \*\*(\d+)\*\* real things",
      lambda: rows_in("tests/mutation_suite.py", r'^    \("'),
      "mutation_suite rows"),
-    (r"the process dies . \*\*(\d+)\*\* checks",
-     lambda: passes_in("tests/store_smoke.py"),
-     "store_smoke checks"),
-    (r"\*\*(\d+)\*\* requests . every route",
-     lambda: stated_in("tests/route_fuzz.py", r"(\d+) requests"),
-     "route_fuzz requests"),
-    (r"and now \*\*(\d+) of \d+\*\* refusals",
+    # store_smoke and route_fuzz moved to the kya-desk repository on
+    # 2026-09-12 with the desk they tested. The journal itself stayed, because
+    # losing receipts when a process dies is an evidence problem, and
+    # tests/journal_smoke.py is what covers it here.
+    (r"\*\*(\d+)\*\* checks on the journal",
+     lambda: passes_in("tests/journal_smoke.py"),
+     "journal checks"),
+    (r"now covers \*\*(\d+) of \d+\*\*",
      lambda: passes_in("tests/mutation_py.py"),
      "mutation_py refusals"),
 

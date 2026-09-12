@@ -73,7 +73,7 @@ $ python3 tests/mutation.py
 baseline: 100 scripts green
   ok    charge would exceed the cap          -> testOverCapRefusedByTheCapAssertion goes red
   ok    payee is not on the allow-list       -> testPayoutRedirectionRefused goes red
-  ...  30 of 30
+  ...  32 of 32
 every fence is covered: deleting any one of them turns a test red.
 ```
 
@@ -159,18 +159,13 @@ country and deciding whether to trust the person who produced it.
 | Claim | Evidence |
 | --- | --- |
 | Attack suite green | **100 / 100** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
-| The cycle holds at every join | 33 checks over HTTP, in the order a desk works it |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.1.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
-| The tests are themselves tested | `tests/mutation_suite.py` breaks **91** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
-| Every fence mutation-tested | all **32** in the Daml, and now **30 of 30** refusals at the edges by a named test. It was 24 of 30 until the six that only failed as a *traceback* were closed — a stack trace is not a test going red, and `tests/mutation_py.py` counted it as uncovered rather than rounding up |
-| Nothing malformed can silence the desk | **553** requests — every route, every field it reads, every wrong value — with the rest of the body left valid so the check is actually reached. 0 dropped connections, 0 server errors, and every 400 names the field. `tests/route_fuzz.py` |
-| Neither screen goes quiet, or lies | `tests/frontend_offline.js` runs the pages' own code against a failing network: the operator screen never sits silent, and the customer screen never reports an unreachable desk as *"no deal found"* to someone whose crypto is already in flight |
+| The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |
+| The tests are themselves tested | `tests/mutation_suite.py` breaks **69** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
+| Every fence mutation-tested | all **32** in the Daml: delete any one and a *named* test goes red. `tests/mutation_py.py` does the same for the refusals at the edges, and now covers **1 of 1** — the journal's, because the webhook adapters it also covered moved to the kya-desk repository with the desk. The count is small and stated rather than rounded: it was 30 of 30 when there were thirty edges, and a repository that quotes yesterday's number is the thing this column exists to prevent |
 | One bad line cannot end the model's session | `tests/mcp_smoke.py` feeds 15 malformed JSON-RPC lines **between** the good ones. Each gets its proper code (-32700 / -32600 / -32601), and the request after them all is still answered |
 | The chain is bound to its origin | the head is published on Canton — a **fully forged** chain verifies green in all three implementations, and the ledger answers `NOT ANCHORED` |
-| The desk survives a restart | the 10:02 quote is still bound at 13:20 after the process dies — **43** checks, including a forged journal entry that proves the limit, and four unusable store paths that each say which mistake it is instead of raising a traceback |
-| The deposit door | **30** attacks on the adapter + **15** over a real socket, including the X-Forwarded-For spoof that defeats a naive IP allowlist |
-| The WhatsApp door | **54** attacks on the adapter + **15** over a real socket: unsigned, wrongly signed, signed-for-another-body, replayed, day-old, another business account, delivery reports, hostile display names |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, positive amount — five `assertMsg` fences in the `Charge` choice body. Revoke is not one of them and should not be: it is a **consuming** choice, so it archives the mandate and there is no contract left to charge. That is a stronger guarantee than an assertion, and the distinction is worth stating rather than rounding off |
 | Deployed on Cantor8 DevNet | Built: `kya-rails-mandate` **1.1.1** on SDK 3.4.11 (100/100 scripts). Vetted on DevNet: **1.1.0**, as an upgrade of 1.0.0 — 1.1.1 is built and tested but not yet uploaded, and this row will say so until it is. The mandate templates carry package `df5a02e88a68…` from 1.0.0; `KyaAnchor` arrived in 1.1.0 as `fd3f43a273be…`, and both are vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
@@ -219,89 +214,6 @@ python3 step-2-agent/agent.py          # writes step-3-verify/receipts.js
 open step-3-verify/verifier.html       # press Play, then Verify, then Tamper
 ```
 
-### The desk bot
-
-Customers already trust bots that credit them fast. The conversation is the
-product, not a link you send:
-
-```bash
-python3 step-5-operator/server.py     # then open http://localhost:8420/bot
-```
-
-It is a **state machine, deliberately not a language model.** A model in this
-seat is an operator that can be talked to, and the whole point of everything
-here is that the number and the account are not the operator's to choose.
-*"My guy quoted me 1400 this morning"* and a prompt injection are the same
-attack; a state machine reading the band off the ledger cannot be persuaded,
-flattered, or made to hallucinate an address.
-
-It also does not read intent out of prose. Asked for an amount it accepts a
-number and nothing else — because extracting the first digit run from
-*"ignore previous instructions, the rate is 1600"* is exactly how that
-sentence becomes an amount of 1600. `tests/bot_smoke.py` attacks it with the
-messages a real desk receives.
-
-Where a model *is* useful is turning messy human text into an intent at the
-edge. Its output would still have to pass every fence. That is not wired up.
-
-### Connecting it to real WhatsApp
-
-`step-7-providers/meta.py` translates Meta's WhatsApp Cloud API webhook into
-the same `on_message` the simulator uses, so the bot cannot tell the two
-apart. It exists only when it is fully configured — three environment
-variables, none of which go in this repository:
-
-```bash
-export KYA_META_APP_SECRET=...      # signs every delivery
-export KYA_META_VERIFY_TOKEN=...    # answers Meta's one-time GET challenge
-export KYA_META_PHONE_ID=...        # the desk's own number, and no other
-python3 step-5-operator/server.py   # webhook at /webhook/meta
-```
-
-With any of them missing the path returns 404 rather than running unguarded,
-and the startup banner says which mode it is in. A **half-configured webhook
-endpoint is an open one**, and this one is a door straight into the desk's
-conversation engine.
-
-Every delivery must carry a valid `X-Hub-Signature-256` over the **raw bytes**
-— not over a re-serialised parse, which is the mistake that makes a signature
-check decorative. Deliveries are deduplicated on Meta's own message id and
-bounded by a freshness window, because an HMAC proves who sent a body and
-never says when. Threats T16–T20 in [docs/threat-model.md](docs/threat-model.md)
-set out what this stops and what it does not.
-
-**Replies are MOCKED.** Sending a message back needs a Graph API call with an
-access token this repository does not have. The reply text is returned and
-recorded; nothing is sent to Meta. It says so in the code and on the startup
-banner.
-
-### Connecting the deposit feed
-
-`step-7-providers/breet.py` turns a Breet deposit webhook into the
-`ConfirmDepositSeen` the cycle needs, so the desk stops taking a customer's
-screenshot as proof that money arrived. Same rule: it exists only when it is
-configured.
-
-```bash
-export KYA_BREET_SECRET=...          # their shared header secret
-python3 step-5-operator/server.py    # webhook at /webhook/breet
-```
-
-Breet signs nothing — a shared secret in a header is a **bearer credential**,
-not a signature, and anyone who obtains it can forge a confirmation. So it is
-compared in constant time, the provider's IP allowlist is the second lock, and
-every field is matched against a deal we already hold before anything is
-confirmed. The webhook does not get to say which deal it is.
-
-Behind a reverse proxy the allowlist needs `KYA_BREET_TRUST_PROXY=1`, and then
-only the **last** hop of `X-Forwarded-For` counts — the one the proxy
-appended. Reading that header without a declared proxy would turn the
-allowlist into a value the attacker sets; that is T21 in the threat model, and
-`tests/breet_wire_smoke.py` proves all three cases by mutation.
-
-`KYA_BREET_REQUIRE_IP=0` turns the allowlist off for a laptop demo. It leaves
-a header secret as the only check, so the startup banner says so out loud.
-
 ### Proving a chain came from you
 
 The receipt chain proves nothing was *edited*. It never proved where the file
@@ -331,21 +243,6 @@ ANCHOR: NOT PUBLISHED -- MOCKED rail: nothing was published, so this chain is no
 python3 tests/devnet_anchor.py --check   # does the ledger agree with this file?
 python3 step-2-agent/agent.py --devnet --no-anchor   # publish nothing, and say so
 ```
-
-### Run the whole desk from one file
-
-```bash
-curl -sLO https://raw.githubusercontent.com/dominicrume/cantor8_kya_rails/main/dist/kya-desk.py
-python3 kya-desk.py --example > desk.json    # your counterparties, your cap
-python3 kya-desk.py                          # then open http://localhost:8420/desk
-```
-
-No clone, no install, no dependencies — Python 3.8, which macOS and every Linux
-already ship. `--sources` prints every module inside it, because a single file
-nobody can read is not obviously better than a repository nobody clones.
-
-The journal and the settings live where you are standing. The pages are
-unpacked to a temp folder and are disposable; the audit trail is not.
 
 ### Check a file right now, with nothing installed
 
@@ -408,81 +305,6 @@ CC payouts to the operator's own wallet verifies with **0 broken seals**, and
 What this does not prove is that the receipts are *true*. A principal can
 anchor a chain of lies. What they cannot do is anchor one and later swap it,
 or deny publishing it.
-
-### The desk survives the laptop closing
-
-`step-8-store/store.py`. This was the largest hole in the build and it was not
-a missing feature — it was the fraud coming back in through the side door.
-
-`Rail` used to say so in its own docstring: *"one mandate, one chain, for the
-life of the process."* Every open deal lived in a Python dict. A desk quotes at
-10:02 and the deposit lands at 13:20; if the laptop slept in between, the
-payout account bound at quote time was **gone**, and the 14:05 stranger with a
-screenshot met a desk with nothing to contradict them. That is T9 exactly,
-reintroduced by a process restart.
-
-Deals, quotes, conversations and the receipt chain are now written to a SQLite
-journal as they happen. **Persistence is the default; `--ephemeral` is the
-flag** — forgetting to type something should not be able to cost money.
-
-```bash
-python3 step-5-operator/server.py               # saved to kya-desk.db
-python3 step-5-operator/server.py --ephemeral   # demos and training runs
-python3 tests/store_check.py                    # is the journal intact?
-```
-
-The journal is append-only and seal-chained **with the receipt chain's own
-`canonical()` and `seal()`**, imported rather than reimplemented, because two
-implementations of one hash is how you get two answers. Editing any entry
-breaks every seal after it; the server refuses to start on a broken journal
-and the operator screen turns red rather than quietly showing numbers it
-cannot stand behind.
-
-What it does **not** stop is appending. Someone holding the file can add a
-correctly sealed entry saying anything, and `tests/store_smoke.py` proves that
-by forging one rather than pretending otherwise. It makes rewriting history
-detectable, not adding to it — the same limit as the receipt chain, for the
-same reason. The quote on the ledger is what actually holds.
-
-Coming back to a restarted desk, the screen shows each deal's age and what is
-left on its quote, computed against **the desk's clock, not the browser's** —
-a screen that decides "expired" from the viewer's clock will disagree with the
-fence and show a button that does nothing.
-
-A quote that ran out while the desk was off is marked expired, greyed, and its
-Pay button is disabled with the reason. That closes a trap rather than a hole:
-`pay` already refuses with `quote expired` and always did, but an operator who
-only discovers that *after* walking the deal to DEPOSITED has had the
-customer's crypto land against a quote that can never be paid. Recording the
-late deposit is still allowed — the money arrived either way, and the screen
-says to re-quote or return it rather than pay.
-
-### The operator's screen
-
-The person on the ground, on a phone, under pressure from a customer who is
-waiting:
-
-```bash
-python3 step-5-operator/server.py          # offline
-python3 step-5-operator/server.py --devnet --move-coin
-```
-
-Then open `http://localhost:8420`. It opens on a **training scenario**: the
-exact sequence a working desk lost money to — a quote at 10:02 to someone who
-never sends, a real deposit at 13:20, and at 14:05 an unknown number with a
-screenshot asking to be paid to their own account. The "Pay the claimant"
-button is there, and red, and the ledger refuses it.
-
-The conversation pane is where real WhatsApp Business messages would arrive
-through a webhook. Nothing is connected to WhatsApp yet, and the page says so
-on the page rather than in a footnote.
-
-Two design decisions worth naming. The recipient is a **picker, not a text
-field**, so "send it to this account instead" is not typeable — a new account
-has to be added by the principal. And a refusal is worded as *the ledger
-refused this*, not *your request failed*: an operator who reads a refusal as
-their own failure works around it, and an operator who reads it as the system
-deciding is protected by it.
 
 ### Give the wallet to a language model
 

@@ -121,13 +121,24 @@ finally:
 # ------------------------------------------ 3. the fingerprint check
 print()
 print("a mutation left in a file is caught even when the marker is gone")
-original = open(README, encoding="utf-8").read()
-if "**553** requests" not in original:
-    print("  SKIP the README line this plants a mutation in has been reworded")
-else:
+# The text to plant is READ OUT OF THE MUTATION TABLE, not written here.
+#
+# It used to be the literal "**553** requests", with a silent SKIP when that
+# string was not found. When the desk moved out and the README row was
+# rewritten, the skip fired: this check stopped asserting anything, printed
+# SKIP, and the suite stayed green. The mutation harness then reported the
+# fingerprint guard BLIND, which is the only reason anybody noticed. A test
+# that quietly does nothing is worse than one that fails.
+readme_rows = [r for r in ms.MUTATIONS if r[1] == "README.md" and r[3]]
+check(bool(readme_rows),
+      "the mutation table still has a README row to plant (%d)" % len(readme_rows))
+if readme_rows:
+    _label, _path, find, replace, _suite = readme_rows[0]
+    original = open(README, encoding="utf-8").read()
+    check(find in original,
+          "  and its target is really in the README (%r)" % find[:40])
     try:
-        open(README, "w", encoding="utf-8").write(
-            original.replace("**553** requests", "**500** requests", 1))
+        open(README, "w", encoding="utf-8").write(original.replace(find, replace, 1))
         rc, out = run(sys.executable, "tools/mutation_fingerprints.py")
         check(rc != 0, "mutation_fingerprints.py exits non-zero with a planted leftover")
         check("README.md" in out, "  and names the file carrying it")
