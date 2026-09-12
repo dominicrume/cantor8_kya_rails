@@ -149,6 +149,9 @@ jobs:
       - name: a chain cannot assert its own assurance level
         run: python3 tests/assurance_level_smoke.py
 
+      - name: refusals can be disclosed alone, and nothing can be removed from them
+        run: python3 tests/disclosure_smoke.py
+
       - name: a killed mutation run is healed, and refused at the commit gate meanwhile
         run: python3 tests/mutation_guard_smoke.py
 

@@ -78,6 +78,9 @@ SUITES = [
     ("python3 tests/mutation_guard_smoke.py", "The desk",
      "a killed mutation run heals on the next one, and cannot be committed meanwhile"),
 
+    ("python3 tests/disclosure_smoke.py", "The agent",
+     "the refusals can be handed over on their own, without the book behind them"),
+
     ("python3 tests/assurance_level_smoke.py", "The page",
      "the level is what the verifier established, not what the document claims"),
 

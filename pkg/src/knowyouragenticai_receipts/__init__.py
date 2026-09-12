@@ -53,7 +53,8 @@ __version__ = "1.1.0"
 __all__ = ["canonical", "seal", "verify", "assert_ascii", "Chain",
            "NonAsciiInReceipt", "BrokenChain", "GENESIS",
            "Policy", "PolicyError", "guard", "attempt", "Refused",
-           "assurance", "SELF_ATTESTED", "ANCHORED"]
+           "assurance", "SELF_ATTESTED", "ANCHORED",
+           "disclose", "check_disclosure", "refusals_only", "what_this_reveals"]
 
 GENESIS = "GENESIS"
 
@@ -378,3 +379,5 @@ class Chain:
 # only half defined.
 from .policy import Policy, PolicyError          # noqa: E402
 from .guard import Refused, attempt, guard       # noqa: E402
+from .disclose import (                          # noqa: E402
+    check_disclosure, disclose, refusals_only, what_this_reveals)

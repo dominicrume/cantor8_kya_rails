@@ -201,6 +201,36 @@ MUTATIONS = [
      "    if False:",
      "python3 tests/mutation_guard_smoke.py"),
 
+    ("a refusal can be deleted from a disclosure unnoticed",
+     "pkg/src/knowyouragenticai_receipts/disclose.py",
+     "    if e.get(\"n\") != index:",
+     "    if False:",
+     "python3 tests/disclosure_smoke.py"),
+
+    ("an entry can hide its outcome again",
+     "pkg/src/knowyouragenticai_receipts/disclose.py",
+     "    if not e.get(\"outcome\"):",
+     "    if False:",
+     "python3 tests/disclosure_smoke.py"),
+
+    ("a refusal can be withheld while promising to show them all",
+     "pkg/src/knowyouragenticai_receipts/disclose.py",
+     "        if e.get(WITHHELD) and refusals_only(e):",
+     "        if False:",
+     "python3 tests/disclosure_smoke.py"),
+
+    ("a shown entry can be edited after sealing",
+     "pkg/src/knowyouragenticai_receipts/disclose.py",
+     "    if recomputed != e.get(\"seal\"):",
+     "    if False:",
+     "python3 tests/disclosure_smoke.py"),
+
+    ("the leak check stops warning what a withheld entry gives away",
+     "pkg/src/knowyouragenticai_receipts/disclose.py",
+     "        if len(value) < 4 or value not in shown_text:",
+     "        if True:",
+     "python3 tests/disclosure_smoke.py"),
+
     ("a chain can assert its own assurance level again",
      "pkg/src/knowyouragenticai_receipts/__init__.py",
      "    return ANCHORED if anchor_confirmed else SELF_ATTESTED",
