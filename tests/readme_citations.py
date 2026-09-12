@@ -21,16 +21,40 @@ MANDATE = os.path.join(ROOT, "step-1-mandate", "daml", "KyaMandate.daml")
 TESTS = os.path.join(ROOT, "step-1-mandate", "test", "daml", "KyaTest.daml")
 README = os.path.join(ROOT, "README.md")
 
-# Which line each fence must be on. Checked BOTH ways: the line must contain
-# the phrase, and the phrase must be on that line and no other.
-EXPECT = {
-    69: "mandate expired",
-    70: "amount must be positive",
-    71: "charge would exceed the cap",
-    72: "payee is not on the allow-list",
-    85: "charge would exceed the period limit",
-    94: "choice Revoke",
-}
+# The fences a judge is pointed at, by what they say rather than by where they
+# sit. The line number is then READ OUT OF THE DAML, not written down here.
+#
+# It used to be written down here, as a second table of line numbers beside the
+# README's. Adding the on-ledger refusal moved every fence about eighty lines
+# down, and that meant editing the same numbers in two files to say the same
+# thing, with nothing checking the check. A table of line numbers that has to
+# be maintained by hand is the exact failure this file exists to catch, so it
+# is gone: the phrase is the fixed point, and where it lives is a fact about
+# the Daml that gets looked up.
+FENCES = [
+    "mandate expired",
+    "amount must be positive",
+    "charge would exceed the cap",
+    "payee is not on the allow-list",
+    "charge would exceed the period limit",
+    "choice Revoke",
+]
+
+
+def locate(daml, phrase):
+    """The one line holding this phrase, or None if it is missing or repeated.
+
+    Repeated matters. `refusalReason` now states every rule a second time, in
+    words, so "charge would exceed the cap" appears twice in the file. A lookup
+    that silently took the first hit would point a judge at whichever copy came
+    first, which is how this check would start lying instead of failing.
+    """
+    hits = [i + 1 for i, line in enumerate(daml)
+            if phrase in line and line.lstrip().startswith(("assertMsg", "choice"))]
+    return hits[0] if len(hits) == 1 else None
+
+
+EXPECT = {}
 
 fails = []
 
@@ -42,16 +66,26 @@ def check(ok, what):
 
 
 def check_lines(readme, daml):
-    """Each cited line still holds the fence we expect at that number."""
+    """Each fence is where the README says it is, and nowhere else."""
     cited = sorted({int(n) for n in re.findall(r"KyaMandate\.daml#L(\d+)", readme)})
     check(bool(cited), "the README cites lines in KyaMandate.daml at all")
+
+    EXPECT.clear()
+    for phrase in FENCES:
+        n = locate(daml, phrase)
+        check(n is not None,
+              "%r is on exactly one fence line in the Daml" % phrase)
+        if n is None:
+            continue
+        EXPECT[n] = phrase
+        check(n in cited,
+              "the README points at L%d for %r%s"
+              % (n, phrase,
+                 "" if n in cited else " (it points at %s)" % cited))
+
     check(set(cited) <= set(EXPECT),
-          "every cited line is one this check knows about (cited %s)" % cited)
-    for n in cited:
-        phrase = EXPECT.get(n)
-        line = daml[n - 1] if n <= len(daml) else ""
-        check(bool(phrase) and phrase in line,
-              "L%d still contains %r" % (n, phrase or "?"))
+          "and cites no line that is not one of those fences (cited %s, fences %s)"
+          % (cited, sorted(EXPECT)))
 
 
 def check_pairing(readme, daml):
@@ -104,7 +138,15 @@ def main():
 
 
 def daml_fences(lines):
-    return sum(1 for l in lines if "assertMsg" in l)
+    """Fences, not mentions.
+
+    This counted every line containing "assertMsg", which includes the comment
+    above ChargeRefused explaining what assertMsg does to a refusal. Prose
+    about a fence is not a fence, and a lint that cannot tell the difference
+    pushes you to write worse comments to keep it quiet.
+    """
+    return sum(1 for l in lines
+               if l.lstrip().startswith("assertMsg"))
 
 
 if __name__ == "__main__":

@@ -163,6 +163,23 @@ check(all(e.get("outcome") for e in doc["entries"]),
 check(doc["disclosing"] == EVERY_REFUSAL,
       "the document declares what it is showing")
 
+# The field that makes a refusal checkable against something we did not write.
+# A disclosure is what gets handed over, so if `ledger_ref` does not survive
+# into it, the contract id never reaches the person who would go and look.
+led = Policy(cap="100.00", currency="USD", allow=["acme"])
+lc = led.open()
+lc.refused(what="pay", amount="999.00", currency="USD", payee="acme",
+           rule="charge would exceed the cap",
+           ledger_ref="00a1b2c3::ChargeRefused")
+ldoc = disclose(lc.receipts)
+check(check_disclosure(ldoc)[0], "a disclosure carrying a ledger reference verifies")
+shown_refs = [e["body"]["ledger_ref"] for e in ldoc["entries"]
+              if "body" in e and "ledger_ref" in e["body"]]
+check(shown_refs == ["00a1b2c3::ChargeRefused"],
+      "  and the contract id travels with the refusal, so it can be looked up")
+check(what_this_reveals(lc.receipts, ldoc) == [],
+      "  and naming a ledger record is not reported as a leak")
+
 print()
 print("attacks on what was removed")
 

@@ -21,6 +21,64 @@ template ChargeRecord
     signatory owner, spender
     observer payee
 
+-- One contract per REFUSED attempt, which is the whole reason this file
+-- changed.
+--
+-- `Charge` below refuses with assertMsg, and a failed assertMsg aborts the
+-- transaction. Nothing is written. That is correct for a fence and it is a
+-- disaster for evidence: the refusal leaves no trace on the ledger at all, so
+-- the only record of it is whatever the operator's own process wrote
+-- afterwards, about itself. A stablecoin issuer asked to prove their agent was
+-- stopped has nothing on-ledger to point at.
+--
+-- So the refusal is made into a transaction that SUCCEEDS. `TryCharge` runs
+-- the same rules, and when one says no it creates this contract and leaves the
+-- mandate exactly as it was. No coin moves. The difference from a log line is
+-- that the contract id and the record time come from the ledger rather than
+-- from the operator, so a refusal cannot be invented, backdated or reordered
+-- after the fact.
+--
+-- Two things this still does not do, said here rather than left to be
+-- discovered:
+--
+--   * An agent that never submits anything leaves nothing behind either. This
+--     makes a refusal that HAPPENED impossible to fake or move in time. It
+--     does not make an attempt that was never submitted appear.
+--   * Owner and spender together can archive one, because every Daml template
+--     carries an implicit Archive choice and those two are the signatories.
+--     What they cannot do is make the archiving not have happened: it is
+--     itself a transaction. So the claim is "removing it is a recorded event",
+--     not "it cannot be removed".
+--     See testTheOperatorCanArchiveARefusalButNotSilently, which is written as
+--     a test rather than a sentence because a sentence can drift from the code.
+template ChargeRefused
+  with
+    owner     : Party
+    spender   : Party
+    payee     : Party
+    amount    : Decimal
+    memo      : Text
+    rule      : Text
+      -- ^ Which fence refused it, word for word as `Charge` states it.
+      -- tests/fence_parity.py refuses a commit where the two have drifted.
+    refusedAt : Time
+      -- ^ From getTime, which is ledger effective time, not a clock the
+      -- submitter writes.
+  where
+    signatory owner, spender
+    -- Deliberately no `observer payee`. On an allow-list refusal the payee is
+    -- a party the mandate never authorised, and disclosing the attempt to them
+    -- would tell a stranger they were nearly paid. The owner is the one who
+    -- has to produce this for a regulator.
+
+-- | What TryCharge hands back. The mandate comes back either way, because the
+-- choice consumes it either way and the caller needs the new contract id.
+data TryResult = TryResult
+  with
+    mandate : ContractId KyaMandate
+    refusal : Optional (ContractId ChargeRefused)
+  deriving (Eq, Show)
+
 template KyaMandate
   with
     owner     : Party
@@ -91,6 +149,49 @@ template KyaMandate
           periodSpent = usedThisPeriod + amount
           periodStart = if fresh then now else periodStart
 
+    -- | The same rules, recorded instead of thrown.
+    --
+    -- Use this where the REFUSAL is the thing that has to survive: a regulated
+    -- issuer who will be asked to show what their agent was stopped from
+    -- doing. `Charge` aborts and leaves the ledger empty. This commits, and
+    -- what it commits is a contract the operator did not get to timestamp and
+    -- cannot later remove.
+    --
+    -- On the refusal path the mandate is recreated with every field unchanged,
+    -- so `spent` does not move and no ChargeRecord exists. That is asserted by
+    -- testRefusalIsOnLedgerAndNothingMoved, because "we record the refusal" is
+    -- worth nothing if recording it also lets the payment through.
+    choice TryCharge : TryResult
+      with
+        amount : Decimal
+        payee  : Party
+        memo   : Text
+      controller spender
+      do
+        now <- getTime
+        case refusalReason this now amount payee of
+          Some rule -> do
+            refused <- create ChargeRefused with
+              owner; spender; payee; amount; memo; rule; refusedAt = now
+            kept <- create this
+            pure TryResult with
+              mandate = kept
+              refusal = Some refused
+          None -> do
+            let fresh = case periodLength of
+                  None -> False
+                  Some len -> now >= addRelTime periodStart len
+            let usedThisPeriod = if fresh then 0.0 else periodSpent
+            create ChargeRecord with
+              owner; spender; payee; amount; memo; chargedAt = now
+            charged <- create this with
+              spent = spent + amount
+              periodSpent = usedThisPeriod + amount
+              periodStart = if fresh then now else periodStart
+            pure TryResult with
+              mandate = charged
+              refusal = None
+
     choice Revoke : ()
       controller owner
       do pure ()
@@ -101,6 +202,37 @@ template KyaMandate
       do
         assertMsg "new cap below what is already spent" (newCap >= spent)
         create this with cap = newCap
+
+-- The rules as a value, rather than as control flow.
+--
+-- `Charge` asserts on these and aborts. `TryCharge` reads them and commits.
+-- Writing them once is what stops the two choices disagreeing about what the
+-- rules are: a drift here would mean the contract handed to a regulator names
+-- a different reason from the one that actually fired. tests/fence_parity.py
+-- refuses a commit where any message in `Charge` is missing from here, or the
+-- other way round.
+--
+-- The order matters and matches `Charge` line for line, because the first rule
+-- that says no is the reason that gets recorded, and two implementations that
+-- refuse for different stated reasons are worse than one that just aborts.
+refusalReason : KyaMandate -> Time -> Decimal -> Party -> Optional Text
+refusalReason m now amount payee
+  | now >= m.expiresAt           = Some "mandate expired"
+  | amount <= 0.0                = Some "amount must be positive"
+  | m.spent + amount > m.cap     = Some "charge would exceed the cap"
+  | not (payee `elem` m.allowed) = Some "payee is not on the allow-list"
+  | not (periodOk m now amount)  = Some "charge would exceed the period limit"
+  | otherwise                    = None
+
+-- The rolling window, exactly as `Charge` computes it. Same rule about shape:
+-- one expression, so deleting it is a mutation the suite can make.
+periodOk : KyaMandate -> Time -> Decimal -> Bool
+periodOk m now amount =
+  let fresh = case m.periodLength of
+        None -> False
+        Some len -> now >= addRelTime m.periodStart len
+      used = if fresh then 0.0 else m.periodSpent
+  in optional True (\limit -> used + amount <= limit) m.periodLimit
 
 template KyaMandateProposal
   with

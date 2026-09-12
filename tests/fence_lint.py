@@ -35,9 +35,25 @@ def main():
         text = seen.get(path)
         if text is None:
             text = seen[path] = open(path).read()
-        if fence not in text:
+        found = text.count(fence)
+        if found == 0:
             missing.append("%s: %r is not in %s"
                            % (guard, fence, os.path.relpath(path, ROOT)))
+        elif found > 1:
+            # Present twice is not safer than present once, it is worse. The
+            # harness proves a fence matters by deleting it and requiring a
+            # named test to go red. Delete one of two identical copies and the
+            # code still compiles, the test still passes, and the fence is
+            # reported covered while nothing is testing it.
+            #
+            # This is not hypothetical. refusalReason repeats every rule of
+            # Charge as text so the ledger record can name the rule that fired,
+            # and for one commit "charge would exceed the cap" appeared twice
+            # in KyaMandate.daml. Deleting the fence left fence_lint green.
+            missing.append(
+                "%s: %r appears %d times in %s, so deleting it proves nothing. "
+                "Give this entry the whole line rather than the phrase."
+                % (guard, fence, found, os.path.relpath(path, ROOT)))
     print("fence lint: %d fences across %d contracts" % (len(mut.FENCES), len(seen)))
     if missing:
         print("  FAIL")

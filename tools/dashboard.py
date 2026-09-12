@@ -44,6 +44,13 @@ SUITES = [
 
     ("python3 tests/fence_lint.py", "The ledger",
      "every spending fence is present in the Daml"),
+    # The Daml suite was not in this list until 2026-09-12. The layer that
+    # actually enforces the spending rules was the only one nobody ran from
+    # here, and it was passing against a stale DAR besides.
+    ("python3 tests/daml_tests.py", "The ledger",
+     "the Daml scripts, rebuilt from source, not from whatever DAR was on disk"),
+    ("python3 tests/fence_parity.py", "The ledger",
+     "the refusal written to the ledger names the rule that actually fired"),
     ("python3 tests/anchor_smoke.py", "The ledger",
      "a forged chain verifies internally and still answers NOT ANCHORED"),
 

@@ -29,13 +29,21 @@ CYCLE = os.path.join(PKG, "daml", "KyaCycle.daml")
 INBOUND = os.path.join(PKG, "daml", "KyaInbound.daml")
 
 # (source file, fence text, a test that MUST fail when that line is deleted)
+#
+# The mandate fences carry their WHOLE assertMsg line, not just the message.
+# refusalReason states every rule a second time in words, so "charge would
+# exceed the cap" now appears twice in KyaMandate.daml: once as the fence that
+# aborts, once as the reason TryCharge records. With the bare phrase here,
+# deleting the fence left the words behind in the other copy and fence_lint
+# reported everything present. The mutation harness found it, BLIND, within an
+# hour of the duplication being introduced.
 FENCES = [
-    (MANDATE, "mandate expired",                      "testAfterExpiryRefused"),
-    (MANDATE, "amount must be positive",              "testAmountMustBePositive"),
-    (MANDATE, "charge would exceed the cap",          "testOverCapRefusedByTheCapAssertion"),
-    (MANDATE, "payee is not on the allow-list",       "testPayoutRedirectionRefused"),
-    (MANDATE, "charge would exceed the period limit", "testPeriodLimitRefusedWithinWindow"),
-    (MANDATE, "new cap below what is already spent",  "testAdjustBelowSpentRefused"),
+    (MANDATE, 'assertMsg "mandate expired" (now < expiresAt)', "testAfterExpiryRefused"),
+    (MANDATE, 'assertMsg "amount must be positive" (amount > 0.0)', "testAmountMustBePositive"),
+    (MANDATE, 'assertMsg "charge would exceed the cap" (spent + amount <= cap)', "testOverCapRefusedByTheCapAssertion"),
+    (MANDATE, 'assertMsg "payee is not on the allow-list" (payee `elem` allowed)', "testPayoutRedirectionRefused"),
+    (MANDATE, 'assertMsg "charge would exceed the period limit" withinPeriod', "testPeriodLimitRefusedWithinWindow"),
+    (MANDATE, 'assertMsg "new cap below what is already spent" (newCap >= spent)', "testAdjustBelowSpentRefused"),
     # KyaQuote: the fences that stop the loss the desk actually took.
     (QUOTE, "quote expired",                          "testStaleQuoteCannotBeFulfilled"),
     (QUOTE, "deposit does not carry this quote",      "testDepositWithoutTheQuoteReferenceIsRefused"),
@@ -44,7 +52,7 @@ FENCES = [
     (QUOTE, "payout account has not been approved",    "testOperatorCannotQuoteToTheirOwnAccount"),
     # KyaCycle: the two legs where the desk loses its own money.
     (CYCLE, "no approved address for that asset",      "testUnknownNetworkIsRefused"),
-    (CYCLE, "requires a memo or tag",                  "testMemoRequiredNetworkRefusesAMissingMemo"),
+    (CYCLE, 'assertMsg "this network requires a memo or tag and none was given"', "testMemoRequiredNetworkRefusesAMissingMemo"),
     (CYCLE, "off-taker wallet is not approved",        "testCryptoCannotGoToAnUnapprovedOffTakerWallet"),
     (CYCLE, "short of the amount agreed",              "testShortNairaIsRefused"),
     # KyaInbound: naira in, crypto out. The more dangerous direction, because
@@ -55,8 +63,12 @@ FENCES = [
     (ANCHOR, "&& receipts > 0",                          "testZeroReceiptsIsRefused"),
     (INBOUND, "not one of the desk's approved naira accounts", "testOperatorCannotNominateTheirOwnNairaAccount"),
     (INBOUND, "cannot send that asset on that network",        "testCannotQuoteAnAssetTheDeskCannotSend"),
-    (INBOUND, "a bank reference is required",                  "testConfirmationNeedsABankReference"),
-    (INBOUND, "naira credited is short",                       "testShortNairaCreditIsRefused"),
+    (INBOUND, 'assertMsg "a bank reference is required; a screenshot is not a confirmation"', "testConfirmationNeedsABankReference"),
+    # The feed path duplicated both fences and had a test for only one of
+    # them. Same fence, different door, and the dangerous door.
+    (INBOUND, 'assertMsg "a bank reference is required (bank feed); a screenshot is not a confirmation"', "testBankFeedStillNeedsABankReference"),
+    (INBOUND, 'assertMsg "naira credited is short of the amount quoted (bank feed)"', "testBankFeedCannotConfirmAShortCredit"),
+    (INBOUND, 'assertMsg "naira credited is short of the amount quoted"', "testShortNairaCreditIsRefused"),
     (INBOUND, "naira has not been confirmed credited",         "testReleaseWithoutTheBankConfirmationIsRefused"),
     (INBOUND, "receiving wallet does not match",               "testCustomerCannotChangeTheReceivingWalletAtRelease"),
     (INBOUND, "sending on a different network",                "testCannotReleaseOnADifferentNetwork"),

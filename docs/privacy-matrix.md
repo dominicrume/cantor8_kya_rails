@@ -20,6 +20,7 @@ a claim and one read out of the contracts is a fact.*
 | `InboundDeal` | `operator` | `customer`, `principal`, `bankFeed` | **everyone else** |
 | `Release` | `operator` | `customer` | **everyone else** |
 | `ChargeRecord` | `owner`, `spender` | `payee` | **everyone else** |
+| `ChargeRefused` | `owner`, `spender` | — | `payee`, **everyone else** |
 | `KyaMandate` | `owner`, `spender` | — | **everyone else** |
 | `KyaMandateProposal` | `owner` | `spender` | **everyone else** |
 | `Settlement` | `operator` | `customer` | **everyone else** |
