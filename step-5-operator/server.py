@@ -121,12 +121,12 @@ class CycleDesk:
 
     # (asset, network, address, memo_required) -- approved by the principal
     ADDRESSES = [
-        ("USDT", "TRC20", "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", False),
-        ("USDT", "ERC20", "0x8f3aE9dB1B7B2f5F3aE44D9B3F1c8bA2E4d5C6f7", False),
-        ("BTC",  "BITCOIN", "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", False),
-        ("XRP",  "XRPL",  "rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh", True),
+        ("USDT", "TRC20", "TDEMOxxxxNOTxxxAxxxREALxxxADDRESSxx", False),
+        ("USDT", "ERC20", "0xDEM0000NOTAREALADDRESS0000000000DEM00000", False),
+        ("BTC",  "BITCOIN", "bc1qdemo000notareal000address000demo000000", False),
+        ("XRP",  "XRPL",  "rDEMOxxNOTxxAxxREALxxADDRESSxxxxxx", True),
     ]
-    OFFTAKERS = [("Supplier A", "USDT", "TRC20", "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t")]
+    OFFTAKERS = [("Supplier A", "USDT", "TRC20", "TDEMOxxxxNOTxxxAxxxREALxxxADDRESSxx")]
 
     def __init__(self):
         self.deals = {}

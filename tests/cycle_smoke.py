@@ -15,7 +15,7 @@ SERVER = os.path.join(HERE, "..", "step-5-operator", "server.py")
 PORT = "8422"
 BASE = "http://127.0.0.1:" + PORT
 
-TRC = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+TRC = "TDEMOxxxxNOTxxxAxxxREALxxxADDRESSxx"
 CUSTOMER_ACCT = "GTB 0123456789 / CHIDI OKAFOR"
 
 

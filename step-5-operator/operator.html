@@ -543,7 +543,7 @@ function dealActions(d){
       payDeal(d, d.payoutAccount));
     add('Route to off-taker', '', () =>
       post('/api/offtaker', {reference:d.reference, offtaker:'Supplier A',
-        address:'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'}).then(showResult));
+        address:'TDEMOxxxxNOTxxxAxxxREALxxxADDRESSxx'}).then(showResult));
   }
   if (d.state === 'WITH_OFFTAKER')
     add('Naira received in full', 'go', () =>

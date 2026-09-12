@@ -40,6 +40,8 @@
   .copy{width:100%;border:0;border-radius:10px;padding:12px;font-size:14px;font-weight:600;
         background:#22302a;color:var(--ink);margin-top:8px;cursor:pointer;font-family:inherit}
   .copy.done{background:var(--ok);color:#fff}
+  .mocked{background:#7a1220;color:#fff;border-radius:10px;padding:11px 13px;
+          margin:0 0 12px;font-size:13px;line-height:1.45;}
   .warn{background:#2b1a10;border:1px solid #6b4a1c;border-radius:10px;padding:12px;
         font-size:12.5px;color:#e8c9a0;margin-top:12px}
   .seal{font-family:var(--mono);font-size:10px;color:var(--dim);word-break:break-all;
@@ -127,6 +129,16 @@ function render(d){
       '<div class="val">' + esc(d.memo) + '</div>' + copyBtn(d.memo, 'Copy memo')
     : '';
   const deposit = at === 0 ? (
+    // Unmissable, above the amount, before the address, on the one screen a
+    // real person would be looking at with a wallet open. The addresses in
+    // this build are structurally invalid and no wallet will accept them --
+    // but a demo that shows "Send exactly 500 USDT" beside a QR code must say
+    // what it is in words, not rely on a checksum failing later. The four
+    // addresses here used to be real: one of them was the USDT TRC20 contract
+    // address, where coin is unrecoverable.
+    '<div class="mocked"><b>DEMO ONLY.</b> This is not a real payment request. ' +
+    'The address below is not a wallet, cannot receive anything, and will be ' +
+    'rejected if you try. Do not send money.</div>' +
     '<label>Send exactly</label>' +
     '<div class="big">' + esc(d.amount) + ' ' + esc(d.asset) + '</div>' +
     '<div class="sub">on the ' + esc(d.network) + ' network only</div>' +
