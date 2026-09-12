@@ -145,6 +145,96 @@ else:
     rc, out = run("bash", "tools/pre-commit")
     check(rc == 0, "tools/pre-commit exits 0 once nothing is in progress (%d)" % rc)
 
+# ------------------------------------------- 4b. a concurrent edit
+print()
+print("an edit made WHILE a run is going is not silently overwritten")
+# The harness holds the only copy of every target while it works, and it used
+# to copy all of them back before each row and again at the end. A full sweep
+# is eighty-odd rows and several minutes, README.md is a target, and so any
+# edit to a target made during the sweep was reverted with no error and no
+# diff. That happened during an audit and cost six corrected figures.
+#
+# reset() and restore() are exercised directly rather than by racing a real
+# sweep: a filtered run only backs up its own targets, so a race would pass
+# for the wrong reason, and an unfiltered one takes minutes.
+import importlib.util                                        # noqa: E402
+spec = importlib.util.spec_from_file_location(
+    "msuite", os.path.join(ROOT, "tests", "mutation_suite.py"))
+msuite = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(msuite)
+
+sandbox = tempfile.mkdtemp()
+untouched = os.path.join(sandbox, "untouched.txt")
+mutated = os.path.join(sandbox, "mutated.txt")
+open(untouched, "w").write("original\n")
+open(mutated, "w").write("original\n")
+baks = {}
+for name, full in (("untouched.txt", untouched), ("mutated.txt", mutated)):
+    bak = os.path.join(sandbox, name + ".bak")
+    shutil.copy(full, bak)
+    baks[name] = bak
+real_root, msuite.ROOT = msuite.ROOT, sandbox
+try:
+    wrote = {n: open(b, "rb").read() for n, b in baks.items()}
+    # One file the harness mutated, one a person edited meanwhile.
+    open(mutated, "w").write("MUTATED by the harness\n")
+    wrote["mutated.txt"] = open(mutated, "rb").read()
+    open(untouched, "w").write("original\nedited by a person mid-run\n")
+
+    left = msuite.reset(baks, wrote)
+    check(left == ["untouched.txt"],
+          "reset() declines the file somebody else changed (%s)" % left)
+    check("edited by a person" in open(untouched).read(),
+          "  and the person's edit is still there")
+    check(open(mutated).read() == "original\n",
+          "  while the harness's own mutation is put back")
+
+    # And again at the end of the run, which is the other place it happened.
+    open(untouched, "w").write("original\nedited again\n")
+    left = msuite.restore(baks, progress=os.path.join(sandbox, "p"), expected=wrote)
+    check("edited again" in open(untouched).read(),
+          "restore() declines it too, at the end of the run")
+finally:
+    msuite.ROOT = real_root
+    shutil.rmtree(sandbox, ignore_errors=True)
+
+# ------------------------------------------- 4c. two sweeps at once
+print()
+print("a second sweep refuses to start while one is already running")
+# Two at once corrupt the tree, and this is not theoretical. One sweep had
+# tests/devnet_check.py mutated when a second took its backups, so the second's
+# "original" WAS the first's mutation, and it restored that at the end.
+# `NEEDED = needed()` went back to `NEEDED = 3.5` -- the hardcoded constant
+# SHORTCUTS.md records as repaid, reintroduced by the harness meant to protect
+# it, caught one commit later by balance_lint and by nothing else.
+#
+# heal() must still clear the marker a KILLED run leaves behind, so the test is
+# that a LIVE pid is refused and a dead one is healed.
+live = os.path.join(tempfile.mkdtemp(), "in-progress")
+os.makedirs(live)
+with open(os.path.join(live, "manifest.json"), "w") as f:
+    json.dump({"started": "now", "pid": os.getpid(), "files": {}}, f)
+check(msuite.live_run(live) is None,
+      "our own pid is not another run")
+
+with open(os.path.join(live, "manifest.json"), "w") as f:
+    json.dump({"started": "now", "pid": os.getppid(), "files": {}}, f)
+check(msuite.live_run(live) == os.getppid(),
+      "a manifest naming a LIVE process is reported as a run in progress")
+
+# A pid that cannot exist: the marker is stale and heal() must clear it rather
+# than block every future run forever.
+with open(os.path.join(live, "manifest.json"), "w") as f:
+    json.dump({"started": "then", "pid": 2 ** 22, "files": {}}, f)
+check(msuite.live_run(live) is None,
+      "  and one naming a dead process is stale, so the next run heals it")
+
+with open(os.path.join(live, "manifest.json"), "w") as f:
+    f.write("{ not json")
+check(msuite.live_run(live) is None,
+      "  an unreadable manifest blocks nothing, because heal() handles it")
+shutil.rmtree(os.path.dirname(live), ignore_errors=True)
+
 # ------------------------------------------- 5. the foreign-repo harness
 print()
 print("the harness that runs on other people's code heals their tree too")

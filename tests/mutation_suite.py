@@ -37,6 +37,16 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # (label, file, find, replace, suite that must go red)
+#
+# `find` must appear EXACTLY ONCE in its file. Twice is worse than never: the
+# harness would replace the first occurrence, which is not necessarily the one
+# the row is about, and then report BLIND because nothing it cared about broke.
+#
+# A consequence worth stating so nobody rediscovers it the slow way: **no row
+# can target this file.** Its `find` text is written in the table below, so it
+# always occurs at least twice, and a row aiming at `live_run` spent an hour
+# quietly mutating its own row instead. Guards that live in here are covered by
+# direct assertions in tests/mutation_guard_smoke.py rather than by a row.
 MUTATIONS = [
     ("the page cannot detect a tampered chain",
      "step-3-verify/verifier.html",
@@ -273,10 +283,21 @@ MUTATIONS = [
      "        if False:",
      "python3 tests/release_readiness.py"),
 
+    # The SAME defect on the async path, which had no row at all. `with
+    # policy.lock:` occurs twice in guard.py -- once in attempt(), once in the
+    # async wrapper -- and the row below matched the first, so for as long as
+    # it has existed the async guard's atomicity was never tested. The async
+    # wrapper is the one an agent framework actually uses.
+    ("the cap check stops being atomic on the async path",
+     "pkg/src/knowyouragenticai_receipts/guard.py",
+     "                with policy.lock:",
+     "                if True:",
+     "python3 tests/release_readiness.py"),
+
     ("the cap check stops being atomic",
      "pkg/src/knowyouragenticai_receipts/guard.py",
-     "    with policy.lock:",
-     "    if True:",
+     "\n    with policy.lock:\n        allowed, rule, receipt = _decide(policy, chain, what,",
+     "\n    if True:\n        allowed, rule, receipt = _decide(policy, chain, what,",
      "python3 tests/release_readiness.py"),
 
     ("a **kwargs tool loses its amount again",
@@ -529,6 +550,26 @@ MUTATIONS = [
      '  | m.spent + amount >= m.cap    = Some "charge would exceed the cap"',
      "python3 tests/daml_tests.py"),
 
+    # The real rail. Until tests/devnet_parse_smoke.py existed, every one of
+    # these could have shipped: no suite ran this file.
+    ("the real rail goes back to exercising Charge, so refusals vanish again",
+     "step-2-agent/devnet_ledger.py",
+     '"templateId": TPL, "contractId": self.cid, "choice": "TryCharge",',
+     '"templateId": TPL, "contractId": self.cid, "choice": "Charge",',
+     "python3 tests/devnet_parse_smoke.py"),
+
+    ("a receipt claims a ledger reference for a refusal never committed",
+     "step-2-agent/devnet_ledger.py",
+     '        self.last_ledger_ref = ""\n\n        def attempt():',
+     '        def attempt():',
+     "python3 tests/devnet_parse_smoke.py"),
+
+    ("an unreadable refusal contract gets a rule invented for it",
+     "step-2-agent/devnet_ledger.py",
+     'return "REFUSED", rule or "refused on the ledger, rule unreadable"',
+     'return "REFUSED", rule or "charge would exceed the cap"',
+     "python3 tests/devnet_parse_smoke.py"),
+
     # The third copy. MockLedger.charge is what the demo and most tests run, so
     # a rule that drifts there drifts in front of the reader while every Daml
     # test stays green. Its docstring claimed it mirrored the contract line for
@@ -538,6 +579,21 @@ MUTATIONS = [
      '        if payee not in m["allowed"]:      return "REFUSED", "payee is not on the allow-list"',
      "",
      "python3 tests/fence_parity.py"),
+
+    # Boundary, not wording. The same flip that got through fence_parity on the
+    # Daml side gets through it on the Python side too, because both copies
+    # still say the same words in the same order.
+    ("the demo's mirror moves the cap boundary by one comparison",
+     "step-2-agent/agent.py",
+     'if m["spent"] + amount > m["cap"]: return "REFUSED", "charge would exceed the cap"',
+     'if m["spent"] + amount >= m["cap"]: return "REFUSED", "charge would exceed the cap"',
+     "python3 tests/mirror_boundaries.py"),
+
+    ("the demo's mirror stops checking the period window",
+     "step-2-agent/agent.py",
+     '        if m["period_limit"] is not None and used + amount > m["period_limit"]:',
+     '        if False:',
+     "python3 tests/mirror_boundaries.py"),
 
     ("the demo's mirror renames a rule the contract states",
      "step-2-agent/agent.py",
@@ -577,24 +633,123 @@ def run(suite):
     return r.returncode != 0, first[:74]
 
 
+def drop_bytecode(path):
+    """Delete the cached .pyc for a Python file that has just been rewritten.
+
+    Python decides a .pyc is fresh from the source's mtime and SIZE. A mutation
+    that swaps text of equal length, written within the same second as the
+    cached bytecode, satisfies both -- so the interpreter serves the old code
+    and the mutation is invisible to any suite that imports the module.
+
+    Found because one row kept coming back BLIND while the same mutation,
+    applied by hand with the cache cleared, turned the suite red. The two
+    strings were both exactly seventy characters. The failure is in the safe
+    direction -- a false BLIND, not a false ok -- but a harness that reports a
+    covered defect as uncovered teaches you to distrust its output, which costs
+    the same in the end.
+    """
+    if not path.endswith(".py"):
+        return
+    cache = os.path.join(os.path.dirname(os.path.join(ROOT, path)), "__pycache__")
+    stem = os.path.basename(path)[:-3] + "."
+    if not os.path.isdir(cache):
+        return
+    for name in os.listdir(cache):
+        if name.startswith(stem) and name.endswith(".pyc"):
+            try:
+                os.remove(os.path.join(cache, name))
+            except OSError:
+                pass
+
+
 def apply_one(path, find, replace):
-    """False if the text is not there -- a mutation that does not apply proves
-    nothing, and silently counting it as covered is how this fails quietly."""
+    """Apply one mutation. False if it cannot be applied exactly once.
+
+    Not there at all proves nothing, and silently counting that as covered is
+    how this fails quietly. THERE TWICE is worse, and it is the case this
+    function used to get wrong: it replaced the first occurrence, which is not
+    necessarily the one the row is about.
+
+    That bit a row targeting this very file. Its `find` text lives in the
+    MUTATIONS table above AND in the function the row is about, the table comes
+    first, and so every run mutated the table and left the code alone. The row
+    reported BLIND -- correctly, since nothing had been broken -- and the
+    obvious readings were all wrong: a stale .pyc, a failed write, a bad
+    restore. It was none of those. It was the same defect fence_lint had
+    already been taught to refuse a month earlier: a target that appears twice
+    cannot be changed by matching text.
+    """
     full = os.path.join(ROOT, path)
     src = open(full).read()
-    if find not in src:
+    found = src.count(find)
+    if found != 1:
         return False
     open(full, "w").write(src.replace(find, replace, 1))
+    drop_bytecode(path)
     return True
 
 
-def check_one(row, backups):
-    label, path, find, replace, suite = row
+def reset(backups, wrote):
+    """Put every target back before the next mutation, minus anything somebody
+    else has touched since.
+
+    This used to copy every backup over every target unconditionally, once per
+    row. A full sweep is eighty rows and several minutes, README.md is a
+    target, and so every edit made to a target file while the sweep ran was
+    silently overwritten. It happened during an audit: six corrected figures in
+    README.md went back to their stale values with no error and no diff, which
+    is the worst way to lose work because nothing tells you it is gone.
+
+    Returns the paths it declined to touch, so the caller can say so.
+    """
+    left = []
     for p, b in backups.items():
+        original = open(b, "rb").read()
+        if _changed_by_someone_else(p, original, wrote):
+            left.append(p)
+            continue
         shutil.copy(b, os.path.join(ROOT, p))
+        drop_bytecode(p)
+        if wrote is not None:
+            wrote[p] = original
+    return left
+
+
+def _changed_by_someone_else(path, original, wrote):
+    """Is this file neither its backup nor the last thing this run wrote?"""
+    mine = wrote.get(path) if wrote is not None else None
+    if mine is None:
+        return False
+    try:
+        now = open(os.path.join(ROOT, path), "rb").read()
+    except OSError:
+        return False
+    return now != original and now != mine
+
+
+def _why_stale(path, find):
+    """Why a mutation could not be applied, in words a reader can act on.
+
+    "Not found" and "found twice" call for opposite fixes -- update the row, or
+    make the target unique -- and reporting both as STALE with no reason sent
+    an hour into the wrong one.
+    """
+    times = open(os.path.join(ROOT, path)).read().count(find)
+    if times == 0:
+        return "text not found"
+    return "text appears %d times, so which one is ambiguous" % times
+
+
+def check_one(row, backups, wrote=None):
+    label, path, find, replace, suite = row
+    for p in reset(backups, wrote):
+        print("  LEFT ALONE %s: changed while this run was going." % p)
     if not apply_one(path, find, replace):
-        print("  STALE %-52s (text not found in %s)" % (label[:52], path))
+        print("  STALE %-52s (%s in %s)"
+              % (label[:52], _why_stale(path, find), path))
         return "stale"
+    if wrote is not None:
+        wrote[path] = open(os.path.join(ROOT, path), "rb").read()
     red, detail = run(suite)
     print("  %-5s %-52s %s" % ("ok" if red else "BLIND", label[:52], suite))
     if red and detail:
@@ -649,14 +804,54 @@ def take_backups(rows, progress=None):
         backups[p] = bak
     with open(os.path.join(progress, "manifest.json"), "w") as f:
         json.dump({"started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                   "pid": os.getpid(),
                    "files": backups}, f, indent=2)
     return backups
 
 
-def restore(backups, progress=None):
+def live_run(progress=None):
+    """The pid of another sweep that is running RIGHT NOW, or None.
+
+    Two sweeps at once corrupt the tree, and it is not a theoretical race: it
+    happened here. One sweep had tests/devnet_check.py mutated when the second
+    took its backups, so the second's "original" was the first's mutation, and
+    the second restored it at the end. `NEEDED = needed()` went back to
+    `NEEDED = 3.5` -- the exact hardcoded constant SHORTCUTS.md records as
+    repaid, silently reintroduced by the harness meant to protect it. Only
+    balance_lint caught it, one commit later.
+
+    heal() exists for a run that was KILLED, where the marker is stale and must
+    be cleared. The difference between stale and live is whether the process
+    that wrote the manifest is still there, so the manifest now says who.
+    """
     progress = progress or PROGRESS
-    for p, b in backups.items():
-        shutil.copy(b, os.path.join(ROOT, p))
+    manifest = os.path.join(progress, "manifest.json")
+    if not os.path.exists(manifest):
+        return None
+    try:
+        with open(manifest) as f:
+            pid = json.load(f).get("pid")
+    except (OSError, ValueError):
+        return None
+    if not isinstance(pid, int) or pid == os.getpid():
+        return None
+    try:
+        os.kill(pid, 0)           # signal 0: does this process exist?
+    except OSError:
+        return None               # gone, so the marker is stale: heal it
+    return pid
+
+
+def restore(backups, progress=None, expected=None):
+    """Put every target file back, without clobbering an edit made meanwhile.
+
+    Same rule as reset(), for the same reason, at the other end of the run.
+    """
+    progress = progress or PROGRESS
+    for p in reset(backups, expected if expected is not None else {}):
+        print("  LEFT ALONE %s: changed while this run was going." % p)
+        print("             Its backup is in %s if that was not intended."
+              % os.path.relpath(progress, ROOT))
     # The directory going away IS the "run finished cleanly" signal.
     shutil.rmtree(progress, ignore_errors=True)
     # Every generated artefact is built from a file that was just mutated, so
@@ -699,15 +894,28 @@ def main():
     rows = selected(only)
     if rows is None:
         return 1
+    other = live_run()
+    if other is not None:
+        print("Another mutation sweep is running (pid %d)." % other)
+        print()
+        print("Two at once corrupt the tree: the second takes its backups while")
+        print("the first has a file mutated, and then restores the mutation as")
+        print("though it were the original. That is how NEEDED = needed() went")
+        print("back to NEEDED = 3.5 in tests/devnet_check.py.")
+        print()
+        print("Wait for it to finish, or kill it and run again -- the next run")
+        print("heals whatever a killed one left behind.")
+        return 1
     print("Breaking %d real things, and requiring the suite to notice.\n" % len(rows))
     heal()
     backups = take_backups(rows)
+    wrote = {p: open(b, "rb").read() for p, b in backups.items()}
     results = []
     try:
         for row in rows:
-            results.append(check_one(row, backups))
+            results.append(check_one(row, backups, wrote))
     finally:
-        restore(backups)
+        restore(backups, expected=wrote)
     return report(rows, results)
 
 

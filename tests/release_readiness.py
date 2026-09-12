@@ -25,6 +25,7 @@ file could be loaded and extended, sealing every later receipt onto a lie.
 
 Run: python3 tests/release_readiness.py
 """
+import asyncio
 import json
 import os
 import sys
@@ -135,6 +136,85 @@ check(len(through) == 1,
       "  exactly one got through (%d), so the lock is doing the work" % len(through))
 check(verify(slow_chain.receipts)[0], "  and the chain is still intact")
 
+# ----------------------------------------------------- the same, but async
+print()
+print("and the async guard, which had no test for this at all")
+# `with policy.lock:` appears twice in guard.py -- once in attempt(), once in
+# the async wrapper -- and the mutation row matched the first. So for as long
+# as that row has existed, deleting the lock from the ASYNC path broke nothing
+# any suite noticed, on the path an agent framework actually uses. The row that
+# found this is "the cap check stops being atomic on the async path", and it
+# came back BLIND until these assertions existed.
+async_policy = Policy(cap="100.00", currency="USD", allow=["acme"])
+async_chain = async_policy.open()
+real_async_stamp = async_chain.stamp
+
+
+def dawdling_async_stamp(*a, **kw):
+    time.sleep(0.02)
+    return real_async_stamp(*a, **kw)
+
+
+async_chain.stamp = dawdling_async_stamp   # type: ignore[method-assign]
+async_through = []
+
+
+@guard(async_policy, async_chain)
+async def async_send(amount, payee):
+    async_through.append(amount)
+    return "ok"
+
+
+async_errors = []
+async_attempts = 0
+
+
+def async_worker():
+    # One event loop per thread: the point is concurrent OS threads contending
+    # for the policy lock, which is what the lock in the async wrapper guards.
+    # Coroutines on a single loop would serialise anyway and prove nothing.
+    global async_attempts
+    try:
+        asyncio.run(async_send("60.00", "acme"))
+    except Refused:
+        pass
+    except BaseException as exc:                 # noqa: BLE001 - reported, not hidden
+        async_errors.append("%s: %s" % (type(exc).__name__, exc))
+    finally:
+        async_attempts += 1
+
+
+gate3 = threading.Barrier(4)
+
+
+def gated_async_worker():
+    gate3.wait()
+    async_worker()
+
+
+ats = [threading.Thread(target=gated_async_worker) for _ in range(4)]
+for t in ats:
+    t.start()
+for t in ats:
+    t.join()
+async_paid = sum(float(a) for a in async_through)
+# Ran at all, BEFORE under-the-cap. "paid 0.00" satisfies "under the cap" and
+# is what a crashed worker produces: the first version of this block had a
+# missing import, every thread died, and the cap assertion reported PASS. A
+# check that cannot fail in the failing direction is the exact thing the rest
+# of this file is for.
+check(len(async_errors) == 0,
+      "every async worker ran without crashing (%s)"
+      % (", ".join(async_errors[:2]) or "no errors"))
+check(async_attempts == 4, "  all 4 attempts reached the guard (%d)" % async_attempts)
+check(async_paid <= 100.0,
+      "  4 async calls x 60.00 with a 20ms seal: paid %.2f, cap 100.00"
+      % async_paid)
+check(len(async_through) == 1,
+      "  exactly one got through (%d), so the async lock is doing the work"
+      % len(async_through))
+check(verify(async_chain.receipts)[0], "  and the chain is still intact")
+
 # ------------------------------------------------------------- argument shapes
 print()
 print("the guard finds the amount and the payee however the call is shaped")
@@ -225,8 +305,6 @@ except TypeError as e:
 # ------------------------------------------------------------------- async
 print()
 print("an async agent is recorded when it runs, not when it is called")
-
-import asyncio                                                # noqa: E402
 
 ap = Policy(cap="100.00", currency="USD", allow=["acme"])
 ac = ap.open()

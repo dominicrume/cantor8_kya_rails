@@ -51,6 +51,12 @@ SUITES = [
      "the Daml scripts, rebuilt from source, not from whatever DAR was on disk"),
     ("python3 tests/fence_parity.py", "The ledger",
      "the refusal written to the ledger names the rule that actually fired"),
+    # The real-rail code was the only code here no suite could run.
+    ("python3 tests/mirror_boundaries.py", "The ledger",
+     "the Python mirror refuses at exactly the boundaries the Daml does"),
+    ("python3 tests/devnet_parse_smoke.py", "The ledger",
+     "the DevNet path reads the rule off the contract, and claims no "
+     "reference for a refusal that was never committed"),
     ("python3 tests/anchor_smoke.py", "The ledger",
      "a forged chain verifies internally and still answers NOT ANCHORED"),
 

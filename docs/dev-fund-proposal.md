@@ -100,13 +100,13 @@ re-verified on 2026-09-06 and defensible on request:
 
 | | |
 |---|---|
-| Daml attack scripts | 92 of 92 pass; 28 of 42 template choices exercised, the other 14 are Daml's auto-generated `Archive` |
+| Daml attack scripts | 100 of 100 pass; 30 of 44 template choices exercised, the other 14 are Daml's auto-generated `Archive` |
 | Fence coverage | 30 of 30 `assertMsg` fences mutation-tested — deleting any one turns a **named** test red |
 | Suite integrity | 23 real defects introduced deliberately, each requiring the suite that claims to cover it to fail; every one does |
-| Format agreement | 3 independent implementations (Python, JavaScript, Go) across 16 conformance vectors |
+| Format agreement | 3 independent implementations (Python, JavaScript, Go) across 20 conformance vectors |
 | Interface robustness | 553 malformed requests over every route and field; zero dropped connections, zero server errors |
-| Deployed | `kya-rails-mandate` **1.1.1** built on SDK 3.4.11 (92/92 scripts); **1.1.0** is what is vetted on Canton DevNet, as an upgrade of 1.0.0 |
-| Installable today | `pip install knowyouragenticai-receipts` — 1.0.0, MIT, **zero dependencies**, with the conformance vectors inside it so `python -m knowyouragenticai_receipts selftest` reports 16/16 offline |
+| Deployed | `kya-rails-mandate` **1.1.1** built on SDK 3.4.11 (100/100 scripts); **1.1.0** is what is vetted on Canton DevNet, as an upgrade of 1.0.0 |
+| Installable today | `pip install knowyouragenticai-receipts` — **1.1.0**, MIT, **zero dependencies**, with the conformance vectors inside it so `python -m knowyouragenticai_receipts selftest` reports 20/20 offline |
 
 Two of the 16 vectors exist because the question asked was which *wrong*
 implementations would still pass. Two did.

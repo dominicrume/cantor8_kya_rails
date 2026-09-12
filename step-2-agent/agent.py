@@ -38,6 +38,12 @@ class MockLedger:
 
     label = "MOCKED (mirrors KyaMandate.daml; real rail = --devnet)"
     currency, instrument = "CC", "Amulet (MOCKED, no coin moves)"
+    # Always empty, and that is the honest answer rather than an omission. A
+    # ledger reference points at a ChargeRefused contract on Canton. There is
+    # no Canton here, so there is nothing to point at, and a mock that invented
+    # a plausible-looking contract id would be manufacturing exactly the kind
+    # of evidence this project exists to make checkable.
+    last_ledger_ref = ""
 
     def name(self, role):
         """A payee this desk does not recognise is the single most important
@@ -174,7 +180,7 @@ def main(argv):
     ]:
         outcome, rule = L.charge(amount, payee)
         chain.stamp(what, amount, L.name(payee), rule, outcome, SIGNED_BY,
-                    L.label, L.currency, L.instrument)
+                    L.label, L.currency, L.instrument, L.last_ledger_ref)
 
     # Expiry gets its own mandate, as testAfterExpiryRefused uses a fresh
     # deskWithExpiry plus passTime. Attacking the live mandate after Revoke
@@ -183,14 +189,14 @@ def main(argv):
     outcome, rule = L.charge(0.1, "customer")
     chain.stamp("ATTACK: payout after the mandate expired", 0.1, L.name("customer"),
                 rule, outcome, SIGNED_BY + ", clock past expiresAt",
-                L.label, L.currency, L.instrument)
+                L.label, L.currency, L.instrument, L.last_ledger_ref)
 
     L.open_mandate(cap=0.5)
     L.revoke()
     outcome, rule = L.charge(0.1, "customer")
     chain.stamp("ATTACK: payout after the principal revoked", 0.1, L.name("customer"),
                 rule, outcome, "principal exercised Revoke",
-                L.label, L.currency, L.instrument)
+                L.label, L.currency, L.instrument, L.last_ledger_ref)
 
     ok, bad = chain.verify()
     chain.write_js(receipts_path())

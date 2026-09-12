@@ -138,7 +138,67 @@ CLAIMS = [
     (r"and now \*\*(\d+) of \d+\*\* refusals",
      lambda: passes_in("tests/mutation_py.py"),
      "mutation_py refusals"),
+
+    # Added after the README carried "92 / 92 daml test scripts" in five places
+    # while the suite ran 100. Nothing checked it, so it was true once and then
+    # quietly was not, in the row that tells a judge the ledger is tested. The
+    # Daml count is read from tests/mutation.py's manifest and from a real run
+    # rather than from a second written-down number.
+    (r"\*\*(\d+) / \d+\*\* `daml test` scripts",
+     lambda: daml_script_count(),
+     "daml scripts"),
+    (r"all \*\*(\d+)\*\* in the Daml",
+     lambda: fence_count(),
+     "daml fences under mutation"),
+
+    # The README said 16 conformance vectors in three places, and the file had
+    # 20. Four vectors were added across three commits and no line that quotes
+    # the number was one of the files those commits touched, which is precisely
+    # the failure mode this lint exists for.
+    (r"\[(\d+) conformance vectors\]\(tests/vectors\.json\)",
+     lambda: vector_count(),
+     "conformance vectors"),
 ]
+def vector_count():
+    """How many conformance vectors there are, from the file itself."""
+    import json
+    with open(os.path.join(ROOT, "tests", "vectors.json")) as f:
+        return len(json.load(f)["cases"])
+
+
+def fence_count():
+    """How many fences the mutation manifest covers, read from the manifest."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "mut_count", os.path.join(ROOT, "tests", "mutation.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return len(mod.FENCES)
+
+
+def daml_script_count():
+    """How many Daml scripts there are, counted by running them.
+
+    Deliberately a real run and not a grep for `: Script ()`. A script that
+    exists and does not run is not a script that passed, and this number is
+    quoted to a judge as evidence that the ledger is tested. If the toolchain
+    is missing this returns -1, which fails the check loudly rather than
+    letting the README's number stand unexamined.
+    """
+    import subprocess  # nosec B404 - fixed argv, no shell
+    import shutil
+    if shutil.which("daml") is None:
+        return -1
+    test_dir = os.path.join(ROOT, "step-1-mandate", "test")
+    subprocess.run(  # nosec B603 B607 - literal argv
+        ["daml", "build", "--no-legacy-assistant-warning"],
+        cwd=os.path.dirname(test_dir), capture_output=True)
+    p = subprocess.run(  # nosec B603 B607 - literal argv
+        ["daml", "test", "--no-legacy-assistant-warning"],
+        cwd=test_dir, capture_output=True, text=True)
+    return (p.stdout + p.stderr).count(": ok,")
+
+
 for pattern, truth, label in CLAIMS:
     m = re.search(pattern, md)
     if not m:

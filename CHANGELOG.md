@@ -11,6 +11,47 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ---
 
+## [Unreleased]
+
+Not published. `pip install knowyouragenticai-receipts` still gets 1.1.0.
+
+### Added
+
+- **`disclose()` and `check_disclosure()` — hand over the refusals without the
+  book.** SPEC §6b. Slicing refusals out of a chain by hand produces a file
+  that fails verification, because every seal covers the one before it; handing
+  over the whole chain discloses every accepted payment, which for a regulated
+  issuer is the reason they could not use it. A disclosure keeps every entry's
+  position, outcome, link and seal, and carries the body only for the entries
+  being shown. Nothing can be removed from it undetected, and it declares in
+  its own text what it is showing, which is what makes a withheld entry's
+  outcome checkable at all. `refusals_only()` is the default rule and is
+  exported, so a caller can pass their own without guessing what the default
+  did; it shows everything whose outcome is not ACCEPTED, which includes the
+  sealed policy, because "would exceed the cap" is half a sentence without the
+  cap beside it.
+- **`what_this_reveals()` — what your own disclosure gives away.** Warns the
+  producer, before they send, when a refusal they are showing quotes a withheld
+  value. It also catches the leak that is not any single value: a cap refusal
+  reading `180000.00 + 95000.00 > 250000.00` states the running total, and that
+  total is the withheld payments added up.
+- **`assurance()` and the levels `SELF_ATTESTED`, `ANCHORED`,
+  `LEDGER_RECORDED`.** SPEC §6a. The level is computed by the verifier from
+  what it substantiated and is never read from a field, because a level a
+  producer can write down is a level a producer can assert into being. There is
+  deliberately no `ledger-enforced` level.
+- **`ledger_ref`, an optional receipt field.** Names the ledger record of a
+  refusal, so a reader can check it against something the producer did not
+  write. It is an address, not evidence: naming one raises no level by itself.
+  Present only on receipts that have one, so no existing chain's seal changes.
+- **`GENESIS` and `PolicyError` are named in the public API**, which they
+  already were in `__all__` and were never written down here.
+
+### Changed
+
+- Nothing that alters a seal. Every 1.0.0 and 1.1.0 chain verifies unchanged,
+  and the conformance vectors for them are byte-identical.
+
 ## [1.1.0] — 2026-09-10
 
 ### Added

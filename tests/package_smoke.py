@@ -40,6 +40,22 @@ shipped = json.load(open(os.path.join(ROOT, "pkg", "src", "knowyouragenticai_rec
                                       "vectors.json")))
 check(shipped == vectors, "the vectors shipped in the package are the repository's")
 
+# Every public name is written down where a user of the package would look.
+#
+# Ten of the twenty-one were not: assurance, disclose, check_disclosure,
+# what_this_reveals, the three level constants and three more. They landed
+# across several commits, each of which changed the code and the spec and left
+# the changelog alone, so the package grew a third of its surface without a
+# line of release notes. A name nobody wrote down is a name nobody can be told
+# about, and for a format meant to outlive the code that wrote it that is worse
+# than a missing feature.
+import knowyouragenticai_receipts as _pkg                      # noqa: E402
+changelog = open(os.path.join(ROOT, "CHANGELOG.md")).read()
+undocumented = [n for n in _pkg.__all__ if n not in changelog]
+check(not undocumented,
+      "every public name appears in CHANGELOG.md"
+      + (": missing %s" % undocumented if undocumented else ""))
+
 # Byte-identical, not merely both-conformant. Two implementations can each
 # pass every vector and still disagree on an input no vector covers.
 bodies = [c["body"] for c in vectors["cases"] if "body" in c]
