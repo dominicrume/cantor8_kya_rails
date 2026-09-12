@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Run the Daml suite, from the float, every time.
+"""Run the Daml suite, from the float, against the source rather than an artefact.
 
-Until this file existed the Daml tests ran when somebody remembered to run
-them. Every other suite in tools/dashboard.py went green on the strength of
-Python and JavaScript, and the layer that actually enforces the spending rules
-was checked by hand.
+tools/dashboard.py already ran `daml test` and already gated on its exit code,
+so this is not a suite that was missing. What it was doing is running from the
+test package without rebuilding the mandate first, which means it checked
+whatever DAR happened to be sitting on disk. Edit a spending fence, run the
+dashboard, watch it go green against the old code.
 
-That is the wrong way round. The README says the cap is enforced in Daml and a
-cap checked in Python is a suggestion. If that is true then the Daml tests are
-the most important ones in the repository, and they were the only ones not in
-the float.
+The README says the cap is enforced in Daml and that a cap checked in Python is
+a suggestion. If that is true, this is the most important suite here, and it was
+the one reading a build artefact instead of the file a person just changed.
 
-`daml test` exits 0 even when scripts fail, so the output is parsed rather than
-trusted: any line that is not `ok` is a failure, and zero scripts run is a
-failure too, because a suite that ran nothing is not a suite that passed.
+On this SDK `daml test` does exit non-zero when a script fails, which was worth
+checking rather than assuming: an earlier version of this docstring asserted the
+opposite. The output is still parsed, for the case the exit code cannot express
+-- zero scripts run. A compile error or a renamed module can leave a suite that
+ran nothing, and a suite that ran nothing is not a suite that passed.
 
 Run: python3 tests/daml_tests.py
 """
@@ -45,11 +47,13 @@ print("the ledger's own tests, which enforce what Python only reports")
 # checks whatever DAR is sitting on disk, not the source next to it. Edit a
 # spending fence, run the tests, and they pass against the old code.
 #
-# The mutation harness is how this surfaced. Deleting the allow-list rule from
-# refusalReason came back BLIND: no suite noticed, because no suite was reading
-# the file that changed. The same repository already has a commit called "The
-# bundle I shipped was built from mutated source"; this is that mistake
-# pointing the other way, and it had been live the whole time.
+# tools/dashboard.py did run `daml test` before this file existed, and did gate
+# on its exit code, so the suite was not missing. It ran the same way: from the
+# test package, against the DAR already on disk. Both were reading an artefact
+# rather than the source, which is why deleting the allow-list rule from
+# refusalReason came back BLIND from the mutation harness. The same repository
+# already has a commit called "The bundle I shipped was built from mutated
+# source"; this is that mistake pointing the other way.
 build = subprocess.run(  # nosec B603 B607 - literal argv, no shell
     ["daml", "build", "--no-legacy-assistant-warning"],
     cwd=os.path.dirname(TEST), capture_output=True, text=True)
@@ -70,8 +74,9 @@ out = r.stdout + r.stderr
 results = re.findall(r"^(\S+\.daml:\S+?):\s*(ok|fail)", out, re.MULTILINE)
 bad = [name for name, verdict in results if verdict != "ok"]
 
-# A compile error produces no result lines at all, and `daml test` can still
-# exit 0. Zero scripts is the loudest possible failure, not a quiet pass.
+# A compile error produces no result lines at all. The exit code covers that
+# here, but zero scripts is worth failing on in its own right: it is the one
+# outcome that looks like success from every angle except this one.
 if not results:
     print("  FAIL no Daml scripts ran at all")
     print()

@@ -536,3 +536,65 @@ testTheOperatorCanArchiveARefusalButNotSilently = script do
       submitMulti [b.principal, b.operator] [] do exerciseCmd rid Archive
       gone <- queryContractId b.principal rid
       assertMsg "the refusal survived an authorised archive" (gone == None)
+
+-- Do Charge and TryCharge reach the same verdict on the same attempt?
+--
+-- They state the same rules in two different places: `Charge` as assertMsg
+-- lines, `refusalReason` as guards. tests/fence_parity.py checks that the
+-- MESSAGES match and fire in the same order, and that is not the same thing as
+-- the PREDICATES matching.
+--
+-- Demonstrated rather than assumed. Flipping `>` to `>=` in refusalReason
+-- alone, leaving every message and its order untouched, passed fence_parity,
+-- passed fence_lint, and passed all 98 Daml scripts. A charge landing exactly
+-- on the cap was then refused by one path and accepted by the other, which is
+-- a spending rule that depends on which function the caller happened to use.
+--
+-- Two identical mandates, because TryCharge consumes the one it is given and
+-- the comparison has to start from the same state on both sides.
+bothAgree : Decimal -> Decimal -> Bool -> Script ()
+bothAgree prespend amount toAllowed = script do
+  (b1, m1) <- book
+  (b2, m2) <- book
+  m1' <- if prespend > 0.0
+           then submit b1.operator do
+                  exerciseCmd m1 Charge with
+                    amount = prespend; payee = b1.recipient; memo = "setup"
+           else pure m1
+  m2' <- if prespend > 0.0
+           then submit b2.operator do
+                  exerciseCmd m2 Charge with
+                    amount = prespend; payee = b2.recipient; memo = "setup"
+           else pure m2
+  let p1 = if toAllowed then b1.recipient else b1.unverified
+  let p2 = if toAllowed then b2.recipient else b2.unverified
+  r <- submit b1.operator do
+    exerciseCmd m1' TryCharge with amount; payee = p1; memo = "probe"
+  case r.refusal of
+    Some _ ->
+      -- TryCharge refused it, so Charge must abort on the same input.
+      submitMustFail b2.operator do
+        exerciseCmd m2' Charge with amount; payee = p2; memo = "probe"
+    None -> do
+      -- TryCharge let it through, so Charge must let it through too.
+      _ <- submit b2.operator do
+        exerciseCmd m2' Charge with amount; payee = p2; memo = "probe"
+      pure ()
+
+-- 20. The cap boundary, from both sides, on both paths. Cap is 100.
+testChargeAndTryChargeAgreeOnTheCapBoundary : Script ()
+testChargeAndTryChargeAgreeOnTheCapBoundary = script do
+  bothAgree 0.0 99.99 True        -- just under
+  bothAgree 0.0 100.0 True        -- EXACTLY the cap: the case that diverged
+  bothAgree 0.0 100.01 True       -- just over
+  bothAgree 60.0 40.0 True        -- reaching the cap exactly, after a spend
+  bothAgree 60.0 40.01 True       -- one hundredth over, after a spend
+
+-- 21. And the other four rules at their own edges.
+testChargeAndTryChargeAgreeOnTheOtherRules : Script ()
+testChargeAndTryChargeAgreeOnTheOtherRules = script do
+  bothAgree 0.0 0.0 True          -- zero is not a positive amount
+  bothAgree 0.0 (-0.01) True      -- negative
+  bothAgree 0.0 0.01 True         -- the smallest amount that is positive
+  bothAgree 0.0 10.0 False        -- a payee nobody authorised
+  bothAgree 0.0 100.01 False      -- over the cap AND not allow-listed

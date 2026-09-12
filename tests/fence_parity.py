@@ -72,6 +72,42 @@ check(not extra,
 check(asserted == recorded,
       "and they fire in the same order, so the same attempt gets the same reason")
 
+# The THIRD copy, which is the one people actually see.
+#
+# MockLedger.charge in step-2-agent/agent.py restates the same rules in Python.
+# Its docstring says it "mirrors the assertions in KyaMandate.daml, line for
+# line", and until this check existed nothing held it to that. The mock is what
+# the demo runs and what most tests run, so a rule that drifts there is a rule
+# that drifts in front of the reader while every Daml test stays green.
+mock_src = open(os.path.join(ROOT, "step-2-agent", "agent.py")).read()
+mock_charge = mock_src[mock_src.index("    def charge(self, amount, payee):"):]
+mock_charge = mock_charge[:mock_charge.index("\n    def ")]
+mock_said = re.findall(r'return "REFUSED", "([^"]+)"', mock_charge)
+
+print()
+print("and the Python mirror, which is what the demo actually runs")
+check(bool(mock_said), "MockLedger.charge still refuses with named rules (%d)"
+      % len(mock_said))
+
+# The mock refuses one thing the Daml choice body does not: a revoked mandate.
+# On the ledger Revoke is consuming, so there is no contract left to charge
+# against and no assertion is needed. The mock has no such thing as an archived
+# contract, so it carries the rule explicitly. Named here rather than filtered
+# silently, because an unexplained exception is how a real drift gets waved
+# through.
+NOT_IN_DAML = ["Revoke: mandate no longer active on the ledger"]
+mock_rules = [m for m in mock_said if m not in NOT_IN_DAML]
+check(all(any(n in m for n in NOT_IN_DAML) or m in asserted for m in mock_said),
+      "  every rule the mock states is a rule the contract states"
+      + ("" if all(m in asserted for m in mock_rules)
+         else ": %s" % [m for m in mock_rules if m not in asserted]))
+missing_from_mock = [m for m in asserted if m not in mock_said]
+check(not missing_from_mock,
+      "  and every rule the contract enforces, the mock enforces too"
+      + (": missing %s" % missing_from_mock if missing_from_mock else ""))
+check(mock_rules == [m for m in asserted if m in mock_rules],
+      "  in the same order, so the same attempt gets the same reason on both")
+
 # The Daml test that holds each recorded message to its own fence. Without
 # these, the lists above could agree with each other and both be wrong.
 tests = open(os.path.join(ROOT, "step-1-mandate", "test", "daml", "KyaTest.daml")).read()

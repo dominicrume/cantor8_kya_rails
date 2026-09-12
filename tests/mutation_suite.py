@@ -517,6 +517,34 @@ MUTATIONS = [
      "              refusal = None",
      "python3 tests/daml_tests.py"),
 
+    # The drift fence_parity CANNOT see. It compares the messages and their
+    # order, and two predicates can disagree while saying the same words. This
+    # exact mutation passed fence_parity, fence_lint and all 98 Daml scripts
+    # before testChargeAndTryChargeAgreeOnTheCapBoundary existed: a charge
+    # landing exactly on the cap was refused by one path and accepted by the
+    # other, which makes a spending rule depend on which function was called.
+    ("the two paths disagree about a charge that lands exactly on the cap",
+     "step-1-mandate/daml/KyaMandate.daml",
+     '  | m.spent + amount > m.cap     = Some "charge would exceed the cap"',
+     '  | m.spent + amount >= m.cap    = Some "charge would exceed the cap"',
+     "python3 tests/daml_tests.py"),
+
+    # The third copy. MockLedger.charge is what the demo and most tests run, so
+    # a rule that drifts there drifts in front of the reader while every Daml
+    # test stays green. Its docstring claimed it mirrored the contract line for
+    # line and nothing held it to that until fence_parity grew a third column.
+    ("the demo's mirror stops refusing an unauthorised payee",
+     "step-2-agent/agent.py",
+     '        if payee not in m["allowed"]:      return "REFUSED", "payee is not on the allow-list"',
+     "",
+     "python3 tests/fence_parity.py"),
+
+    ("the demo's mirror renames a rule the contract states",
+     "step-2-agent/agent.py",
+     'return "REFUSED", "charge would exceed the cap"',
+     'return "REFUSED", "a routine limit"',
+     "python3 tests/fence_parity.py"),
+
     ("the recorded reason drifts from the rule that fired",
      "step-1-mandate/daml/KyaMandate.daml",
      '  | m.spent + amount > m.cap     = Some "charge would exceed the cap"',
