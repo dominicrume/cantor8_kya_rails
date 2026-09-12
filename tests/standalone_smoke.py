@@ -90,6 +90,12 @@ check("function origin(" in page,
       "and the origin panel, which is the only part that answers WHO")
 check("function checker(" in page,
       "and the file checker, which is the only part a non-developer can use")
+# SPEC 6b. A disclosure is the file an issuer actually sends. If the fold drops
+# this, the handout reports it as a tampered chain, which is the one verdict
+# this page must never reach by accident.
+for part in ("function looksLikeDisclosure", "async function checkDisclosure",
+             "function discloseCards"):
+    check(part in page, "and %s, so a disclosure is read as one" % part)
 
 # --- the hosted copy must be the same page --------------------------------
 # A URL that shows a different chain from the file people are handed is worse
@@ -101,7 +107,9 @@ if os.path.exists(PAGES):
     hosted = open(PAGES).read()
     check(receipts_from(hosted) == receipts_from(page),
           "the hosted page carries exactly the same chain as the handout")
-    for control in ("cDrop", "cFile", "function checker(", "function origin("):
+    for control in ("cDrop", "cFile", "function checker(", "function origin(",
+                    "function looksLikeDisclosure", "async function checkDisclosure",
+                    "function discloseCards"):
         check(control in hosted, "the hosted page kept %s" % control)
     check(not re.search(r'<(script|link)[^>]+(src|href)=[\'"]https?://', hosted),
           "and fetches nothing from the network")
