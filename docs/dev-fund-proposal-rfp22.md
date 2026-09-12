@@ -156,9 +156,9 @@ dependency to any package, and produces no on-ledger artefact.
 
 ## Milestones and Deliverables
 
-Twelve weeks, four milestones. Milestones 3 and 4 are accepted on Daml projects
-outside the applicant's control running it and acting on the output — named in the
-submission, and checkable by anyone.
+Twelve weeks, four milestones. Milestones 3 and 4 are accepted on the harness
+running inside Daml projects the applicant does not own, delivered as merged pull
+requests the committee can open and read.
 
 ### Milestone 1: Standalone harness, and whether it should exist separately
 - **Estimated Delivery:** Week 3
@@ -182,7 +182,7 @@ submission, and checkable by anyone.
 - **Estimated Delivery:** Week 9
 - **Focus:** Somebody else finds a real uncovered fence.
 - **Deliverables / Value Metrics:**
-  - Integration support for projects adopting the tool, with the work done by those teams.
+  - Integration into **two Daml projects the applicant does not own**, delivered as a pull request to each, with the applicant writing the integration and the host team reviewing and merging it. A harness nobody has heard of does not get adopted; it gets merged when somebody else writes the patch.
   - **Value metric:** **three Daml projects outside the applicant's control running it in CI, and at least one previously-uncovered fence found in a codebase the applicant did not write** — reported publicly with that project's consent, or privately to them with only the count disclosed.
 
 ### Milestone 4: Handover
@@ -238,10 +238,12 @@ maintenance.
 - Milestone 3 *(Adoption by Daml projects)*: 50,000 CC upon committee acceptance
 - Milestone 4 *(Handover)*: 50,000 CC upon final release and acceptance
 
-Milestones 3 and 4 are accepted on adoption by parties other than the applicant —
-external Daml projects running the harness and acting on its output, named in the
-submission and independently checkable. Nothing is paid for a milestone that is not
-delivered, which is what the structure above already means.
+Milestones 3 and 4 are accepted on integration rather than adoption: merged pull
+requests in Daml repositories the applicant does not own, each running the harness
+in that project's own CI, named in the submission and openable by anyone. Nothing
+is paid for a milestone that is not delivered, which is what the structure above
+already means. Waiting to be adopted is waiting to be chosen. Writing the pull
+request is work that can start on Monday.
 
 ### Volatility Stipulation
 

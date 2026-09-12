@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "knowyouragenticai-receipts"
 version = "1.1.0"
-description = "Let an AI agent pay, and prove what it could not. A tamper-evident record of every payment attempt, including the refusals, for agent-operated wallets. Built for Canton Network; works anywhere. Zero dependencies."
+description = "The evidence layer that sits under an agent platform. A platform decides what an agent may do; this records what it tried and was refused, sealed so the other side can check it without trusting whoever ran the agent. Every attempt is a receipt, refusals included, and each seals onto the last. Verifiable in a browser with nothing installed. Zero dependencies."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }

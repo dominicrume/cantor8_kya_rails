@@ -1,0 +1,111 @@
+{
+  "kind": "know-your-agenticai-disclosure",
+  "spec": "1.2",
+  "count": 7,
+  "head": "b08236b451d96070a1675ea54d03a203dfeabf89af3fc29ceac60853dd9643be",
+  "shown": 4,
+  "disclosing": "every entry whose outcome is not ACCEPTED",
+  "entries": [
+    {
+      "n": 1,
+      "outcome": "POLICY",
+      "prev": "GENESIS",
+      "seal": "2f50f4ade17af62eae16a5d71294acbd8f00f3f4602277fe3d8399a41ef10f8f",
+      "body": {
+        "n": 1,
+        "what": "policy in force",
+        "amount": "250000.00",
+        "payee": "merchant-4471,merchant-8820,treasury-ops",
+        "currency": "USD",
+        "instrument": "policy",
+        "rule": "cap=250000.00 USD; allow=[merchant-4471,merchant-8820,treasury-ops]; period=86400s",
+        "outcome": "POLICY",
+        "approved_by": "the principal, before the agent ran",
+        "ledger": "self-attested (no ledger)",
+        "at": "2026-09-12T03:42:44Z",
+        "prev": "GENESIS"
+      }
+    },
+    {
+      "n": 2,
+      "outcome": "ACCEPTED",
+      "prev": "2f50f4ade17af62eae16a5d71294acbd8f00f3f4602277fe3d8399a41ef10f8f",
+      "seal": "809921db7ccdf60d6f8a4ec8cb57094289f5cb5fc4f37895f83233095bcfcffb",
+      "withheld": true
+    },
+    {
+      "n": 3,
+      "outcome": "ACCEPTED",
+      "prev": "809921db7ccdf60d6f8a4ec8cb57094289f5cb5fc4f37895f83233095bcfcffb",
+      "seal": "6e51ccce7660abac929ffc600762553f69394934db563d6e71fad159752511d4",
+      "withheld": true
+    },
+    {
+      "n": 4,
+      "outcome": "REFUSED",
+      "prev": "6e51ccce7660abac929ffc600762553f69394934db563d6e71fad159752511d4",
+      "seal": "42a99aa81facf9559552a2b07bf801ddd50a9b7847c491b2856c067ffad14386",
+      "body": {
+        "n": 4,
+        "what": "settle",
+        "amount": "95000.00",
+        "payee": "merchant-4471",
+        "currency": "USD",
+        "instrument": "policy-governed action",
+        "rule": "would exceed the cap: 180000.00 + 95000.00 > 250000.00 USD",
+        "outcome": "REFUSED",
+        "approved_by": "the mandate, checked before the call",
+        "ledger": "self-attested (the operator's own process refused)",
+        "at": "2026-09-12T03:42:44Z",
+        "prev": "6e51ccce7660abac929ffc600762553f69394934db563d6e71fad159752511d4"
+      }
+    },
+    {
+      "n": 5,
+      "outcome": "REFUSED",
+      "prev": "42a99aa81facf9559552a2b07bf801ddd50a9b7847c491b2856c067ffad14386",
+      "seal": "21e9396b586b5989cba306fc3e5bc4bee523c8fa29e2bf2dc4d0dd59d1bbcb3b",
+      "body": {
+        "n": 5,
+        "what": "settle",
+        "amount": "5000.00",
+        "payee": "merchant-9902",
+        "currency": "USD",
+        "instrument": "policy-governed action",
+        "rule": "payee is not on the allow-list: merchant-9902",
+        "outcome": "REFUSED",
+        "approved_by": "the mandate, checked before the call",
+        "ledger": "self-attested (the operator's own process refused)",
+        "at": "2026-09-12T03:42:44Z",
+        "prev": "42a99aa81facf9559552a2b07bf801ddd50a9b7847c491b2856c067ffad14386"
+      }
+    },
+    {
+      "n": 6,
+      "outcome": "ACCEPTED",
+      "prev": "21e9396b586b5989cba306fc3e5bc4bee523c8fa29e2bf2dc4d0dd59d1bbcb3b",
+      "seal": "1183c62d57224549a2b65853e0db9ceade50af16744e0f065c14653a3b24ff65",
+      "withheld": true
+    },
+    {
+      "n": 7,
+      "outcome": "REFUSED",
+      "prev": "1183c62d57224549a2b65853e0db9ceade50af16744e0f065c14653a3b24ff65",
+      "seal": "b08236b451d96070a1675ea54d03a203dfeabf89af3fc29ceac60853dd9643be",
+      "body": {
+        "n": 7,
+        "what": "settle",
+        "amount": "-250.00",
+        "payee": "merchant-4471",
+        "currency": "USD",
+        "instrument": "policy-governed action",
+        "rule": "amount cannot be negative (-250.00)",
+        "outcome": "REFUSED",
+        "approved_by": "the mandate, checked before the call",
+        "ledger": "self-attested (the operator's own process refused)",
+        "at": "2026-09-12T03:42:44Z",
+        "prev": "1183c62d57224549a2b65853e0db9ceade50af16744e0f065c14653a3b24ff65"
+      }
+    }
+  ]
+}

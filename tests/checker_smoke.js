@@ -56,7 +56,8 @@ function harness() {
                        addEventListener(e, f){ this._on[e] = f; }});
   const nodes = {cDrop: node(), cFile: node(), cVerdict: node(), cPrompt: node()};
   const ctx = {
-    document: {getElementById: id => nodes[id] || null, addEventListener(){}},
+    document: {getElementById: id => nodes[id] || null, addEventListener(){},
+               createElement: () => node()},
     setTimeout, console,
     // Node has no WebCrypto under this name in every version; the page uses
     // crypto.subtle.digest. This is the ONE thing supplied, because it is the
@@ -73,6 +74,11 @@ function harness() {
   vm.runInContext(fromPage('async function sha256', "join(''); }"), ctx);
   vm.runInContext(fromPage('async function badFrom', 'return 0; }'), ctx);
   vm.runInContext(fromPage('const esc =', "[c]));"), ctx);
+  // SPEC 6b. The disclosure path and the two helpers its cards render through.
+  vm.runInContext(fromPage('function looksLikeDisclosure', "(!!e.body !== !!e.withheld));\n}"), ctx);
+  vm.runInContext(fromPage('async function checkDisclosure', "withheld:es.length-shown};\n}"), ctx);
+  vm.runInContext(fromPage('const SYMBOL =',
+    "const tagClass = r => NEUTRAL[r.outcome] ? 'rule' : (GOOD[r.outcome] ? 'ok' : 'no');"), ctx);
   ctx.FileReader = class {
     readAsText(f) { this.result = f._text; setTimeout(() => this.onload && this.onload(), 0); }
   };
@@ -223,6 +229,107 @@ function verdictFor(name, text) {
   check(colour(pol) === 'rule', 'a POLICY entry is neither green nor red');
   check(/^limit /.test(render(pol)),
         'a policy renders as a LIMIT, not as money that moved to the payee');
+
+  // SPEC 6b, and the reason this section exists. A regulated issuer hands over
+  // its refusals without its payments. Before this, the page pulled `entries`
+  // out of the document, saw `seal` and `prev` on them, verified them as
+  // receipts and reported a valid disclosure as TAMPERED AT ENTRY 1 -- the
+  // false accusation the rest of this file is about, made against the one file
+  // format we tell people to send.
+  //
+  // The document is produced by the PYTHON here, not typed into this test, so
+  // what is asserted is that the two halves agree. A fixture would freeze one
+  // side and pass forever after the other moved.
+  console.log();
+  console.log('a disclosure: the refusals travel, the payments stay shut');
+  const gen = require('child_process').spawnSync('python3', ['-c', `
+import sys, json
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'pkg', 'src'))})
+from knowyouragenticai_receipts import Policy, guard, Refused, disclose
+p = Policy(cap="250000.00", currency="USD",
+           allow=["merchant-4471", "merchant-8820", "treasury-ops"],
+           period_seconds=86400)
+c = p.open()
+@guard(p, c)
+def settle(amount, payee): return "settled"
+settle("120000.00", "merchant-4471")
+settle("60000.00", "merchant-8820")
+for a, who in [("95000.00", "merchant-4471"), ("5000.00", "merchant-9902")]:
+    try: settle(a, who)
+    except Refused: pass
+settle("40000.00", "treasury-ops")
+try: settle("-250.00", "merchant-4471")
+except Refused: pass
+print(json.dumps(disclose(c.receipts)))
+`], {encoding: 'utf8'});
+  check(gen.status === 0, 'the python produces a disclosure (' +
+        (gen.status === 0 ? 'ok' : String(gen.stderr).trim().split('\n').pop()) + ')');
+  const DOC = gen.status === 0 ? JSON.parse(gen.stdout) : null;
+
+  if (DOC) {
+    v = await verdictFor('settlement-refusals.json', JSON.stringify(DOC));
+    check(/is a <b>disclosure<\/b>, and it holds/.test(v.innerHTML) &&
+          v.className.includes('good'),
+          'the page accepts what the python wrote, with nothing installed');
+    check(/3<\/b> withheld/.test(v.innerHTML) && /4<\/b> shown/.test(v.innerHTML),
+          '  and says how many entries it is not being shown');
+    check(/every entry whose outcome is not ACCEPTED/.test(v.innerHTML),
+          '  and repeats the promise the document makes about itself');
+
+    // The point of the file. A verdict about refusals is not the refusals.
+    check(/would exceed the cap/.test(v.innerHTML),
+          'the refusals themselves are rendered, not just counted');
+    check(/not on the allow-list/.test(v.innerHTML), '  including the payee rule');
+    check(/120000\.00/.test(v.innerHTML) === false &&
+          /merchant-8820<\/b>/.test(v.innerHTML) === false,
+          '  while no withheld payment amount is drawn on the page');
+    check((v.innerHTML.match(/class="r withheld"/g) || []).length === 3,
+          '  and each withheld entry is a visible gap, by number');
+
+    // Every attack the python checks, the page must also catch. Removing a
+    // refusal is the one that matters: it is what "we had no incidents" is.
+    const cut = JSON.parse(JSON.stringify(DOC));
+    const at = cut.entries.findIndex(e => e.outcome === 'REFUSED');
+    cut.entries.splice(at, 1);
+    cut.count = cut.entries.length;
+    cut.shown = cut.entries.filter(e => e.body).length;
+    cut.head = cut.entries[cut.entries.length - 1].seal;
+    v = await verdictFor('tidied.json', JSON.stringify(cut));
+    check(/does <b>not<\/b> hold/.test(v.innerHTML) && v.className.includes('bad'),
+          'a refusal removed and the counts corrected is still caught');
+
+    // The links alone catch that deletion, so the position check was not what
+    // caught it: with the position check removed, the mutation harness still
+    // found this suite green, and reported BLIND. What the numbering actually
+    // guards is a document whose links are intact and whose numbers lie, which
+    // moves a refusal to a different point in the run.
+    const renumbered = JSON.parse(JSON.stringify(DOC));
+    renumbered.entries.forEach((e, i) => { e.n = i + 10; });
+    v = await verdictFor('renumbered.json', JSON.stringify(renumbered));
+    check(/does <b>not<\/b> hold/.test(v.innerHTML) && /numbered/.test(v.innerHTML),
+          '  and so is renumbering entries while leaving the links intact');
+
+    const softened = JSON.parse(JSON.stringify(DOC));
+    softened.entries[at].body.rule = 'a routine check, nothing unusual';
+    v = await verdictFor('softened.json', JSON.stringify(softened));
+    check(/does <b>not<\/b> hold/.test(v.innerHTML),
+          'softening the rule on a shown refusal is caught in the browser');
+
+    const held = JSON.parse(JSON.stringify(DOC));
+    delete held.entries[at].body;
+    held.entries[at].withheld = true;
+    held.shown = held.entries.filter(e => e.body).length;
+    v = await verdictFor('held.json', JSON.stringify(held));
+    check(/promises to show every refusal/.test(v.innerHTML),
+          'withholding a refusal under a promise to show them all is caught');
+  }
+
+  // A plain chain wrapped as {entries: [...]} is NOT a disclosure. It has no
+  // bodies, so judging it as one would tell an honest exporter their file is
+  // broken -- the same false accusation, arrived at from the other direction.
+  v = await verdictFor('wrapped.json', JSON.stringify({entries: REAL}));
+  check(/holds/.test(v.innerHTML) && !/disclosure/.test(v.innerHTML),
+        'a chain wrapped as {entries} is still read as a chain, not a broken disclosure');
 
   console.log();
   if (fails.length) {
