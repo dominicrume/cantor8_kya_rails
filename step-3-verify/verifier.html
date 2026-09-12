@@ -58,6 +58,11 @@
   .r.broken { border-left-color:var(--bad); background:#fdecea; color:var(--ink); }
   .r .seal { font-family:monospace; font-size:9.5px; color:#999; word-break:break-all; margin-top:3px; }
   .r .rule { color:#666; font-style:italic; font-size:11.5px; }
+  /* Disclosure cards are not animated in one at a time like the demo chain,
+     so they must not inherit .r's start-hidden state. */
+  .d-list { margin-top:12px; }
+  .d-list .r { opacity:1; transform:none; background:#fff; color:var(--ink); }
+  .d-list .r.withheld { border-left-color:#c9ccd1; color:#5f636a; background:#fafafa; }
   .tag { float:right; font-size:10.5px; padding:2px 8px; border-radius:9px; color:#fff; font-weight:700; }
   .tag.ok { background:var(--ok); } .tag.no { background:var(--warn); } .tag.bad { background:var(--bad); }
   .tag.rule { background:#5c6b7a; }   /* a policy is neither pass nor fail: it is the terms */
@@ -367,6 +372,65 @@ async function badFrom(rs){ let prev='GENESIS';
     if(r.prev!==prev || await sha256(stableStringify(body)+prev)!==r.seal) return r.n; prev=r.seal; }
   return 0; }
 
+// SPEC 6b. A disclosure is not a chain and must never be judged as one. The
+// page used to pull its `entries` out, see `seal` and `prev` on them, try to
+// verify them as receipts, and report a perfectly valid disclosure as TAMPERED
+// AT ENTRY 1. That is the false accusation this whole page exists to avoid
+// making: "broken" says somebody edited this, and nobody had.
+// The shape test has to be tighter than "has entries with seals", because a
+// plain chain exported as {entries: [...]} passes that, and would then be
+// judged as a disclosure and told it has no bodies. Wrong either way round:
+// a chain called a broken disclosure is the same false accusation as a
+// disclosure called a tampered chain. Either the document names itself, or
+// every entry is decided -- shown or withheld -- which a chain never is.
+function looksLikeDisclosure(o){
+  if(!o || typeof o!=='object' || Array.isArray(o) ||
+     !Array.isArray(o.entries) || !o.entries.length) return false;
+  if(o.kind === 'know-your-agenticai-disclosure') return true;
+  return o.entries.every(e => e && typeof e==='object' &&
+    'n' in e && 'outcome' in e && 'seal' in e && (!!e.body !== !!e.withheld));
+}
+
+// The JavaScript half of check_disclosure. Nothing was removed, everything
+// shown is genuine, and the document keeps its own promise.
+async function checkDisclosure(doc){
+  const es = doc.entries;
+  if(doc.count !== undefined && doc.count !== es.length)
+    return {ok:false, why:'it says '+doc.count+' entries and carries '+es.length};
+  let prev='GENESIS', shown=0;
+  for(let i=0;i<es.length;i++){
+    const e=es[i], at=i+1;
+    if(e.n !== at) return {ok:false, why:'entry at position '+at+' is numbered '+e.n+
+      ', so one was removed or reordered'};
+    if(e.prev !== prev) return {ok:false, why:'entry '+at+' does not follow the one before it'};
+    if(!e.outcome) return {ok:false, why:'entry '+at+' withholds its outcome, which a disclosure may never do'};
+    if(e.body){
+      shown++;
+      if(await sha256(stableStringify(e.body)+prev) !== e.seal)
+        return {ok:false, why:'entry '+at+' was edited after it was sealed'};
+      if(e.body.outcome !== e.outcome)
+        return {ok:false, why:'entry '+at+' states one outcome and its body says another'};
+    } else if(!e.withheld){
+      return {ok:false, why:'entry '+at+' has no body and does not say it is withheld'};
+    }
+    prev = e.seal;
+    if(typeof prev!=='string' || !prev) return {ok:false, why:'entry '+at+' has no seal'};
+  }
+  // A withheld body cannot be recomputed, so a withheld entry's outcome is
+  // otherwise unfalsifiable. The declared rule is what makes it checkable.
+  if(doc.disclosing === 'every entry whose outcome is not ACCEPTED'){
+    for(const e of es){
+      if(e.withheld && String(e.outcome).toUpperCase() !== 'ACCEPTED')
+        return {ok:false, why:'entry '+e.n+' is withheld and says it is '+e.outcome+
+          ', but this document promises to show every refusal'};
+    }
+  }
+  if(doc.head && doc.head !== prev) return {ok:false, why:'the head does not match the last entry'};
+  if(doc.shown !== undefined && doc.shown !== shown)
+    return {ok:false, why:'it says '+doc.shown+' shown and shows '+shown};
+  return {ok:true, why:'', shown:shown, withheld:es.length-shown};
+}
+
 // receipts.js may come from anyone -- that is the point of the verifier -- so
 // every field out of it is escaped before it reaches the DOM. A forged chain
 // carrying markup in a seal or a rule is exactly the file this page exists to
@@ -614,7 +678,59 @@ document.getElementById('tamperBtn').onclick=()=>{
 
   function say(kind, html){ out.hidden=false; out.className='c-verdict '+kind; out.innerHTML=html; }
 
+  // A verdict about refusals is not the refusals. The reader came to see what
+  // the agent tried and was stopped from doing, so the entries shown in full
+  // are rendered here, and the withheld ones listed by number so the gaps are
+  // visible rather than merely counted.
+  function discloseCards(doc){
+    let h = '<div class="d-list">';
+    for(const e of doc.entries){
+      if(e.body){
+        const r = e.body;
+        h += '<div class="r '+(r.outcome==='REFUSED'?'refused':'')+'">'
+          +'<span class="tag '+tagClass(r)+'">'+esc(r.outcome)+'</span>'
+          +'<b>#'+esc(e.n)+' '+esc(r.what||'')+'</b><br>'+esc(subject(r))
+          +(r.at ? ' &middot; '+esc(r.at) : '')
+          +'<br><span class="rule">rule: '+esc(r.rule||'')+'</span></div>';
+      } else {
+        h += '<div class="r withheld"><span class="tag rule">'+esc(e.outcome)+'</span>'
+          +'<b>#'+esc(e.n)+'</b> withheld &middot; seal '
+          +esc(String(e.seal).slice(0,20))+'&hellip;</div>';
+      }
+    }
+    return h+'</div>';
+  }
+
   async function check(name, text){
+    // A disclosure must be recognised BEFORE the chain path, because its
+    // entries carry `seal` and `prev` and would otherwise be verified as
+    // receipts and reported tampered. SPEC 6b.
+    let asDoc = null;
+    try { asDoc = JSON.parse(text.trim()); } catch(e) {}
+    if(looksLikeDisclosure(asDoc)){
+      const v = await checkDisclosure(asDoc);
+      if(v.ok){
+        say('good','<b>'+esc(name)+'</b> is a <b>disclosure</b>, and it holds. '
+          +asDoc.entries.length+' entries: <b>'+v.shown+'</b> shown in full, '
+          +'<b>'+v.withheld+'</b> withheld.<br>'
+          +'Nothing has been removed, every entry shown re-sealed in this browser, '
+          +'and every entry declares its outcome whether or not its detail travels.'
+          +(asDoc.disclosing
+             ? '<br>It promises to show: <b>'+esc(asDoc.disclosing)+'</b>, and it does.'
+             : '')
+          +'<br>Assurance: <b>self-attested</b>. A withheld body cannot be '
+          +'recomputed, so a withheld entry\u2019s outcome is the producer\u2019s word. '
+          +'Ask for any entry by number.'
+          +'<br>Chain head:<code>'+esc(asDoc.head||'')+'</code>'
+          +discloseCards(asDoc));
+      } else {
+        say('bad','<b>'+esc(name)+'</b> is a disclosure, and it does <b>not</b> hold: '
+          +esc(v.why)+'.<br>Whoever handed you this changed it after it was sealed, '
+          +'or removed something from it.');
+      }
+      return;
+    }
+
     const found = findReceipts(text), rs = found.receipts;
     if(rs===null){
       say('unknown','<b>'+esc(name)+'</b> '

@@ -95,11 +95,61 @@ check(all("amount" not in e.get("body", {}) for e in accepted),
 # cannot be redacted, because editing a shown body breaks its seal. It can
 # only be pointed at, so the producer decides knowingly.
 warnings = what_this_reveals(receipts, doc)
-check(len(warnings) == 1, "the leak check finds exactly the real one (%d)" % len(warnings))
-check("10.00" in warnings[0] and "amount" in warnings[0],
-      "  and names it: %s" % warnings[0][:74])
+check(any("10.00" in w and "amount" in w for w in warnings),
+      "the leak check names the quoted amount")
 check(all("acme" not in w for w in warnings),
       "  and does not flag the allow-list, which the policy shows on purpose")
+
+
+def only_a_total_leaks():
+    """The leak that is not any single value, and was reported clean.
+
+    Two payments are withheld and neither amount is quoted anywhere. The cap
+    refusal still states 180000.00, which is those two payments added up. A
+    scan that walks withheld values one at a time finds nothing to report, and
+    for one commit that is exactly what this function did.
+    """
+    p = Policy(cap="250000.00", currency="USD",
+               allow=["merchant-4471", "merchant-8820"], period_seconds=86400)
+    c = p.open()
+
+    @guard(p, c)
+    def settle(amount, payee):
+        return "settled"
+
+    settle("120000.00", "merchant-4471")
+    settle("60000.00", "merchant-8820")
+    try:
+        settle("95000.00", "merchant-4471")
+    except Refused:
+        pass
+    return c.receipts
+
+
+r2 = only_a_total_leaks()
+d2 = disclose(r2)
+w2 = what_this_reveals(r2, d2)
+check(all("120000.00" not in w and "60000.00" not in w for w in w2),
+      "  no withheld amount is quoted anywhere, so a value-by-value scan is clean")
+check(any("180000.00" in w and "running total" in w for w in w2),
+      "  but the running total is, and the producer is told: %s"
+      % (next((w for w in w2 if "running total" in w), "NOT REPORTED")[:66]))
+
+p3 = Policy(cap="100.00", currency="USD", allow=["acme"])
+c3 = p3.open()
+
+
+@guard(p3, c3)
+def _refused_only(amount, payee):
+    return "ok"
+
+
+try:
+    _refused_only("5.00", "stranger")
+except Refused:
+    pass
+check(what_this_reveals(c3.receipts, disclose(c3.receipts)) == [],
+      "  and a run with nothing accepted reports no leak at all")
 
 shown = [e for e in doc["entries"] if "body" in e]
 check(all(refusals_only(e) for e in shown),

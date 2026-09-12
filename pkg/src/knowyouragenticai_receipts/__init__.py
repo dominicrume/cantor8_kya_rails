@@ -1,4 +1,7 @@
-"""A tamper-evident record of what an agent was refused, not only what it did.
+"""The evidence layer that sits under an agent platform.
+
+A platform decides what an agent may do. This records what it was REFUSED, and
+seals it so the other side can check without trusting whoever ran the agent.
 
 Most audit logs record what happened. The artefact anyone checking your system
 actually asks for is the opposite: **what was attempted and stopped.** And a

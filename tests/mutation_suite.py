@@ -447,6 +447,51 @@ MUTATIONS = [
      "          );",
      "node tests/checker_smoke.js"),
 
+    # SPEC 6b. A disclosure is the file a regulated issuer actually hands over,
+    # so every check that makes it worth handing over has to be shown to be
+    # load-bearing, in the browser as well as in the library.
+    ("the page stops recognising a disclosure and judges it as a chain",
+     "step-3-verify/verifier.html",
+     "    if(looksLikeDisclosure(asDoc)){",
+     "    if(false && looksLikeDisclosure(asDoc)){",
+     "node tests/checker_smoke.js"),
+
+    ("the browser stops noticing that an entry was removed",
+     "step-3-verify/verifier.html",
+     "    if(e.n !== at) return {ok:false, why:'entry at position '+at+' is numbered '+e.n+",
+     "    if(false) return {ok:false, why:'entry at position '+at+' is numbered '+e.n+",
+     "node tests/checker_smoke.js"),
+
+    ("the browser stops re-sealing the entries it is shown",
+     "step-3-verify/verifier.html",
+     "      if(await sha256(stableStringify(e.body)+prev) !== e.seal)",
+     "      if(false)",
+     "node tests/checker_smoke.js"),
+
+    ("the browser stops holding a disclosure to its own promise",
+     "step-3-verify/verifier.html",
+     "  if(doc.disclosing === 'every entry whose outcome is not ACCEPTED'){",
+     "  if(false){",
+     "node tests/checker_smoke.js"),
+
+    ("the browser shows the verdict but not the refusals",
+     "step-3-verify/verifier.html",
+     "          +discloseCards(asDoc));",
+     "          );",
+     "node tests/checker_smoke.js"),
+
+    ("a disclosure can withhold a refusal while promising to show them all",
+     "pkg/src/knowyouragenticai_receipts/disclose.py",
+     "    if doc.get(\"disclosing\") != EVERY_REFUSAL:",
+     "    if True:",
+     "python3 tests/disclosure_smoke.py"),
+
+    ("the producer stops being told that a running total leaks the payments",
+     "pkg/src/knowyouragenticai_receipts/disclose.py",
+     "    out += _running_total_leak(receipts, withheld_ns, shown_text)",
+     "",
+     "python3 tests/disclosure_smoke.py"),
+
     ("a Daml spending fence is deleted",
      "step-1-mandate/daml/KyaMandate.daml",
      '        assertMsg "charge would exceed the cap" (spent + amount <= cap)',

@@ -263,7 +263,39 @@ def what_this_reveals(receipts: Sequence[Mapping[str, Any]],
     for r in receipts:
         if r.get("n") in withheld_ns:
             out += _leaks_from(r, shown_text, policy_text)
+    out += _running_total_leak(receipts, withheld_ns, shown_text)
     return out
+
+
+def _running_total_leak(receipts: Sequence[Mapping[str, Any]],
+                        withheld_ns: set, shown_text: str) -> list[str]:
+    """The leak that is not any single value: the sum of them.
+
+    A cap refusal cannot explain itself without saying how much was already
+    spent. "would exceed the cap: 180000.00 + 95000.00 > 250000.00" states a
+    running total, and that total is the withheld payments added up. No
+    individual amount appears, so a value-by-value scan finds nothing, and the
+    first version of this function reported the document clean.
+
+    This is inherent to the refusal rather than a mistake in it. A reader is
+    told the balance at that moment whatever else is withheld, and the honest
+    move is to say so rather than to imply the accepted side is opaque.
+    """
+    from decimal import Decimal, InvalidOperation
+    spent = Decimal(0)
+    for r in receipts:
+        if str(r.get("outcome", "")).upper() != "ACCEPTED":
+            continue
+        try:
+            spent += Decimal(str(r.get("amount", "0")))
+        except (InvalidOperation, ValueError):
+            continue
+        if r.get("n") in withheld_ns and spent and str(spent) in shown_text:
+            return ["the running total after entry %s (%s) appears in an entry "
+                    "you are showing, so the accepted spend to that point is "
+                    "disclosed even though the payments are not"
+                    % (r.get("n"), spent)]
+    return []
 
 
 def _shown_and_policy_text(entries: list) -> tuple[str, str]:

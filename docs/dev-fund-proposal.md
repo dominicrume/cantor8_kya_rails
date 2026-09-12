@@ -30,8 +30,8 @@ to Canton without publishing what it contains.
 
 The format, a conformance suite and a Daml reference implementation already exist,
 are MIT-licensed and are reproducible from a clean clone. This grant funds the work
-that turns them from one applicant's repository into something other Canton
-applications adopt.
+that turns them from one applicant's repository into a layer running inside
+Canton applications the applicant does not own.
 
 ---
 
@@ -60,7 +60,7 @@ no ledger artefact behind it.
 and a language-neutral grader; a Daml reference implementation of a bounded mandate
 whose refusals are covered by named tests; an on-ledger anchor that binds a record
 to its origin without disclosing contents; a browser verifier requiring no install;
-and integration with at least two Canton applications not written by the applicant.
+and merged integrations into at least two Canton applications not written by the applicant.
 
 **Out of scope:** custody, key management, payment licensing, identity issuance,
 zero-knowledge proving systems, and any claim that this constitutes regulatory
@@ -153,9 +153,11 @@ on DevNet, so the upgrade path is exercised rather than assumed.
 
 ## Milestones and Deliverables
 
-Sixteen weeks, four milestones. Milestones 1 and 2 deliver the specification and the
-library; Milestones 3 and 4 are accepted on demonstrated use by parties other than
-the applicant, named and checkable — they pay for adoption, not for artefacts.
+Sixteen weeks, four milestones. Milestones 1 and 2 deliver the specification and
+the library. Milestones 3 and 4 are accepted on the format running inside
+applications the applicant does not own, delivered as merged pull requests the
+committee can open and read. They pay for integration, not for artefacts, and
+integration is something the applicant can go and do rather than wait for.
 
 ### Milestone 1: Specification hardening and independent conformance
 - **Estimated Delivery:** Week 4
@@ -175,22 +177,23 @@ the applicant, named and checkable — they pay for adoption, not for artefacts.
   - Threat model and privacy matrix published: who signs, who observes, who is excluded, for every contract.
   - **Value metric:** review completed and published; all findings rated high or above either remediated or documented with a stated reason.
 
-### Milestone 3: Adoption by Canton applications
+### Milestone 3: Integration into two existing Canton rails
 - **Estimated Delivery:** Week 12
-- **Focus:** Use by people who did not write it.
+- **Focus:** The format running inside somebody else's application, with the applicant doing the integration work.
 - **Deliverables / Value Metrics:**
-  - Integration support for Canton applications adopting the format, with the integration work done by those teams and not by the applicant.
+  - Integration into **two Canton applications the applicant does not own**, delivered as a pull request to each, with the applicant writing the integration and the host team reviewing and merging it. This is an evidence layer, not a platform: nobody adopts a layer, they drop it into a rail they already run.
+  - A minimal adapter per host, published in this repository, so the next integration is a copy rather than a conversation.
   - Written alignment note agreed with the Identity and Metadata SIG on the boundary between this evidence layer and credential standards under RFP 12.1.
-  - **Value metric:** **two Canton applications outside the applicant's control emitting records that pass the conformance suite**, named in the milestone submission and independently checkable.
+  - **Value metric:** **two merged pull requests in repositories outside the applicant's control, each producing records that pass the conformance suite**, named in the milestone submission and independently checkable by anyone.
 
-### Milestone 4: Operational adoption and handover
+### Milestone 4: Running in production, and handover
 - **Estimated Delivery:** Week 16
 - **Focus:** Survive the applicant losing interest.
 - **Deliverables / Value Metrics:**
   - Anchor verification available as a library, not only as a page.
   - Maintainer documentation sufficient for a second maintainer, and a named second maintainer accepting commit rights.
   - Listed in the Canton Developer Hub catalogue with a current SDK version.
-  - **Value metric:** **a third adopting application, and at least one adopter running anchored records against a Canton environment rather than a local file.**
+  - **Value metric:** **at least one of the Milestone 3 integrations running against a Canton environment rather than a local file, producing anchored records**, and a third integration merged or in review.
 
 ---
 
@@ -205,8 +208,10 @@ The Tech & Ops Committee will evaluate completion based on:
 
 Project-specific acceptance conditions, all externally checkable:
 
-1. **Milestone 3 does not pass on the applicant's own usage.** Two applications
-   outside the applicant's control must emit conforming records, and be named.
+1. **Milestone 3 does not pass on the applicant's own usage.** The two
+   integrations must be merged pull requests in repositories the applicant does
+   not own, each producing conforming records, and both must be named so the
+   committee can open them.
 2. **An implementation the applicant did not write must pass the conformance suite**
    from the specification alone.
 3. **The independent Daml review must be published in full**, including findings not
@@ -236,13 +241,16 @@ verifier, already built and public before this proposal — and continued mainte
 
 - Milestone 1 *(Specification hardening)*: 75,000 CC upon committee acceptance
 - Milestone 2 *(Mandate library and independent review)*: 75,000 CC upon committee acceptance
-- Milestone 3 *(Adoption by Canton applications)*: 75,000 CC upon committee acceptance
-- Milestone 4 *(Operational adoption and handover)*: 75,000 CC upon final release and acceptance
+- Milestone 3 *(Integration into two existing Canton rails)*: 75,000 CC upon committee acceptance
+- Milestone 4 *(Running in production, and handover)*: 75,000 CC upon final release and acceptance
 
-Milestones 3 and 4 are accepted on adoption by parties other than the applicant —
-two Canton applications outside the applicant's control emitting records that pass
-the conformance suite, named and independently checkable. Nothing is paid for a
-milestone that is not delivered, which is what the structure above already means.
+Milestones 3 and 4 are accepted on integration rather than adoption: two merged
+pull requests in repositories the applicant does not own, each producing records
+that pass the conformance suite, named and openable by anyone. Nothing is paid
+for a milestone that is not delivered, which is what the structure above already
+means. The distinction matters. This is an evidence layer, not a platform, and
+nobody adopts a layer. They merge it into a rail they already run, and the
+applicant can go and write that pull request rather than wait to be chosen.
 
 The independent Daml review in Milestone 2 is a third-party cost and is quoted inside
 the Milestone 2 figure rather than as a separate line, so the committee is asked to
@@ -301,15 +309,18 @@ dependencies, published 6 September 2026) and verifiable in a browser with nothi
 installed at all -- so the barrier to trying it is as low as it can be made. That
 is a *distribution* fact, not an adoption one, and the two should not be confused.
 
-The honest position on adoption: the format has three implementations and the
-applicant wrote all three. Nobody outside has adopted it yet. The applicant's prior
-published tooling has 2,471 total PyPI downloads with 880 in the last thirty days,
-a figure that includes CI and mirror traffic and should not be read as 2,471 people.
+The honest position: the format has three implementations and the applicant
+wrote all three. Nobody outside is running it yet. The applicant's prior
+published tooling has 2,471 total PyPI downloads with 880 in the last thirty
+days, a figure that includes CI and mirror traffic and should not be read as
+2,471 people.
 
-That is precisely why Milestones 3 and 4 are accepted on adoption rather than on
-effort. The committee should not take the applicant's word for demand, and this
-proposal is structured so that it does not have to: those milestones name the
-adopting applications, and they are checkable by anyone.
+That is precisely why Milestones 3 and 4 are accepted on integration rather
+than on effort, and on integration rather than on adoption. Waiting to be
+adopted is waiting to be chosen, and a layer nobody has heard of does not get
+chosen. Writing the pull request is work the applicant can start on Monday,
+and a merged one is a fact the committee can open and read rather than a
+number it has to believe.
 
 ---
 
