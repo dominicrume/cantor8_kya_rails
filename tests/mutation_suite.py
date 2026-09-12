@@ -432,6 +432,18 @@ MUTATIONS = [
 
     # The real rail. Until tests/devnet_parse_smoke.py existed, every one of
     # these could have shipped: no suite ran this file.
+    ("the DevNet run stops requiring a contract id for a refusal",
+     "tools/prove_refusal_on_devnet.py",
+     "    if not ref:\n        raise Stop(",
+     "    if False:\n        raise Stop(",
+     "python3 tests/devnet_run_smoke.py"),
+
+    ("the DevNet run stops checking the rule the ledger recorded",
+     "tools/prove_refusal_on_devnet.py",
+     '    if rule != "charge would exceed the cap":',
+     "    if False:",
+     "python3 tests/devnet_run_smoke.py"),
+
     ("the real rail goes back to exercising Charge, so refusals vanish again",
      "step-2-agent/devnet_ledger.py",
      '"templateId": TPL, "contractId": self.cid, "choice": "TryCharge",',
