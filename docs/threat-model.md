@@ -83,7 +83,7 @@ detectable event; we do not do this yet.
 
 A chain verifying on the server and failing in the browser destroys the
 guarantee, and the failure is silent until someone checks.
-**Defence:** one specification, sixteen conformance vectors, three independent
+**Defence:** one specification, twenty conformance vectors, three independent
 implementations, all in CI. `assert_ascii` refuses to seal what a verifier
 could not reproduce.
 **Residual risk:** the vectors cover what we thought to test. The Go

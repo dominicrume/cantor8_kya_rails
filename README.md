@@ -70,7 +70,7 @@ enforced only by a test that would pass without it:
 
 ```
 $ python3 tests/mutation.py
-baseline: 92 scripts green
+baseline: 100 scripts green
   ok    charge would exceed the cap          -> testOverCapRefusedByTheCapAssertion goes red
   ok    payee is not on the allow-list       -> testPayoutRedirectionRefused goes red
   ...  30 of 30
@@ -80,7 +80,7 @@ every fence is covered: deleting any one of them turns a test red.
 One command runs the ledger side end to end:
 
 ```bash
-cd step-1-mandate/test && daml test        # 92 of 92 attack scripts
+python3 tests/daml_tests.py                # 100 of 100 attack scripts
 ```
 
 Nothing above is enforced in Python. The Python mirror in `step-2-agent/agent.py`
@@ -94,7 +94,7 @@ Two parts, and the second one is not about Canton:
 1. **[SPEC.md](SPEC.md)** — an open format for tamper-evident receipts of agent
    actions, **including the actions that were refused**. Stdlib-only, no
    signatures, no network to verify. Three independent implementations and
-   [16 conformance vectors](tests/vectors.json). Three independent
+   [20 conformance vectors](tests/vectors.json). Three independent
    implementations agree.
 2. **A reference application** — the spend-limited wallet D1 asks for, with the
    limits enforced in a Daml choice body.
@@ -158,12 +158,12 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **92 / 92** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 28 of 42 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered |
+| Attack suite green | **100 / 100** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
 | The cycle holds at every join | 33 checks over HTTP, in the order a desk works it |
-| Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. 1.0.0, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 16/16 with no network |
+| Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.1.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
-| The tests are themselves tested | `tests/mutation_suite.py` breaks **84** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
-| Every fence mutation-tested | all **30** in the Daml, and now **30 of 30** refusals at the edges by a named test. It was 24 of 30 until the six that only failed as a *traceback* were closed — a stack trace is not a test going red, and `tests/mutation_py.py` counted it as uncovered rather than rounding up |
+| The tests are themselves tested | `tests/mutation_suite.py` breaks **90** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
+| Every fence mutation-tested | all **32** in the Daml, and now **30 of 30** refusals at the edges by a named test. It was 24 of 30 until the six that only failed as a *traceback* were closed — a stack trace is not a test going red, and `tests/mutation_py.py` counted it as uncovered rather than rounding up |
 | Nothing malformed can silence the desk | **553** requests — every route, every field it reads, every wrong value — with the rest of the body left valid so the check is actually reached. 0 dropped connections, 0 server errors, and every 400 names the field. `tests/route_fuzz.py` |
 | Neither screen goes quiet, or lies | `tests/frontend_offline.js` runs the pages' own code against a failing network: the operator screen never sits silent, and the customer screen never reports an unreachable desk as *"no deal found"* to someone whose crypto is already in flight |
 | One bad line cannot end the model's session | `tests/mcp_smoke.py` feeds 15 malformed JSON-RPC lines **between** the good ones. Each gets its proper code (-32700 / -32600 / -32601), and the request after them all is still answered |
@@ -172,7 +172,7 @@ country and deciding whether to trust the person who produced it.
 | The deposit door | **30** attacks on the adapter + **15** over a real socket, including the X-Forwarded-For spoof that defeats a naive IP allowlist |
 | The WhatsApp door | **54** attacks on the adapter + **15** over a real socket: unsigned, wrongly signed, signed-for-another-body, replayed, day-old, another business account, delivery reports, hostile display names |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, positive amount — five `assertMsg` fences in the `Charge` choice body. Revoke is not one of them and should not be: it is a **consuming** choice, so it archives the mandate and there is no contract left to charge. That is a stronger guarantee than an assertion, and the distinction is worth stating rather than rounding off |
-| Deployed on Cantor8 DevNet | Built: `kya-rails-mandate` **1.1.1** on SDK 3.4.11 (92/92 scripts). Vetted on DevNet: **1.1.0**, as an upgrade of 1.0.0 — 1.1.1 is built and tested but not yet uploaded, and this row will say so until it is. The mandate templates carry package `df5a02e88a68…` from 1.0.0; `KyaAnchor` arrived in 1.1.0 as `fd3f43a273be…`, and both are vetted |
+| Deployed on Cantor8 DevNet | Built: `kya-rails-mandate` **1.1.1** on SDK 3.4.11 (100/100 scripts). Vetted on DevNet: **1.1.0**, as an upgrade of 1.0.0 — 1.1.1 is built and tested but not yet uploaded, and this row will say so until it is. The mandate templates carry package `df5a02e88a68…` from 1.0.0; `KyaAnchor` arrived in 1.1.0 as `fd3f43a273be…`, and both are vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
 | Receipt chain | 6 receipts, 2 accepted, 4 refused, chain verifies end to end |
 | Tamper evident | edit one receipt, every later seal breaks |
@@ -577,7 +577,7 @@ python3 tests/store_smoke.py     # the quote outlives the process; history is ta
 python3 tests/anchor_smoke.py    # the agent anchors the chain it wrote, or says it did not
 python3 tests/standalone_smoke.py # the handed-out file is self-contained and current
 python3 tests/complexity_lint.py # no function over the ceiling without a written reason
-cd step-1-mandate && daml build && cd test && daml test   # 92 scripts
+python3 tests/daml_tests.py                               # 100 scripts, rebuilt from source
 ```
 
 ---
@@ -683,7 +683,7 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [docs/wallet-providers.md](docs/wallet-providers.md) | where the addresses would come from, and what to ask a provider |
 | [docs/dev-fund-onepager.md](docs/dev-fund-onepager.md) | the Canton Development Fund ask in one page, including what it does not claim |
 | [docs/complexity.md](docs/complexity.md) | the one function allowed to be complicated, and the reason it is |
-| [tests/vectors.json](tests/vectors.json) | 16 conformance vectors. Where the spec and a vector disagree, the vector wins. |
+| [tests/vectors.json](tests/vectors.json) | 20 conformance vectors. Where the spec and a vector disagree, the vector wins. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | start here — the most useful contribution is a third implementation |
 
 ---

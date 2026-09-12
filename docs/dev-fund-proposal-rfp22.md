@@ -97,7 +97,7 @@ naive version worse than useless, and the existing implementation addresses each
 
 | | |
 |---|---|
-| Daml fence mutation | `tests/mutation.py` — **30 of 30** fences; deleting any one turns a *named* test red. Baseline 92 of 92 scripts green |
+| Daml fence mutation | `tests/mutation.py` — **32 of 32** fences; deleting any one turns a *named* test red. Baseline 100 of 100 scripts green |
 | Suite-level mutation | `tests/mutation_suite.py` — 23 real defects across pages, adapters, storage, routes and the model interface; every one makes its covering suite fail |
 | Refusal coverage | `tests/mutation_py.py` — **30 of 30** refusals at the edges covered by a *named* test. It reported 24 of 30 for weeks because six failed as a stack trace rather than an assertion; the harness refused to count those, which is the behaviour being proposed here |
 | Fence lint | `tests/fence_lint.py` and a `tools/pre-commit` hook that refuses a commit with a fence missing |

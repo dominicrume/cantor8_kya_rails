@@ -85,34 +85,51 @@ clock. It is not proof the event happened then. Only an anchor gives you that.
 
 ---
 
-## Self-attested and ledger-enforced are not the same thing
+## The level is what a reader established, never what a receipt says
 
-This is the distinction the whole format rests on, and it is why `ledger` is a
-required field rather than a nicety.
+An earlier version of this page had a rung called **ledger-enforced**, reached
+by writing `assertMsg` in the `ledger` field. That was wrong, and wrong in the
+direction this whole page exists to guard against: it made the strongest claim
+in the format something a producer could type. SPEC §6a now forbids it by name.
 
-| | who refuses | what a reader may conclude |
+The rule is one sentence. **A verifier reports the level it substantiated, and
+it cannot substantiate anything from the file it was handed.** Every chain
+therefore reads `self-attested` by default, however emphatic its `ledger` field
+is. A receipt saying *"Canton DevNet, an independent validator refused this"*
+seals perfectly and still reports `self-attested`, and conformance vector 18
+exists to keep it that way.
+
+Two findings can raise it, and both are things **the reader** goes and does:
+
+| level | what the reader did | what they may then conclude |
 |---|---|---|
-| **`self-attested`** — `guard()` in Python | the operator's own process | their system says it refused. The party being checked is also the party doing the checking. |
-| **ledger-enforced** — `assertMsg` in a Daml choice body | an independent validator | the operator *could not* have done it, whatever they intended. |
+| `self-attested` | checked the seals | nothing was edited after it was written. The party being checked is the party doing the checking. |
+| `anchored` | found the head seal and receipt count published somewhere the producer does not control | nothing has been swapped or truncated since that publication. |
+| `ledger-recorded` | both of the above, **and** found every refusal on that ledger with the rule and time claimed | the refusals happened, and were not invented, backdated or reordered. |
 
-Both produce identical-looking receipts in every field but one, so the one is
-never allowed to blur. A self-attested chain is genuinely useful — it is a
-tamper-evident record of your own controls, which is more than a log file — but
-it is evidence about a system, not evidence about a party. If someone shows you
-a self-attested chain as proof they *could not* have overspent, they have
-overstated it, and this page exists so you can say so.
+There is still no level meaning *the rule was enforced*. Whether a fence would
+have stopped a payment had the record not been written is a fact about code,
+not about records, and nothing in a document reaches it.
 
 **The honest ladder**, weakest to strongest:
 
 1. A log. Proves nothing; editable, incomplete, unordered.
 2. A self-attested chain. Proves no edits since writing.
-3. A self-attested chain, anchored. Adds: nothing removed since the anchor.
-4. A ledger-enforced chain. Adds: an independent party refused.
-5. A ledger-enforced chain, anchored, with the policy sealed. What this
-   repository demonstrates end to end.
+3. A self-attested chain, anchored. Adds: nothing removed or swapped since the
+   anchor.
+4. The above, with every refusal carrying a `ledger_ref` the reader looked up
+   and found. Adds: these refusals really happened, on a ledger, at the time
+   and for the reason stated.
+
+Rung 4 needs something at the enforcement layer, not in the format. A refusal
+enforced by an aborting assertion leaves nothing to look up, which is why
+`KyaMandate.TryCharge` commits a `ChargeRefused` contract instead of aborting.
 
 Most real deployments will sit at 2 or 3. That is fine. It is only a problem if
-they are described as 5.
+they are described as 4.
+
+What no rung reaches: an attempt that was never submitted leaves nothing behind
+at any level.
 
 ---
 
@@ -128,7 +145,7 @@ Stated so the claims above are not the only thing on this page.
   redirect to holds **0.0** on both sides. The arithmetic is in
   [`devnet-balances.json`](devnet-balances.json) and re-added on every build.
 - **Three independent implementations** (Python, JavaScript, Go) agree on
-  17/17 conformance vectors.
+  20/20 conformance vectors.
 
 And what has not: nobody outside this project has yet produced a chain with it.
 That is the honest state, and this page will say so until it changes.
@@ -136,5 +153,8 @@ That is the honest state, and this page will say so until it changes.
 ---
 
 *If you are reading this because someone handed you a chain: open
-<https://dominicrume.github.io/cantor8_kya_rails/>, drop the file on it, and
-read the `ledger` field on every entry before you read anything else.*
+<https://dominicrume.github.io/cantor8_kya_rails/> and drop the file on it.
+Read the assurance level the page reports, not the `ledger` field inside the
+file. The field is written by whoever produced the chain; the level is what the
+page was able to establish, and for a file handed to you that is always
+`self-attested` until you go and check something yourself.*

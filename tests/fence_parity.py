@@ -45,7 +45,30 @@ def section(start, end):
     return src[a:b]
 
 
+def alternatives(src):
+    """The rule names inside devnet_ledger's RULES pattern.
+
+    The pattern is written as several adjacent r"..." literals so it fits the
+    line length, and the alternation bars fall at the seams. A first version of
+    this read the source with one regex, found four of the six, and reported
+    the other two as drift: a check failing on its own bug rather than on the
+    code, which is the worst kind, because it teaches you to distrust the
+    check. So join the literals first, strip the grouping parens, split on the
+    bar.
+    """
+    block = re.search(r"RULES = re\.compile\(\s*(.*?)\)\s*\n\s*\n", src, re.S)
+    if not block:
+        return []
+    joined = "".join(re.findall(r'r"([^"]*)"', block.group(1)))
+    return [a for a in joined.strip("()").split("|") if a]
+
+
 charge = section("    choice Charge :", "    -- | The same rules, recorded")
+# Adjust states a rule too, and devnet_ledger's regex matches it. It is not a
+# Charge fence, so it is held separately rather than being allowed to look like
+# drift in either direction.
+adjust_rules = re.findall(r'assertMsg\s+"([^"]+)"',
+                          section("    choice Adjust :", "template KyaMandateProposal"))
 reason = section("refusalReason : KyaMandate", "-- The rolling window")
 
 asserted = re.findall(r'assertMsg\s+"([^"]+)"', charge)
@@ -107,6 +130,35 @@ check(not missing_from_mock,
       + (": missing %s" % missing_from_mock if missing_from_mock else ""))
 check(mock_rules == [m for m in asserted if m in mock_rules],
       "  in the same order, so the same attempt gets the same reason on both")
+
+# The FOURTH copy, and the one that reaches a real receipt.
+#
+# step-2-agent/devnet_ledger.py cannot read the rule off the ledger on the
+# Charge path, because a failed assertMsg aborts and there is nothing to read.
+# So it regex-matches the assertion message out of the gRPC error string. If a
+# rule is renamed in the Daml, the regex silently stops matching and _rule()
+# falls through to `m[:110]`: the receipt's `rule` field becomes a truncated
+# error string instead of a rule name, on the real rail, with every test green.
+#
+# This copy is the reason TryCharge exists. A ChargeRefused contract carries
+# the rule as a field, so it is read rather than parsed. Until the DevNet path
+# is wired onto TryCharge, this check is what stands between a rename and a
+# meaningless `rule` in somebody's audit trail.
+dn_src = open(os.path.join(ROOT, "step-2-agent", "devnet_ledger.py")).read()
+dn_said = alternatives(dn_src)
+
+print()
+print("and the regex that names the rule on the real rail")
+check(bool(dn_said), "devnet_ledger still lists the assertion messages (%d)"
+      % len(dn_said))
+missing_from_dn = [m for m in asserted if m not in dn_said]
+check(not missing_from_dn,
+      "  every rule Charge can abort on is one the receipt can still name"
+      + (": missing %s" % missing_from_dn if missing_from_dn else ""))
+stale_in_dn = [m for m in dn_said if m not in asserted and m not in adjust_rules]
+check(not stale_in_dn,
+      "  and it matches nothing the contract no longer says"
+      + (": %s" % stale_in_dn if stale_in_dn else ""))
 
 # The Daml test that holds each recorded message to its own fence. Without
 # these, the lists above could agree with each other and both be wrong.

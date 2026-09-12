@@ -60,7 +60,7 @@ class Chain:
         self.receipts = []
 
     def stamp(self, what, amount, payee, rule, outcome, approved_by,
-              ledger, currency="CC", instrument="Amulet"):
+              ledger, currency="CC", instrument="Amulet", ledger_ref=""):
         r = {
             "n": len(self.receipts) + 1,
             "what": what, "amount": str(amount), "payee": payee,
@@ -73,6 +73,12 @@ class Chain:
             "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "prev": self.receipts[-1]["seal"] if self.receipts else "GENESIS",
         }
+        # Only when there is one. An empty key on every receipt would change
+        # the canonical form of every chain ever sealed here, including
+        # step-3-verify/receipts.js and the conformance vectors. Same rule as
+        # the package: SPEC 6a, and the canonicaliser sorts whatever it finds.
+        if ledger_ref:
+            r["ledger_ref"] = ledger_ref
         assert_ascii(r)          # before sealing, never after
         r["seal"] = seal(r, r["prev"])
         self.receipts.append(r)

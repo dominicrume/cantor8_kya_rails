@@ -61,7 +61,7 @@ first version rather than the third.
 ```bash
 cd step-1-mandate && daml build
 daml damlc inspect-dar .daml/dist/kya-rails-mandate-*.dar | grep -c KyaTest   # must be 0
-cd test && daml build && daml test                                            # 92/92
+python3 tests/daml_tests.py                                                   # 100/100
 ```
 
 Then upload and read the response:
@@ -84,7 +84,7 @@ assumed about:
 |---|---|---|
 | `daml build` | ok | ok |
 | attack scripts | 92 / 92 | **92 / 92** |
-| choice coverage | 28 of 42 | **28 of 42** |
+| choice coverage | 28 of 42 | **30 of 44** |
 | package id | `fd3f43a2…f12ab9` | **`48fe2c12…5c2346`** |
 
 The code is compatible. The package id is not the same, and that is the whole

@@ -150,10 +150,31 @@ def _created(r, entity="KyaMandate"):
     choice on that cid returns WRONGLY_TYPED_CONTRACT_ID, which reads like an
     auth problem and is not one. Match the template by name.
     """
+    ev = _created_event(r, entity)
+    return ev.get("contractId") if ev else None
+
+
+def _created_event(r, entity):
+    """The whole created event, not just its id.
+
+    TryCharge records the refusal as a contract, so the rule that fired is a
+    FIELD on it. Reading that is the point: on the Charge path the transaction
+    aborts and the only way to name the rule is to regex the gRPC error string,
+    which silently degrades to a truncated error the moment a rule is renamed.
+    """
     for ev in r.get("transaction", {}).get("events", []):
         c = ev.get("CreatedTreeEvent", {}).get("value") or ev.get("CreatedEvent")
         if c and str(c.get("templateId", "")).endswith(":" + entity):
-            return c.get("contractId")
+            return c
+    return None
+
+
+def _payload(ev):
+    """The contract's fields. The JSON API has spelled this key more than one
+    way across versions, so both are accepted rather than assuming ours."""
+    if not ev:
+        return {}
+    return ev.get("createArgument") or ev.get("createArguments") or {}
 
 
 def discover_admin():
@@ -233,6 +254,10 @@ class DevNetLedger:
     """Same charge() contract as MockLedger. NOT MOCKED: this is real Canton."""
 
     label = "DevNet (real Canton, package %s)" % PKG[:12]
+    # The ChargeRefused contract id from the last refusal, or "" when the last
+    # call did not produce one. A class default, so a caller that reads it
+    # before any charge gets "" rather than AttributeError.
+    last_ledger_ref = ""
     # Canton Coin. The mandate records the spend; it does not move the
     # coin yet -- see SHORTCUTS.md. Saying so is cheaper than being caught.
     currency = "CC"
@@ -340,10 +365,29 @@ class DevNetLedger:
         return self.cid, exp
 
     def charge(self, amount, payee):
-        """No state here: the mandate lives on the ledger, which is the point."""
+        """No state here: the mandate lives on the ledger, which is the point.
+
+        Exercises TryCharge, not Charge. Both run the same rules; the
+        difference is what a refusal leaves behind. Charge refuses with
+        assertMsg, which aborts the transaction, so the ledger holds nothing
+        and the only way to name the rule was to regex it out of the error
+        string -- and if that regex ever missed, the receipt's `rule` became a
+        truncated gRPC message on the real rail with every test still green.
+
+        TryCharge commits the refusal as a ChargeRefused contract. The rule is
+        read off it, and `last_ledger_ref` carries the contract id so the
+        receipt can point a reader at something we did not write.
+
+        The distinction that has to survive: a refusal RECORDED on the ledger
+        is not the same as this call failing. A revoked mandate, an auth
+        problem or a dropped connection all still come back REFUSED with no
+        ledger reference, and must not be dressed up as one.
+        """
+        self.last_ledger_ref = ""
+
         def attempt():
             return _submit([{"ExerciseCommand": {
-                "templateId": TPL, "contractId": self.cid, "choice": "Charge",
+                "templateId": TPL, "contractId": self.cid, "choice": "TryCharge",
                 "choiceArgument": {"amount": "%.1f" % amount,
                                    "payee": PARTY.get(payee, payee),
                                    "memo": "KYA Rails demo"}}}],
@@ -353,8 +397,14 @@ class DevNetLedger:
         if not ok and self._should_reconcile(r):
             ok, r = attempt()
         if not ok:
+            # Nothing committed. No ledger reference, and none is claimed.
             return "REFUSED", _rule(str(r))
         self.cid = _created(r, "KyaMandate") or self.cid
+
+        recorded = self._refusal_on_ledger(r)
+        if recorded:
+            return recorded
+
         if not self.move_coin:
             return "ACCEPTED", "cap and allow-list satisfied, committed on DevNet"
 
@@ -368,6 +418,23 @@ class DevNetLedger:
         if moved:
             return "ACCEPTED", "authorised by the mandate and settled on DevNet: " + detail
         return "ACCEPTED", "AUTHORISED but NOT SETTLED: " + detail
+
+    def _refusal_on_ledger(self, r):
+        """(outcome, rule) if this transaction recorded a refusal, else None.
+
+        Split out of charge() when it went over the complexity ceiling, and the
+        seam is a real one: charge() is about getting a transaction committed,
+        this is about reading what the ledger decided.
+        """
+        refused = _created_event(r, "ChargeRefused")
+        if not refused:
+            return None
+        self.last_ledger_ref = refused.get("contractId") or ""
+        rule = _payload(refused).get("rule")
+        # A ChargeRefused with no readable rule is a contract shape we did not
+        # expect. Say so, rather than invent a rule for it: a plausible rule in
+        # a receipt is worse than an honest gap, because it reads as evidence.
+        return "REFUSED", rule or "refused on the ledger, rule unreadable"
 
     def _should_reconcile(self, err):  # noqa: D401
         """Was the mandate really gone, or is our cached id just stale?

@@ -108,6 +108,27 @@ check(LEDGER_RECORDED == "ledger-recorded" and LEDGER_RECORDED != "ledger-enforc
       "  and it is named for what it establishes: records, not enforcement")
 
 print()
+print("and nothing in the repository offers a level the spec rules out")
+# docs/what-this-proves.md carried a table with a `ledger-enforced` rung,
+# reached by writing `assertMsg` into the `ledger` field, and a closing line
+# telling readers to "read the `ledger` field on every entry before you read
+# anything else". Both survived the commit that added SPEC 6a, because 6a was
+# checked against SPEC.md and against the code, and nothing looked at the page
+# whose whole job is to tell a reader what they may conclude.
+BANNED = "ledger-enforced"
+for name in sorted(os.listdir(os.path.join(ROOT, "docs"))) + ["../README.md"]:
+    if not name.endswith(".md"):
+        continue
+    path = os.path.join(ROOT, "docs", name)
+    text = open(path).read()
+    offered = [ln.strip() for ln in text.splitlines()
+               if BANNED in ln and "no `ledger-enforced`" not in ln
+               and "had a rung called" not in ln]
+    check(not offered,
+          "%s does not offer a %s level%s"
+          % (name, BANNED, "" if not offered else ": " + offered[0][:60]))
+
+print()
 print("a level is never offered for something that was not established")
 check(assurance([{"n": 1, "seal": "nonsense", "prev": "GENESIS"}]) == "unverified",
       "a chain that does not hold has no assurance level at all")
