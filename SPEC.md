@@ -212,6 +212,39 @@ solvency establishing that the assets exist. A receipt records a decision; it
 does not make one. `self-attested` and `anchored` are the only two things a
 reader with the file can be told without being told something false.
 
+## 6b. Disclosure: handing over part of a chain
+
+A chain is all or nothing. Slicing entries out of it produces a file that
+fails verification, because every seal covers the one before it. Handing over
+the whole chain discloses everything in it, which for a regulated producer is
+the reason they cannot hand it over at all.
+
+A **disclosure** is a document carrying every entry's `n`, `outcome`, `prev`
+and `seal`, and the full body of only some of them.
+
+- `n`, `outcome`, `prev` and `seal` **MUST NOT** be withheld for any entry. If
+  an entry could be hidden entirely, "here are my three refusals" would be
+  indistinguishable from a chain that had thirty.
+- A withheld entry **MUST** carry `"withheld": true` in place of its body, so
+  that absence is a statement rather than a gap.
+- A document **SHOULD** declare in `disclosing` the rule it applied. A
+  verifier **MUST** check the document against its own declared rule: one
+  claiming to show every refusal that also withholds one is refused.
+
+A verifier establishes that nothing was removed, that positions run 1..n with
+every `prev` matching the seal before it, and that each shown body re-seals to
+the seal printed beside it.
+
+It does **not** establish a withheld entry's outcome. The body is absent, so
+the label cannot be recomputed. The declared rule is what makes it checkable
+in the ordinary case, and nothing else does.
+
+**Withholding a body does not withhold its contents.** A refusal reading
+`would exceed the cap: 10.00 + 999.00 > 100.00` states the running total, and
+the 10.00 is an accepted payment withheld two entries above. This cannot be
+redacted, because editing a shown body breaks its seal. A producer SHOULD be
+shown what a disclosure gives away before sending it.
+
 ## 7. Verification
 
 ```
