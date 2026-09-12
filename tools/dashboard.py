@@ -52,6 +52,10 @@ SUITES = [
     ("python3 tests/fence_parity.py", "The ledger",
      "the refusal written to the ledger names the rule that actually fired"),
     # The real-rail code was the only code here no suite could run.
+    # The customer screen shows a QR, an amount and an address to a real person
+    # holding a real wallet. For weeks those addresses were real.
+    ("python3 tests/no_real_addresses.py", "The desk",
+     "no address anywhere can receive money, and the screen says so first"),
     ("python3 tests/mirror_boundaries.py", "The ledger",
      "the Python mirror refuses at exactly the boundaries the Daml does"),
     ("python3 tests/devnet_parse_smoke.py", "The ledger",

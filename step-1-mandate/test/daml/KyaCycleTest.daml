@@ -10,10 +10,10 @@ data Desk = Desk with
   customer  : Party
 
 trc : Text
-trc = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+trc = "TDEMOxxxxNOTxxxAxxxREALxxxADDRESSxx"
 
 erc : Text
-erc = "0x8f3aE9dB1B7B2f5F3aE44D9B3F1c8bA2E4d5C6f7"
+erc = "0xDEM0000NOTAREALADDRESS0000000000DEM00000"
 
 books : Script (Desk, ContractId DepositBook, ContractId OffTakerBook)
 books = script do
@@ -26,7 +26,7 @@ books = script do
       depositFeed = None
       addresses = [ ("USDT", "TRC20", trc, False)
                   , ("USDT", "ERC20", erc, False)
-                  , ("XRP",  "XRPL",  "rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh", True) ]
+                  , ("XRP",  "XRPL",  "rDEMOxxNOTxxAxxREALxxADDRESSxxxxxx", True) ]
   o <- submit principal do
     createCmd OffTakerBook with
       principal; operator

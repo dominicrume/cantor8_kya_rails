@@ -60,6 +60,18 @@ MUTATIONS = [
      "return JSON.stringify(o);",
      "node tests/conformance.js"),
 
+    # There is deliberately no row that puts a real address back. The `replace`
+    # text would be a spendable address living permanently in this table, which
+    # is the exact thing tests/no_real_addresses.py exists to forbid -- and it
+    # caught this table when the row existed. The scanner proves itself instead,
+    # inside that file, by scanning a temporary file it writes and then deletes.
+
+    ("the customer screen stops saying it is a demo",
+     "step-5-operator/customer.html",
+     "'<div class=\"mocked\"><b>DEMO ONLY.</b> This is not a real payment request. ' +",
+     "'' +",
+     "python3 tests/no_real_addresses.py"),
+
     ("the QR encodes a payment request nobody agreed to",
      "step-5-operator/customer.html",
      "    q.addData(text);",

@@ -46,7 +46,13 @@ print("KYA Rails - the desk bot under attack")
 # --- the ordinary path -----------------------------------------------------
 r = fresh()
 out = say(r, "hi", "sell", "USDT", "TRC20", "10", "1")
-check("KYA-" in out and "TR7NHq" in out, "an ordinary customer gets a reference and an address")
+# Matches the demo address prefix, not a real one. This assertion used to
+# contain the first six characters of the USDT TRC20 contract address, because
+# that is what the desk served -- so the test suite was one of the places a
+# real, unrecoverable address lived. tests/no_real_addresses.py now refuses any
+# address a wallet would accept, anywhere in the tree, including here.
+check("KYA-" in out and "TDEMO" in out,
+      "an ordinary customer gets a reference and an address")
 check("TRC20 only" in out, "the network warning is in the message, not a footnote")
 check("it is not us" in out, "the message warns about the change-of-account approach")
 

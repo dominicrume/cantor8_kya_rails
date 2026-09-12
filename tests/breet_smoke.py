@@ -56,7 +56,7 @@ def setup():
 def event(**kw):
     d = {"id": "evt_1", "event": "trade.completed", "asset": "USDT",
          "cryptoAmount": 10.0, "txHash": "0xabc123",
-         "destinationAddress": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+         "destinationAddress": "TDEMOxxxxNOTxxxAxxxREALxxxADDRESSxx",
          "isWrongAssetDeposit": False}
     d.update(kw)
     return d
