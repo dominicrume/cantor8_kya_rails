@@ -383,3 +383,156 @@ testOwnerCannotRejectOnTheSpendersBehalf = script do
       expiresAt = addRelTime now (hours 24)
       allowed = [payee]; periodLimit = None; periodLength = None
   submitMustFail owner do exerciseCmd prop Reject
+
+-- ---------------------------------------------------------------------------
+-- THE REFUSAL AS A LEDGER FACT
+--
+-- Every test above this line proves the money was stopped, with
+-- submitMustFail. None of them proves anything about evidence, and that gap is
+-- the point of this section. A failed assertMsg aborts the transaction, so
+-- after testOverCapRefused the ledger looks EXACTLY as it would look if the
+-- agent had never been asked to make that payment. The only record of the
+-- refusal is whatever the operator's own process wrote afterwards, about
+-- itself, which is the thing a regulated issuer cannot hand anybody.
+--
+-- TryCharge makes the refusal a transaction that succeeds, so the refusal
+-- commits. These tests hold it to both halves of that: the refusal really is
+-- on the ledger with the rule that fired, and the money really did not move.
+
+-- Attempt a charge that is expected to be refused, and return the rule the
+-- ledger recorded, with the mandate's new id. TryCharge is consuming, so the
+-- id changes even when nothing was spent.
+tryRule : Book -> ContractId KyaMandate -> Decimal -> Party
+       -> Script (Text, ContractId KyaMandate)
+tryRule b m amount payee = do
+  r <- submit b.operator do
+    exerciseCmd m TryCharge with amount; payee; memo = "probe"
+  case r.refusal of
+    None -> abort "expected a refusal; the charge went through instead"
+    Some rid -> do
+      found <- queryContractId b.principal rid
+      case found of
+        None -> abort "the refusal was not on the ledger afterwards"
+        Some rec -> pure (rec.rule, r.mandate)
+
+-- 16. The refusal is on the ledger, and the money did not move.
+testRefusalIsOnLedgerAndNothingMoved : Script ()
+testRefusalIsOnLedgerAndNothingMoved = script do
+  (b, m0) <- book
+  m1 <- submit b.operator do
+    exerciseCmd m0 Charge with amount = 40.0; payee = b.recipient; memo = "payout 1"
+  before <- query @ChargeRecord b.principal
+
+  r <- submit b.operator do
+    exerciseCmd m1 TryCharge with
+      amount = 90.0; payee = b.recipient; memo = "would exceed the cap"
+
+  case r.refusal of
+    None -> abort "an over-cap attempt produced no refusal record"
+    Some rid -> do
+      found <- queryContractId b.principal rid
+      case found of
+        None -> abort "the refusal record is not on the ledger"
+        Some rec -> do
+          assertMsg ("the record names the wrong rule: " <> rec.rule)
+            (rec.rule == "charge would exceed the cap")
+          assertMsg "the record lost the amount that was attempted"
+            (rec.amount == 90.0)
+          assertMsg "the record lost who it would have paid"
+            (rec.payee == b.recipient)
+
+  -- The half that matters just as much. Recording a refusal is worth nothing
+  -- if recording it also lets the payment through.
+  held <- queryContractId b.principal r.mandate
+  case held of
+    None -> abort "the mandate did not survive a refusal"
+    Some m -> do
+      assertMsg "a refusal moved the spent total" (m.spent == 40.0)
+      assertMsg "a refusal moved the period total" (m.periodSpent == 40.0)
+  after <- query @ChargeRecord b.principal
+  assertMsg "a refusal created a payment record"
+    (length after == length before)
+
+-- 17. Every fence records its own reason, not a generic one.
+--
+--     A record that says only "refused" is barely better than no record. The
+--     regulator's question is WHICH rule, and an implementation that records
+--     the wrong one is worse than one that aborts, because it is confidently
+--     wrong in writing.
+testEveryFenceRecordsItsOwnRule : Script ()
+testEveryFenceRecordsItsOwnRule = script do
+  (b, m0) <- book
+  (negative, m1) <- tryRule b m0 (-5.0) b.recipient
+  assertMsg ("negative amount recorded as: " <> negative)
+    (negative == "amount must be positive")
+  (who, m2) <- tryRule b m1 10.0 b.unverified
+  assertMsg ("redirected payee recorded as: " <> who)
+    (who == "payee is not on the allow-list")
+  (overCap, _) <- tryRule b m2 500.0 b.recipient
+  assertMsg ("over-cap recorded as: " <> overCap)
+    (overCap == "charge would exceed the cap")
+
+testExpiryRecordsItsOwnRule : Script ()
+testExpiryRecordsItsOwnRule = script do
+  (b, m0) <- bookWithExpiry (hours 1)
+  passTime (hours 2)
+  (rule, _) <- tryRule b m0 5.0 b.recipient
+  assertMsg ("an expired mandate recorded: " <> rule) (rule == "mandate expired")
+
+testPeriodLimitRecordsItsOwnRule : Script ()
+testPeriodLimitRecordsItsOwnRule = script do
+  (b, m0) <- cappedPerPeriod (hours 24)
+  -- 20 is the window limit and 25 is under the overall cap of 100, so the only
+  -- rule that can fire is the period one. If the cap fired here the message
+  -- would be wrong and this test would say so.
+  (rule, _) <- tryRule b m0 25.0 b.recipient
+  assertMsg ("over the window limit recorded: " <> rule)
+    (rule == "charge would exceed the period limit")
+
+-- 18. The accepted path is still the accepted path.
+--
+--     TryCharge must not become a softer Charge. An allowed payment through
+--     TryCharge has to move the money and write the payment record, exactly as
+--     Charge does, and leave no refusal behind.
+testTryChargeAcceptedBehavesLikeCharge : Script ()
+testTryChargeAcceptedBehavesLikeCharge = script do
+  (b, m0) <- book
+  r <- submit b.operator do
+    exerciseCmd m0 TryCharge with
+      amount = 30.0; payee = b.recipient; memo = "an ordinary payout"
+  assertMsg "an allowed payment left a refusal record" (r.refusal == None)
+  held <- queryContractId b.principal r.mandate
+  case held of
+    None -> abort "the mandate did not survive an accepted charge"
+    Some m -> assertMsg "an accepted charge did not move the spent total"
+                (m.spent == 30.0)
+  recs <- query @ChargeRecord b.principal
+  assertMsg "an accepted charge wrote no payment record" (length recs == 1)
+
+-- 19. The limit, asserted so nobody sells past it.
+--
+--     ChargeRefused has an implicit Archive choice, like every Daml template,
+--     and its signatories are the same two parties who run the agent. They CAN
+--     archive a refusal. What they cannot do is make the archiving not have
+--     happened: the create and the archive are both transactions with record
+--     times the submitter does not write. So the honest claim is not "this
+--     cannot be removed". It is "removing it is itself a recorded event, and
+--     the gap is visible to anyone reading the ledger".
+--
+--     This is here as a test rather than a comment because a sentence in a
+--     README can drift from the code and an executable assertion cannot.
+testTheOperatorCanArchiveARefusalButNotSilently : Script ()
+testTheOperatorCanArchiveARefusalButNotSilently = script do
+  (b, m0) <- book
+  r <- submit b.operator do
+    exerciseCmd m0 TryCharge with
+      amount = 500.0; payee = b.recipient; memo = "over the cap"
+  case r.refusal of
+    None -> abort "no refusal to archive"
+    Some rid -> do
+      -- One signatory alone cannot do it.
+      submitMustFail b.operator do exerciseCmd rid Archive
+      -- Both together can.
+      submitMulti [b.principal, b.operator] [] do exerciseCmd rid Archive
+      gone <- queryContractId b.principal rid
+      assertMsg "the refusal survived an authorised archive" (gone == None)

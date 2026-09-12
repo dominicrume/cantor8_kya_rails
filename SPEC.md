@@ -1,4 +1,4 @@
-# KYA Receipt Chain, version 1.2
+# KYA Receipt Chain, version 1.3
 
 A wire format for **tamper-evident receipts of agent actions, including the
 actions that were refused.**
@@ -192,6 +192,27 @@ the format would then record an over-claim instead of preventing it.
 | --- | --- |
 | `self-attested` | The seals hold. Nothing about origin. The party who wrote this record is the party it is about. |
 | `anchored` | The above, **and** the reader has independently confirmed the head seal and receipt count against an origin the producer does not control (§8). |
+| `ledger-recorded` | Both of the above, **and** the reader has found every refusal in the chain recorded on that ledger, with the rule and the time the receipt claims. |
+
+`ledger-recorded` exists because of an asymmetry the first two levels hide. An
+accepted payment is corroborated by the thing it did: the money moved, and the
+ledger says so. A refusal is corroborated by nothing, because the usual way to
+enforce a rule is to abort the transaction, and an aborted transaction leaves
+no trace. So in a chain of ten entries, the accepted ones are checkable against
+the world and the refused ones are the producer writing about themselves —
+which is exactly backwards, since the refusals are the half anybody asks for.
+
+Closing it takes a change at the enforcement layer, not in this format: the
+refusal has to be a transaction that SUCCEEDS and records what was refused,
+instead of one that aborts. The reference implementation does this in
+`KyaMandate.TryCharge`, which writes a `ChargeRefused` contract and moves no
+money. A receipt for such a refusal MAY carry `ledger_ref`, the identifier of
+that record.
+
+`ledger_ref` is written by the producer and therefore establishes nothing by
+itself. It is an address, not evidence. What it changes is that the producer's
+claim is now falsifiable: the record is there with that rule at that time, or
+it is not. Only the reader who went and looked may raise the level.
 
 Rules:
 
@@ -200,17 +221,27 @@ Rules:
 - A verifier **MUST NOT** report `anchored` on the strength of anything inside
   the document. The confirmation has to come from outside it, supplied by the
   reader.
+- A verifier **MUST NOT** report `ledger-recorded` on the strength of
+  `ledger_ref` being present, however many entries carry one. A verifier that
+  cannot reach the ledger **SHOULD** say so beside the verdict and name the
+  references it did not check, rather than let a passing seal check imply it
+  did.
 - A verifier **MUST NOT** report a level it did not establish, and **MUST NOT**
   offer a level the reader could mistake for one it did establish.
 - A conforming verifier **SHOULD** show the level beside the verdict, because
   "holds" without it is the ambiguity this section exists to remove.
 
-There is deliberately no `ledger-enforced` level. Whether a Daml assertion
-actually ran is not a property of the document, cannot be recovered from it,
-and no commitment scheme reaches it — the same limit that stops a proof of
-solvency establishing that the assets exist. A receipt records a decision; it
-does not make one. `self-attested` and `anchored` are the only two things a
-reader with the file can be told without being told something false.
+There is deliberately no `ledger-enforced` level, and `ledger-recorded` is not
+a quiet version of one. It says a reader found these refusals written down on a
+ledger. Whether the fence would have stopped the payment had the record not
+been written is a fact about code, not about records, and no commitment scheme
+reaches it — the same limit that stops a proof of solvency establishing that
+the assets exist. A receipt records a decision; it does not make one.
+
+The gap that remains at every level, stated so nobody sells past it: an attempt
+that was never submitted leaves nothing behind either. `ledger-recorded` makes
+a refusal that happened impossible to invent, delete, backdate or reorder. It
+does not make a refusal that never reached the ledger appear.
 
 ## 6b. Disclosure: handing over part of a chain
 
@@ -309,9 +340,11 @@ you can make to this spec. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-Version **1.2**. Changes that alter any seal require a new MAJOR version; neither 1.1 nor 1.2 alters one.
+Version **1.3**. Changes that alter any seal require a new MAJOR version; none of 1.1, 1.2 or 1.3 alters one.
 
 1.0 -> 1.1 added §4a, which states that `outcome` is an open vocabulary and that a verifier must check seals rather than vocabulary. Every 1.0 seal is unchanged and every 1.0 chain still verifies, so this is a minor version: it tells a 1.0 implementer that they may see values they do not recognise, and that rejecting one would be a false accusation rather than a finding.
 
+
+1.2 -> 1.3 added the `ledger-recorded` level to §6a, and the optional `ledger_ref` field a receipt may carry to name the ledger record of a refusal. This exists because of a hole the first two levels hid: an accepted payment is corroborated by the money moving, and a refusal enforced by an aborting assertion is corroborated by nothing, so the half of the chain anyone actually asks for was the half backed only by the producer's word. Closing it is a change at the enforcement layer, not in this format, and the format's part is to carry an address and refuse to treat it as evidence. Vector 20 makes the field binding: it appears only on receipts that have one, so an implementation with a fixed field list seals it differently. Every 1.0, 1.1 and 1.2 seal is unchanged, and a chain with no ledger references is byte-identical to what 1.2 produced.
 
 1.1 -> 1.2 added §6a: the assurance level is derived by the verifier from what it substantiated, never read from a field, and there is deliberately no `ledger-enforced` level. Vector 18 makes it binding -- a receipt whose every field claims an independent decider, sealed correctly, that must still verify as `self-attested`. Every 1.0 and 1.1 seal is unchanged.

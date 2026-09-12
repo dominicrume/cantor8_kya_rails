@@ -63,6 +63,8 @@
   .d-list { margin-top:12px; }
   .d-list .r { opacity:1; transform:none; background:#fff; color:var(--ink); }
   .d-list .r.withheld { border-left-color:#c9ccd1; color:#5f636a; background:#fafafa; }
+  .d-list .lref { font-size:11px; color:#5f636a; margin-top:4px; }
+  .d-list .lref code { font-size:10.5px; word-break:break-all; }
   .tag { float:right; font-size:10.5px; padding:2px 8px; border-radius:9px; color:#fff; font-weight:700; }
   .tag.ok { background:var(--ok); } .tag.no { background:var(--warn); } .tag.bad { background:var(--bad); }
   .tag.rule { background:#5c6b7a; }   /* a policy is neither pass nor fail: it is the terms */
@@ -682,6 +684,22 @@ document.getElementById('tamperBtn').onclick=()=>{
   // the agent tried and was stopped from doing, so the entries shown in full
   // are rendered here, and the withheld ones listed by number so the gaps are
   // visible rather than merely counted.
+  // A refusal carrying a ledger reference is the only kind this page cannot
+  // finish checking, and that is worth saying out loud rather than leaving the
+  // reader to assume the green verdict covered it. The page has no network and
+  // no Canton connection by design: it is one file that runs from disk. So it
+  // reports what it did, names what it did not, and says who can.
+  function ledgerRefNote(doc){
+    const refs = doc.entries.filter(e => e.body && e.body.ledger_ref).length;
+    if(!refs) return '';
+    return '<br><b>'+refs+'</b> of the entries shown name a record on a ledger. '
+      +'This page checked the seals and did <b>not</b> check those: it has no '
+      +'network. Look each one up on a participant node you trust. If they are '
+      +'all there with the rule and the time claimed, those refusals stop being '
+      +'the producer\u2019s word; the chain as a whole is still substitutable '
+      +'until its head is anchored somewhere the producer does not control.';
+  }
+
   function discloseCards(doc){
     let h = '<div class="d-list">';
     for(const e of doc.entries){
@@ -691,7 +709,12 @@ document.getElementById('tamperBtn').onclick=()=>{
           +'<span class="tag '+tagClass(r)+'">'+esc(r.outcome)+'</span>'
           +'<b>#'+esc(e.n)+' '+esc(r.what||'')+'</b><br>'+esc(subject(r))
           +(r.at ? ' &middot; '+esc(r.at) : '')
-          +'<br><span class="rule">rule: '+esc(r.rule||'')+'</span></div>';
+          +'<br><span class="rule">rule: '+esc(r.rule||'')+'</span>'
+          +(r.ledger_ref
+             ? '<div class="lref">on the ledger as <code>'+esc(r.ledger_ref)
+               +'</code> \u00b7 this page did not check it</div>'
+             : '')
+          +'</div>';
       } else {
         h += '<div class="r withheld"><span class="tag rule">'+esc(e.outcome)+'</span>'
           +'<b>#'+esc(e.n)+'</b> withheld &middot; seal '
@@ -721,6 +744,7 @@ document.getElementById('tamperBtn').onclick=()=>{
           +'<br>Assurance: <b>self-attested</b>. A withheld body cannot be '
           +'recomputed, so a withheld entry\u2019s outcome is the producer\u2019s word. '
           +'Ask for any entry by number.'
+          +ledgerRefNote(asDoc)
           +'<br>Chain head:<code>'+esc(asDoc.head||'')+'</code>'
           +discloseCards(asDoc));
       } else {

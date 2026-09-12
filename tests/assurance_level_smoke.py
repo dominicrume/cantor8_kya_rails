@@ -27,7 +27,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, "pkg", "src"))
 
 from knowyouragenticai_receipts import (                    # noqa: E402
-    ANCHORED, SELF_ATTESTED, Chain, Policy, assurance, guard)
+    ANCHORED, LEDGER_RECORDED, SELF_ATTESTED, Chain, Policy, assurance, guard)
 
 fails = []
 
@@ -79,10 +79,39 @@ for field in ("ledger", "approved_by", "instrument", "rule"):
           "a claim in `%s` does not raise the level" % field)
 
 print()
+print("the refusal on a ledger, which is the other half of the question")
+# A refusal written by assertMsg aborts the transaction, so it leaves nothing
+# behind and the receipt saying REFUSED is the operator writing about itself.
+# KyaMandate.TryCharge commits the refusal as a ChargeRefused contract, and the
+# receipt can carry the contract id. That id is still written by the producer:
+# what it buys is that it points at something a reader can go and check, and
+# only that reader's finding may raise the level.
+ledgered = Chain(approved_by="the mandate", ledger="Canton")
+ledgered.allowed(what="settle", amount="10.00", currency="USD", payee="m1",
+                 rule="inside the cap")
+ledgered.refused(what="settle", amount="999.00", currency="USD", payee="m1",
+                 rule="charge would exceed the cap",
+                 ledger_ref="00a1b2c3::ChargeRefused")
+check(ledgered.verify()[0], "a chain carrying a ledger_ref still verifies")
+check("ledger_ref" in ledgered.receipts[1] and "ledger_ref" not in ledgered.receipts[0],
+      "  and the field is present only on the entry that has one")
+check(assurance(ledgered.receipts) == SELF_ATTESTED,
+      "naming a contract id does NOT raise the level on its own")
+check(assurance(ledgered.receipts, refusals_confirmed=True) == SELF_ATTESTED,
+      "  nor does finding the refusals, while the chain itself could be swapped")
+check(assurance(ledgered.receipts, anchor_confirmed=True) == ANCHORED,
+      "  nor does anchoring, which says nothing about whether a refusal happened")
+check(assurance(ledgered.receipts, anchor_confirmed=True,
+                refusals_confirmed=True) == LEDGER_RECORDED,
+      "only both findings together reach ledger-recorded")
+check(LEDGER_RECORDED == "ledger-recorded" and LEDGER_RECORDED != "ledger-enforced",
+      "  and it is named for what it establishes: records, not enforcement")
+
+print()
 print("a level is never offered for something that was not established")
 check(assurance([{"n": 1, "seal": "nonsense", "prev": "GENESIS"}]) == "unverified",
       "a chain that does not hold has no assurance level at all")
-check("ledger-enforced" not in (SELF_ATTESTED, ANCHORED),
+check("ledger-enforced" not in (SELF_ATTESTED, ANCHORED, LEDGER_RECORDED),
       "there is no ledger-enforced level to hand out")
 spec = open(os.path.join(ROOT, "SPEC.md")).read()
 check("derived, never declared" in spec.lower() or "derived" in spec,
@@ -90,7 +119,7 @@ check("derived, never declared" in spec.lower() or "derived" in spec,
 check("**MUST** report `self-attested` by default" in spec,
       "  and makes self-attested the default a verifier MUST report")
 check("There is deliberately no `ledger-enforced` level" in spec,
-      "  and says why there is no third level, rather than leaving a gap")
+      "  and rules out ledger-enforced by name, rather than leaving a gap")
 
 print()
 if fails:

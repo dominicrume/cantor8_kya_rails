@@ -41,6 +41,47 @@ outcome checkable. A withheld body cannot be recomputed, so without a declared
 rule, "these are all my refusals" would be unfalsifiable. With one, a withheld
 entry labelled REFUSED contradicts the document, and the page names it.
 
+## The refusal that is only our word, and what fixes it
+
+This is the honest limit of the file above, and it is the one worth reading.
+
+Entries 4, 5 and 7 say REFUSED. Nothing outside this file corroborates them.
+Entries 2, 3 and 6 are accepted payments, and those are corroborated by the
+money having moved: a ledger recorded it. The half you can check against the
+world is the half nobody asks about, and the half anybody asks for is the
+producer writing about themselves. That is backwards, and for a regulated
+issuer it is the difference between evidence and a nicer log file.
+
+The cause is not in this format. It is that the usual way to enforce a rule is
+to abort, and an aborted transaction leaves nothing behind. In Daml a failed
+`assertMsg` rolls the whole transaction back, so after a refused payment the
+ledger looks exactly as it would if the agent had never been asked.
+
+So the refusal is made into a transaction that succeeds:
+[`KyaMandate.TryCharge`](../../step-1-mandate/daml/KyaMandate.daml) runs
+the same rules, and when one says no it writes a `ChargeRefused` contract and
+leaves the mandate untouched. No money moves. The contract id and the record
+time come from the ledger rather than from us.
+
+Four Daml tests hold it to that, and you can run them yourself:
+
+```
+python3 tests/daml_tests.py
+```
+
+| test | what it refuses to let us claim |
+|---|---|
+| `testRefusalIsOnLedgerAndNothingMoved` | the refusal is really on the ledger, and `spent` did not move |
+| `testEveryFenceRecordsItsOwnRule` | each rule records its own reason, not a generic "refused" |
+| `testTryChargeAcceptedBehavesLikeCharge` | this is not a softer `Charge` that lets payments through |
+| `testTheOperatorCanArchiveARefusalButNotSilently` | we can archive one, so the claim is "removing it is a recorded event", not "it cannot be removed" |
+
+A receipt for such a refusal carries `ledger_ref`, the contract id. The example
+above does not have any, because no ledger has seen it. When a receipt does
+carry one, the verifier page prints it and says, in those words, that it did
+not check it: the page has no network, so that part is yours to do on a
+participant node you trust.
+
 ## What it does not prove
 
 Where the file came from. A seal says the contents have not changed since they

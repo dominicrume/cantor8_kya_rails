@@ -139,13 +139,30 @@ template InboundDeal
     -- fence is unchanged -- a reference is required and short credits are
     -- refused -- only who may write it has widened, and only to a party the
     -- principal named.
+    --
+    -- The two messages say "(bank feed)" so they are not the same text as the
+    -- ones in ConfirmNairaCredited above. That is not decoration. The mutation
+    -- harness proves a fence matters by deleting it and requiring a named test
+    -- to go red, and it finds fences by their text, so two identical fences in
+    -- two different choices are one fence as far as it can tell.
+    --
+    -- Both paths did have tests, which is why this went unnoticed. What was
+    -- missing is narrower and worth stating exactly: the harness could not
+    -- delete one of the two without the other, so neither fence was ever shown
+    -- to be individually load-bearing. Distinct text is what lets the manifest
+    -- name them separately, and tests/fence_lint.py now refuses any fence whose
+    -- text appears more than once.
+    --
+    -- It also reads better in a refusal. This is the automated path, and a
+    -- reader seeing which one refused is the difference between "someone
+    -- mistyped" and "the feed is sending short confirmations".
     choice ConfirmNairaCreditedByFeed : ContractId InboundDeal
       with bankRef : Text, credited : Decimal
       controller optional principal identity bankFeed
       do
         assertMsg "no bank feed is configured for this desk" (bankFeed /= None)
-        assertMsg "a bank reference is required; a screenshot is not a confirmation" (bankRef /= "")
-        assertMsg "naira credited is short of the amount quoted" (credited >= nairaAmount)
+        assertMsg "a bank reference is required (bank feed); a screenshot is not a confirmation" (bankRef /= "")
+        assertMsg "naira credited is short of the amount quoted (bank feed)" (credited >= nairaAmount)
         create this with nairaConfirmed = True, bankReference = bankRef
 
     -- Releasing the crypto. Consuming: a deal releases once or not at all.

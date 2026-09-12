@@ -19,6 +19,18 @@ seals each one onto the last. Anyone can check the chain by dropping the file
 on a web page. No wallet, no install, no account, no node. The head is
 anchored on Canton, so a chain rewritten from scratch has nowhere to hide.
 
+And the refusal itself is written to the ledger, which is the part that was
+missing. The normal way to enforce a spending rule is to abort the
+transaction, and an aborted transaction leaves nothing behind: after a refused
+payment the ledger looks exactly as it would if the agent had never been
+asked. So the accepted payments were checkable against the world and the
+refusals were us writing about ourselves, which is backwards.
+[`TryCharge`](step-1-mandate/daml/KyaMandate.daml) runs the same rules and,
+when one says no, commits a `ChargeRefused` contract and moves no money. The
+contract id and the record time come from the ledger. A refusal that happened
+cannot then be invented, deleted, backdated or reordered, and removing one is
+itself a recorded event.
+
 **It is not a wallet, a registry or a rail, and it does not try to be.** Those
 exist and are built by people with banking licences. This is the layer
 underneath them: the artefact you hand someone when they ask you to prove a
@@ -41,14 +53,14 @@ Here are the lines.
 
 | The attack | The line of Daml that refuses it | The test that proves it |
 | --- | --- | --- |
-| Exceed the cap | [`KyaMandate.daml:71`](step-1-mandate/daml/KyaMandate.daml#L71) — `assertMsg "charge would exceed the cap" (spent + amount <= cap)` | `testOverCapRefusedByTheCapAssertion` |
-| Pay someone not allowed | [`KyaMandate.daml:72`](step-1-mandate/daml/KyaMandate.daml#L72) — `assertMsg "payee is not on the allow-list" (payee ``elem`` allowed)` | `testPayoutRedirectionRefused` |
-| Charge after revoke | [`KyaMandate.daml:94`](step-1-mandate/daml/KyaMandate.daml#L94) — `choice Revoke` is **consuming**: it archives the mandate, so there is no contract left to charge. Stronger than an assertion | `testAfterRevokeRefused` |
+| Exceed the cap | [`KyaMandate.daml:129`](step-1-mandate/daml/KyaMandate.daml#L129) — `assertMsg "charge would exceed the cap" (spent + amount <= cap)` | `testOverCapRefusedByTheCapAssertion` |
+| Pay someone not allowed | [`KyaMandate.daml:130`](step-1-mandate/daml/KyaMandate.daml#L130) — `assertMsg "payee is not on the allow-list" (payee ``elem`` allowed)` | `testPayoutRedirectionRefused` |
+| Charge after revoke | [`KyaMandate.daml:195`](step-1-mandate/daml/KyaMandate.daml#L195) — `choice Revoke` is **consuming**: it archives the mandate, so there is no contract left to charge. Stronger than an assertion | `testAfterRevokeRefused` |
 
 Two more fences on the same choice, beyond what D1 asks for:
-[expiry](step-1-mandate/daml/KyaMandate.daml#L69),
-[positive amount](step-1-mandate/daml/KyaMandate.daml#L70), and a
-[per-period limit](step-1-mandate/daml/KyaMandate.daml#L85) that refuses while the
+[expiry](step-1-mandate/daml/KyaMandate.daml#L127),
+[positive amount](step-1-mandate/daml/KyaMandate.daml#L128), and a
+[per-period limit](step-1-mandate/daml/KyaMandate.daml#L143) that refuses while the
 total cap still has room.
 
 **Every fence is proven load-bearing, not just present.** `tests/mutation.py`
@@ -150,7 +162,7 @@ country and deciding whether to trust the person who produced it.
 | The cycle holds at every join | 33 checks over HTTP, in the order a desk works it |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. 1.0.0, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 16/16 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
-| The tests are themselves tested | `tests/mutation_suite.py` breaks **76** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
+| The tests are themselves tested | `tests/mutation_suite.py` breaks **81** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **30** in the Daml, and now **30 of 30** refusals at the edges by a named test. It was 24 of 30 until the six that only failed as a *traceback* were closed — a stack trace is not a test going red, and `tests/mutation_py.py` counted it as uncovered rather than rounding up |
 | Nothing malformed can silence the desk | **553** requests — every route, every field it reads, every wrong value — with the rest of the body left valid so the check is actually reached. 0 dropped connections, 0 server errors, and every 400 names the field. `tests/route_fuzz.py` |
 | Neither screen goes quiet, or lies | `tests/frontend_offline.js` runs the pages' own code against a failing network: the operator screen never sits silent, and the customer screen never reports an unreachable desk as *"no deal found"* to someone whose crypto is already in flight |

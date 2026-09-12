@@ -351,3 +351,4 @@ testPrincipalCanMoveTheRateBand = script do
   Some b <- queryContractId principal moved
   assertMsg "the floor moved" (b.rateFloor == 1200.0)
   assertMsg "the ceiling moved" (b.rateCeiling == 1400.0)
+

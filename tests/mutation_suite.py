@@ -492,6 +492,45 @@ MUTATIONS = [
      "",
      "python3 tests/disclosure_smoke.py"),
 
+    # The refusal as a ledger fact. `Charge` aborts and leaves nothing behind;
+    # `TryCharge` records and commits. Two copies of the same rules is the
+    # price, and every way that can go wrong is broken here on purpose.
+    #
+    # The first row is the one that would cost real money: if TryCharge stops
+    # checking the allow-list, it is not a recording version of Charge, it is a
+    # way around it.
+    ("TryCharge becomes a back door around the allow-list",
+     "step-1-mandate/daml/KyaMandate.daml",
+     '  | not (payee `elem` m.allowed) = Some "payee is not on the allow-list"',
+     "",
+     "python3 tests/daml_tests.py"),
+
+    ("recording a refusal also moves the money",
+     "step-1-mandate/daml/KyaMandate.daml",
+     "            kept <- create this\n",
+     "            kept <- create this with spent = spent + amount\n",
+     "python3 tests/daml_tests.py"),
+
+    ("a refused attempt stops being handed back as refused",
+     "step-1-mandate/daml/KyaMandate.daml",
+     "              refusal = Some refused",
+     "              refusal = None",
+     "python3 tests/daml_tests.py"),
+
+    ("the recorded reason drifts from the rule that fired",
+     "step-1-mandate/daml/KyaMandate.daml",
+     '  | m.spent + amount > m.cap     = Some "charge would exceed the cap"',
+     '  | m.spent + amount > m.cap     = Some "a routine limit"',
+     "python3 tests/fence_parity.py"),
+
+    ("the rules stop firing in the order Charge states them",
+     "step-1-mandate/daml/KyaMandate.daml",
+     '  | amount <= 0.0                = Some "amount must be positive"\n'
+     '  | m.spent + amount > m.cap     = Some "charge would exceed the cap"',
+     '  | m.spent + amount > m.cap     = Some "charge would exceed the cap"\n'
+     '  | amount <= 0.0                = Some "amount must be positive"',
+     "python3 tests/fence_parity.py"),
+
     ("a Daml spending fence is deleted",
      "step-1-mandate/daml/KyaMandate.daml",
      '        assertMsg "charge would exceed the cap" (spent + amount <= cap)',

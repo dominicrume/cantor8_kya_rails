@@ -56,7 +56,7 @@ __version__ = "1.1.0"
 __all__ = ["canonical", "seal", "verify", "assert_ascii", "Chain",
            "NonAsciiInReceipt", "BrokenChain", "GENESIS",
            "Policy", "PolicyError", "guard", "attempt", "Refused",
-           "assurance", "SELF_ATTESTED", "ANCHORED",
+           "assurance", "SELF_ATTESTED", "ANCHORED", "LEDGER_RECORDED",
            "disclose", "check_disclosure", "refusals_only", "what_this_reveals"]
 
 GENESIS = "GENESIS"
@@ -144,9 +144,16 @@ def _position(r: Any, index: int) -> int:
 
 SELF_ATTESTED = "self-attested"
 ANCHORED = "anchored"
+# Both findings, not one: the head is pinned to an origin the producer does not
+# control, AND every refusal was found on a ledger. Anchoring alone fixes the
+# chain so it cannot be swapped later; it says nothing about whether a refusal
+# in it ever happened. Finding the refusals alone leaves the chain itself
+# substitutable. The level that means something needs both.
+LEDGER_RECORDED = "ledger-recorded"
 
 
-def assurance(receipts: Sequence[Any], anchor_confirmed: bool = False) -> str:
+def assurance(receipts: Sequence[Any], anchor_confirmed: bool = False,
+              refusals_confirmed: bool = False) -> str:
     """What this chain has actually established — computed, never read.
 
     SPEC 6a. A chain that holds proves nothing was edited. It does not prove
@@ -164,12 +171,23 @@ def assurance(receipts: Sequence[Any], anchor_confirmed: bool = False) -> str:
     the head seal and receipt count checked against an origin the producer does
     not control. It is a parameter and not a field for exactly that reason.
 
-    There is no `ledger-enforced` level. Whether an assertion actually ran is
-    not a property of the document and no commitment scheme reaches it.
+    `refusals_confirmed` is the same kind of finding, about the other half.
+    KyaMandate.TryCharge writes each refusal to Canton as a ChargeRefused
+    contract, and a receipt can carry that contract id in `ledger_ref`. A
+    reader who queried the ledger and found every refusal there, with the rule
+    and the time the receipt claims, passes True. Nothing in the file can set
+    it, for the same reason nothing in the file can set `anchor_confirmed`.
+
+    There is still no `ledger-enforced` level. `LEDGER_RECORDED` says a reader
+    found these refusals on a ledger, which is a fact about records. Whether
+    the fence would have stopped the payment had the record not been written is
+    a fact about code, and no commitment scheme reaches it.
     """
     ok, _bad = verify(receipts)
     if not ok:
         return "unverified"
+    if refusals_confirmed and anchor_confirmed:
+        return LEDGER_RECORDED
     return ANCHORED if anchor_confirmed else SELF_ATTESTED
 
 
@@ -249,7 +267,7 @@ class Chain:
     def stamp(self, what: str, amount: str, currency: str, payee: str,
               rule: str, outcome: str, approved_by: str | None = None,
               ledger: str | None = None, instrument: str = "",
-              at: str | None = None) -> dict[str, Any]:
+              at: str | None = None, ledger_ref: str = "") -> dict[str, Any]:
         """Append one receipt and return it.
 
         Most of the time you want `allowed()` or `refused()` instead; this is
@@ -268,6 +286,20 @@ class Chain:
         Refuses to append to a chain that does not verify (BrokenChain). That
         costs a full verification per stamp -- about 10ms per 2000 receipts --
         and the alternative is writing new entries on top of a broken history.
+
+        `ledger_ref` is where a reader goes to check this entry against
+        something we did not write. For a refusal recorded by
+        KyaMandate.TryCharge it is the ChargeRefused contract id.
+
+        It is deliberately NOT a level, a flag, or anything that reads as
+        proof. A producer writes this field, so on its own it is worth exactly
+        as much as the rest of the receipt: nothing beyond the producer's word.
+        What it buys is that the word is now CHECKABLE, because it names a
+        specific contract on a specific ledger that either exists with this
+        rule and this time, or does not. `assurance()` still returns
+        self-attested for a chain full of these, and only a reader who went and
+        looked can raise it. That asymmetry is the whole of SPEC 6a and this
+        field does not get an exception from it.
         """
         if not isinstance(amount, str):
             raise TypeError(
@@ -282,6 +314,24 @@ class Chain:
                 "receipt %s does not verify, so this chain cannot be extended. "
                 "Deal with the break rather than building on it." % bad)
 
+        r = self._body(what, amount, currency, payee, rule, outcome,
+                       approved_by, ledger, instrument, at, ledger_ref)
+        assert_ascii(r)                       # before sealing, never after
+        r["seal"] = seal(r, r["prev"])
+        self.receipts.append(r)
+        return r
+
+    def _body(self, what: str, amount: str, currency: str, payee: str,
+              rule: str, outcome: str, approved_by: str | None,
+              ledger: str | None, instrument: str, at: str | None,
+              ledger_ref: str) -> dict[str, Any]:
+        """The receipt's fields, before it is sealed.
+
+        Split out of stamp() when the optional ledger_ref pushed that function
+        one branch over the complexity ceiling. The checks stay there and the
+        shape lives here, which is the right seam anyway: stamp() is about
+        whether this receipt may be written, this is about what it says.
+        """
         r: dict[str, Any] = {
             "n": len(self.receipts) + 1, "what": what, "amount": amount,
             "payee": payee, "currency": currency, "instrument": instrument,
@@ -291,9 +341,14 @@ class Chain:
             "at": at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "prev": self.receipts[-1]["seal"] if self.receipts else GENESIS,
         }
-        assert_ascii(r)                       # before sealing, never after
-        r["seal"] = seal(r, r["prev"])
-        self.receipts.append(r)
+        # Present only when there is one. An empty `ledger_ref` on every
+        # receipt would change the canonical form of every chain ever sealed,
+        # including the conformance vectors and the reference receipts.js, and
+        # a format change is not something to do as a side effect of adding an
+        # optional field. Canonicalisation sorts whatever keys are there, in
+        # every implementation, so an occasional extra key needs no new rule.
+        if ledger_ref:
+            r["ledger_ref"] = ledger_ref
         return r
 
     def verify(self) -> tuple[bool, int]:

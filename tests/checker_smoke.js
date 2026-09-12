@@ -286,6 +286,41 @@ print(json.dumps(disclose(c.receipts)))
     check((v.innerHTML.match(/class="r withheld"/g) || []).length === 3,
           '  and each withheld entry is a visible gap, by number');
 
+    // A refusal that names a ledger record is the one thing this page cannot
+    // finish checking. It must say so, rather than let a green verdict imply
+    // it did. This is the gap that made the whole format worth less than it
+    // looked: a REFUSED entry backed by nothing but the producer's own note.
+    const gen2 = require('child_process').spawnSync('python3', ['-c', `
+import sys, json
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'pkg', 'src'))})
+from knowyouragenticai_receipts import Chain, disclose
+c = Chain(approved_by="the mandate", ledger="Canton")
+c.stamp(what="policy in force", amount="250000.00", currency="USD",
+        payee="limit", rule="cap=250000.00 USD", outcome="POLICY")
+c.allowed(what="settle", amount="120000.00", currency="USD",
+          payee="merchant-4471", rule="inside the cap")
+c.refused(what="settle", amount="95000.00", currency="USD",
+          payee="merchant-4471",
+          rule="charge would exceed the cap",
+          ledger_ref="00a1b2c3d4e5f6a7b8c9::ChargeRefused")
+print(json.dumps(disclose(c.receipts)))
+`], {encoding: 'utf8'});
+    check(gen2.status === 0, 'the python seals a refusal that names a ledger record');
+    if (gen2.status === 0) {
+      v = await verdictFor('with-ledger-refs.json', gen2.stdout);
+      check(/is a <b>disclosure<\/b>, and it holds/.test(v.innerHTML),
+            '  and the page still verifies it');
+      check(/00a1b2c3d4e5f6a7b8c9::ChargeRefused/.test(v.innerHTML),
+            '  and prints the contract id, so the reader can go and look');
+      check(/did <b>not<\/b> check those/.test(v.innerHTML),
+            '  and says plainly that it did not check them itself');
+      check(/no network/.test(v.innerHTML), '  and why it cannot');
+      // The claim must not appear when there is nothing to claim.
+      v = await verdictFor('no-refs.json', JSON.stringify(DOC));
+      check(!/did <b>not<\/b> check those/.test(v.innerHTML),
+            '  and says none of that for a disclosure with no ledger records');
+    }
+
     // Every attack the python checks, the page must also catch. Removing a
     // refusal is the one that matters: it is what "we had no incidents" is.
     const cut = JSON.parse(JSON.stringify(DOC));
