@@ -65,6 +65,8 @@ SUITES = [
     # from rotting in the weeks before the secret comes back.
     ("python3 tools/prove_refusal_on_devnet.py --dry-run", "The ledger",
      "the one command that puts a refusal on DevNet still works, minus the network"),
+    ("python3 tests/outreach_lint.py", "The record",
+     "anything about to be sent is short, plain, and in the other person's words"),
     ("python3 tests/waiting_smoke.py", "The record",
      "a thread where somebody else spoke last is a thread we owe, and it says who"),
     ("python3 tests/devnet_run_smoke.py", "The ledger",

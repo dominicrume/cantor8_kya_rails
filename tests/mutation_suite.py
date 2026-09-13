@@ -432,6 +432,22 @@ MUTATIONS = [
 
     # The real rail. Until tests/devnet_parse_smoke.py existed, every one of
     # these could have shipped: no suite ran this file.
+    # Both first drafts were a page long and used none of the other person's
+    # vocabulary. These are the two ways that comes back.
+    ("a reply we are about to send grows back to a page",
+     "docs/outreach/SEND-THESE-TODAY.md",
+     "Fair. Plainly.",
+     "Fair. Plainly. " + ("The mechanism is worth setting out at length here "
+                          "because the detail matters and there is a great "
+                          "deal of it to convey. ") * 8,
+     "python3 tests/outreach_lint.py"),
+
+    ("a reply stops using the words the other person used",
+     "docs/outreach/SEND-THESE-TODAY.md",
+     "Your agentic registry says what an agent may do.",
+     "Your system says what an agent may do.",
+     "python3 tests/outreach_lint.py"),
+
     # The tool watched only GitHub for a week and reported "nothing yet" while
     # two people waited on the forum. These are the two ways it can go back to
     # being reassuring rather than useful.

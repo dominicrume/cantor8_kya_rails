@@ -1,107 +1,117 @@
 # Two replies, both owed since 11 September
 
-Run `python3 tools/waiting.py` and it will name both of these. Neither can be
-sent from here: the forum needs a login and returns 403 to anonymous posts.
+`python3 tools/waiting.py` names both. Neither can be sent from here: the forum
+needs a login and refuses anonymous posts.
 
-Copy each block between the lines. Nothing else needs writing.
+Copy the block. Nothing else needs writing.
 
 ---
 
 ## 1. Mr_Tuddles
 
-**Go to:** https://forum.canton.network/t/9059
-Click **Reply** at the bottom.
+**Link to open:** https://forum.canton.network/t/9059
+Scroll to the bottom, click **Reply**, paste, click **Reply** again.
 
-He asked twice for a plain answer and we led with the mechanism both times.
-He is a stablecoin issuer with agents paying on testnets and a Canton port
-under way, which is the one place this matters most.
+### What he actually told us, before we answer him
+
+He is **Pearl Digital Treasury Company B.S.C.(c)**. He builds the **Pearl Path
+Protocol**, P3 Daml Contracts on GitLab: yielding and non-yielding stablecoins
+plus an **agentic registry** on Canton, on the OpenZeppelin standard. In
+September he added: **deterministic settlement by agents**, stables live on
+**testnets with agentic payments**, and they are **porting to Canton natively**.
+
+Those bold words are his. We used none of them in either reply we sent him, and
+both times we led with our mechanism. He asked twice for a plain answer. The
+second time he restated his own context to help us, which is a generous thing
+to do and we did not take it.
+
+His registry says what an agent may do. His deterministic settlement says what
+happens when it pays. Neither keeps what happened when it was stopped. That is
+the gap, said in his vocabulary, and it gets wider on Canton.
 
 Paste this:
 
 ```
-Fair enough. Plainly:
+Fair. Plainly.
 
-I am not building a platform. I build the evidence layer that sits under one.
-A platform decides what your agent may do. I record what it tried and was
-refused, sealed so the other side can check it without trusting whoever ran
-the agent.
+Your agentic registry says what an agent may do.
+Deterministic settlement says what happens when it pays.
+I do the third one. I keep the record of what it tried and was refused.
 
-That matters most exactly where you are going. You said you are looking at
-porting to Canton natively. In Daml a failed assertMsg aborts the whole
-transaction, so a refused action leaves nothing behind at all: afterwards the
-ledger looks exactly as it would if the agent had never tried. Your settled
-payments are on the ledger. Your blocked ones exist only in your own logs,
-written by you, about you. For a stablecoin issuer that is the wrong half to
-be vouching for.
+You said you are porting to Canton natively. The gap gets wider there.
 
-Two parts to it.
+In Daml a failed assertMsg aborts the transaction. So a blocked payment
+leaves nothing at all. Your settled payments sit on the ledger. Your
+blocked ones sit in your own logs, written by you, about you. An auditor
+asks a stablecoin issuer for the second half.
 
-The refusal becomes a transaction that succeeds. Same rules, but when one says
-no it writes a small contract and moves no money, so the contract id and the
-time come from the ledger instead of from the operator.
+So two changes. The refusal becomes a transaction that commits and moves
+no money. And refusals can be handed over without the payments.
 
-And the refusals can be handed over without the payments. Here is one:
-
+Here is one:
 https://dominicrume.github.io/cantor8_kya_rails/examples/settlement-refusals.json
 
-Drop it on https://dominicrume.github.io/cantor8_kya_rails/ and it shows three
-refusals in full and three payments as sealed gaps it is not being shown.
-Delete a refusal and it stops verifying. Nothing to install, no account.
+Drop it on https://dominicrume.github.io/cantor8_kya_rails/
 
-The figures are invented, so you can see the shape without reading anything
-into the numbers. MIT, and about twenty lines to implement if you would rather
-not take the dependency.
+It shows three refusals in full. Three payments stay shut. Delete a
+refusal and the file stops verifying. Nothing to install.
+
+The figures are invented. MIT, and about twenty lines if you would
+rather not take the dependency.
 ```
 
 ---
 
 ## 2. Federico_Rodriguez
 
-**Go to:** https://forum.canton.network/t/9114
-Click **Reply** at the bottom.
+**Link to open:** https://forum.canton.network/t/9114
+Scroll to the bottom, click **Reply**, paste, click **Reply** again.
 
-He found the hole and specified the fix on 11 September. It was built on the
-12th. He gets the credit in the first line.
+### What he actually asked
+
+One direct question: *"Is my understanding correct that the hash-chained
+receipts are produced by the application based on the response it gets from the
+**participant/validator**?"*
+
+The answer is yes, and he knew it. His point was the next one: the chain makes
+receipts tamper-evident but cannot show one was **omitted**. Then he specified
+the fix and named it **RejectedAttempt**, and named its **trade-off**, that
+rejection becomes **explicitly modelled in Daml**.
+
+Our first draft of this reply never once used his name for it. Answer his
+question first, with the word yes.
 
 Paste this:
 
 ```
-Your understanding was correct, and you were right about the limitation.
+Yes, that is right. And the omission gap was the real problem.
 
-The receipts were produced by the application, so a refused attempt existed
-only because our own process chose to write it down. In Daml a failed
-assertMsg aborts the transaction, so after a refusal the ledger looks exactly
-as it would if the agent had never tried. The accepted payments were
-corroborated by the ledger. The refusals, which are the half anyone actually
-asks about, were our word.
+I built what you described.
 
-I built what you described. TryCharge runs the same rules and, when one says
-no, creates a ChargeRefused contract and leaves the mandate untouched. The
-transaction commits either way and money only moves on the allowed path, which
-is the shape you set out.
+A choice called TryCharge checks the policy. If it passes, it pays. If it
+fails, it creates a ChargeRefused contract and pays nothing. Both paths
+commit. That is your RejectedAttempt under another name.
 
 https://github.com/dominicrume/cantor8_kya_rails/blob/main/step-1-mandate/daml/KyaMandate.daml
 
-Two things I would not have got right without the nudge. The rules are now
-written once and read by both paths, because the aborting fence and the
-recording fence saying the same words is not the same as them agreeing: I
-flipped one comparison and every test stayed green while a charge landing
-exactly on the cap was refused by one path and accepted by the other. And the
-refusal record is archivable by its signatories, so the honest claim is that
-removing one is itself a ledger event, not that it cannot be removed.
+You called the trade-off right too. Rejection is modelled in Daml now.
+That cost a second copy of the rules. They drifted once. I changed one
+comparison. Every test stayed green. The two paths then disagreed about a
+charge landing exactly on the cap. There is a test for that now.
 
-Your caveat survives, and it is in the contract now rather than in a thread:
-an attempt that was never submitted still leaves nothing behind. This makes a
-refusal that happened impossible to invent, backdate or reorder. It does not
-make one that never reached the ledger appear.
+Your caveat still stands. An attempt nobody submits still leaves
+nothing. This only fixes refusals that reached the ledger.
 
-Thank you. That was a better piece of review than most code gets.
+Thank you. That was better review than most code gets.
 ```
 
 ---
 
-## After sending
+## After you send
 
-Add a row to `docs/conversations.md` for anything either of them says back, in
-their words. Do not chase either thread. The OpenZeppelin issues have had no
-reply in seven days and get no second message.
+Add what either says back to `docs/conversations.md`, in their words.
+
+Do not chase anyone. The three OpenZeppelin issues have had no reply in seven
+days and get no second message. The Developer Hub listing still describes this
+as assertMsg fences, which reads like a platform, and that fix stays held until
+PR #160 is looked at.
