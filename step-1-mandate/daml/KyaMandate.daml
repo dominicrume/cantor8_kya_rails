@@ -64,12 +64,21 @@ template ChargeRefused
     refusedAt : Time
       -- ^ From getTime, which is ledger effective time, not a clock the
       -- submitter writes.
+    auditor   : Optional Party
+      -- ^ Copied from the mandate. `None` means nobody beyond the two
+      -- signatories sees this, which is the default and the safe one.
   where
     signatory owner, spender
-    -- Deliberately no `observer payee`. On an allow-list refusal the payee is
-    -- a party the mandate never authorised, and disclosing the attempt to them
-    -- would tell a stranger they were nearly paid. The owner is the one who
-    -- has to produce this for a regulator.
+    -- The auditor observes. This is the part Canton can do that a transparent
+    -- chain cannot: the refusal is on a ledger AND is not public, and the one
+    -- party entitled to read it was named once, in the mandate, before any of
+    -- these attempts happened. They do not have to ask the operator for it
+    -- afterwards, which is the whole difference between evidence and a report.
+    --
+    -- Deliberately NOT `observer payee`. On an allow-list refusal the payee is
+    -- a party the mandate never authorised, and telling them would tell a
+    -- stranger they were nearly paid.
+    observer optional [] (\a -> [a]) auditor
 
 -- | What TryCharge hands back. The mandate comes back either way, because the
 -- choice consumes it either way and the caller needs the new contract id.
@@ -104,6 +113,25 @@ template KyaMandate
     periodLength : Optional RelTime
     periodSpent  : Decimal   -- spent inside the current window
     periodStart  : Time      -- when the current window opened
+
+    -- Named once, by the owner, when the mandate is written. Optional and
+    -- LAST, because Canton's upgrade check accepts a new optional field at the
+    -- end of a record and refuses almost anything else; docs/upgrade-path.md
+    -- is the record of learning that the expensive way.
+    --
+    -- The auditor is NOT an observer on this template, and that is deliberate
+    -- rather than an omission. This record carries `spent`, which is the
+    -- accepted total: the exact thing a disclosure withholds. An auditor
+    -- entitled to see what an agent was STOPPED from doing is not thereby
+    -- entitled to see everything it was allowed to do. They observe
+    -- ChargeRefused and nothing else.
+    --
+    -- The cost is real and worth stating: the refusal says "charge would
+    -- exceed the cap" without saying what the cap was. If an auditor needs the
+    -- number, the owner hands them a SPEC 6b disclosure, where the sealed
+    -- policy entry is shown for exactly this reason. That is a decision the
+    -- owner makes per request, which is the right place for it.
+    auditor      : Optional Party
   where
     -- Defence in depth: `spent <= cap` here duplicates the cap assertion in
     -- Charge. Either one alone refuses an over-cap charge. That is deliberate,
@@ -173,6 +201,7 @@ template KyaMandate
           Some rule -> do
             refused <- create ChargeRefused with
               owner; spender; payee; amount; memo; rule; refusedAt = now
+              auditor
             kept <- create this
             pure TryResult with
               mandate = kept
@@ -243,6 +272,7 @@ template KyaMandateProposal
     allowed   : [Party]
     periodLimit  : Optional Decimal
     periodLength : Optional RelTime
+    auditor      : Optional Party
   where
     signatory owner
     observer spender
@@ -256,6 +286,7 @@ template KyaMandateProposal
           periodLimit; periodLength
           periodSpent = 0.0
           periodStart = now
+          auditor
 
     choice Reject : ()
       controller spender
