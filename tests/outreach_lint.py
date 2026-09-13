@@ -60,7 +60,11 @@ def check(ok, what):
         fails.append(what)
 
 
-TARGETS = [os.path.join(ROOT, "docs", "outreach", "SEND-THESE-TODAY.md")]
+# Whatever is currently drafted to send. Renamed when it goes out, so this
+# list is the outbox rather than an archive: a lint that checks a sent message
+# is checking something nobody can act on.
+TARGETS = [p for p in [os.path.join(ROOT, "docs", "outreach", "sent-2026-09-13.md")]
+           if os.path.exists(p)]
 
 # Words each of them used that a reply has to contain, or it is not a reply to
 # them. Checked per file, not per block, because one sheet carries both.

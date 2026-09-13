@@ -73,6 +73,30 @@ Three people describing our problem in their own words means there is a
 business here. Zero means we have been building for ourselves, which is the
 finding — and a cheaper one to get now than in a quarter.
 
+## Both replies went out, 2026-09-13
+
+| sent | to | where | what we said |
+|---|---|---|---|
+| 12:03 | Mr_Tuddles | [t/9059/13](https://forum.canton.network/t/9059/13) | His registry says what an agent may do. Deterministic settlement says what happens when it pays. We do the third one. Then the Canton point, the file, and no question. |
+| 12:06 | Federico_Rodriguez | [t/9114/4](https://forum.canton.network/t/9114/4) | Yes, he was right. Here is the code. Here are two things we got wrong on the way. His caveat still stands. |
+
+Post 3 on 9114 was deleted by the author before 4 replaced it.
+
+Neither owes us anything now. `tools/waiting.py` agrees: it reports no thread
+where somebody else spoke last. **Do not follow up.** Two people were asked
+twice, waited two days, and have now been answered. The next move is theirs,
+and a nudge would spend the goodwill the replies just bought.
+
+What to watch for, in their words, and what each would mean:
+
+- **Mr_Tuddles opens the file.** Then the question worth asking is the one he
+  dodged twice: what happens to a refused settlement attempt in P3 today.
+- **Federico names his employer or points at someone.** He is the strongest
+  technical relationship this project has and his affiliation is still unknown.
+  That is the single most useful fact left to learn.
+- **Silence from both.** That is an answer too, and a cheaper one than a
+  quarter spent guessing.
+
 ## What the ecosystem already has, found 2026-09-13
 
 Not a conversation, but it belongs beside one, because it is the thing that
