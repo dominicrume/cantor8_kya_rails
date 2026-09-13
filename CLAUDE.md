@@ -10,6 +10,12 @@ Hard rules for any AI touching this code:
 - The receipt chain canonicalisation MUST stay identical in Python (kya_chain.py) and JS (verifier.html):
   JSON with sorted keys, separators ",", ":", sha256 over canonical(receipt_without_seal) + prev_seal.
 - Anything mocked must be labelled MOCKED in code and in the demo. Honesty is scored.
+- NEVER run a command whose output is a credential: `git credential-* get`,
+  `gh auth token`, `cat ~/.netrc`, `env | grep -i secret`. To check whether one
+  exists, print its length or a boolean. This is here because an assistant
+  debugging a push printed a live GitHub token into the transcript on
+  2026-09-13. Every secret scanner in this repository reads FILES, so none of
+  them could have caught it.
 - The organisers' toolkit lives at ~/hackathon-toolkit. Read it, call it, never edit it.
 - NOTHING IS PUBLISHED to PyPI, npm, GitHub Pages or any public index unless the
   exact package name and version has been stated and approved in that message.
