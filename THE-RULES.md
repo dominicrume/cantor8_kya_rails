@@ -64,7 +64,14 @@ What it requires:
 
 ## Must never
 - No production keys, no real funds, no Vorem wallets. Testnet and LocalNet only.
-- No secrets in this repo. Ever.
+- No secrets in this repo. Ever. **And none in command output either.**
+  On 2026-09-13 an assistant debugging a failed push ran
+  `git credential-osxkeychain get` and printed a live GitHub OAuth token into
+  the transcript. The rule said "in this repo", every scanner reads files, and
+  nothing covered a command whose entire purpose is to emit a credential to
+  stdout. Never run `git credential-* get`, `gh auth token`, `cat ~/.netrc`, or
+  `env | grep -i secret`. To check whether a credential EXISTS, print its
+  length or a yes/no, never its value.
 - Never modify the organisers' toolkit; it is a dependency, not our code.
 - No claim without a number behind it.
 

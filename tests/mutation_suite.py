@@ -446,6 +446,18 @@ MUTATIONS = [
 
     # The real rail. Until tests/devnet_parse_smoke.py existed, every one of
     # these could have shipped: no suite ran this file.
+    # The scanners all read files, so none of them could catch a command whose
+    # output is the secret. That is how a live GitHub token reached a
+    # transcript on 2026-09-13.
+    ("a command that prints a credential stops being refused",
+     "tests/security_lint.py",
+     'LEAKY = [("git credential-", "prints the stored password for a host"),\n'
+     '         ("gh auth token", "prints the GitHub token"),\n'
+     '         ("cat ~/.netrc", "prints stored logins"),\n'
+     '         ("echo $C8_CLIENT_SECRET", "prints the DevNet secret")]',
+     "LEAKY = []",
+     "python3 tests/security_lint.py"),
+
     # Both first drafts were a page long and used none of the other person's
     # vocabulary. These are the two ways that comes back.
     ("a reply we are about to send grows back to a page",
