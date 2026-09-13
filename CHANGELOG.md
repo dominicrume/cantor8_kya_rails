@@ -11,9 +11,11 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ---
 
-## [Unreleased]
+## [1.2.0] — 2026-09-13
 
-Not published. `pip install knowyouragenticai-receipts` still gets 1.1.0.
+New features, no seal changes. Every 1.0.0 and 1.1.0 chain verifies
+byte-for-byte unchanged, which is why this is a minor and not a major: receipts
+are meant to outlive the code that wrote them, and that bar is high.
 
 ### Added
 
