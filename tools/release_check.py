@@ -83,18 +83,24 @@ except Exception as e:                       # noqa: BLE001 - offline is an answ
 step(3, "build from a CLONE of the committed code, not the working tree")
 work = tempfile.mkdtemp(prefix="release-")
 clone = os.path.join(work, "src")
+os.makedirs(os.path.join(work, "dist"), exist_ok=True)
 r = run(["git", "clone", "--quiet", "--depth", "1", "file://" + ROOT, clone])
 check(r.returncode == 0, "cloned the repository at HEAD")
 built = []
 if r.returncode == 0:
-    r = run([sys.executable, "-m", "build", os.path.join(clone, "pkg"),
-             "--outdir", os.path.join(work, "dist")])
-    if r.returncode != 0:
-        # `build` is not stdlib. Falling back keeps this runnable rather than
-        # skipping the whole check, which is how a release gate stops being run.
-        r = run([sys.executable, "setup.py", "sdist",
-                 "--dist-dir", os.path.join(work, "dist")],
-                cwd=os.path.join(clone, "pkg"))
+    # `build` is not installed and must not be: CLAUDE.md says this project is
+    # stdlib only. setuptools IS present, and its PEP 517 backend can be driven
+    # directly, which is exactly what `build` would do anyway. Falling back to
+    # setup.py would fail differently, because there is no setup.py: the
+    # package is pyproject-only by design.
+    r = run([sys.executable, "-c",
+             "import sys;sys.path.insert(0,'.');"
+             "from setuptools import build_meta as b;"
+             "print(b.build_sdist(sys.argv[1]));"
+             "print(b.build_wheel(sys.argv[1]))",
+             os.path.join(work, "dist")],
+            cwd=os.path.join(clone, "pkg"))
+    os.makedirs(os.path.join(work, "dist"), exist_ok=True)
     dist = os.path.join(work, "dist")
     built = sorted(os.listdir(dist)) if os.path.isdir(dist) else []
     check(bool(built), "built %s" % (", ".join(built) or "NOTHING: " +
