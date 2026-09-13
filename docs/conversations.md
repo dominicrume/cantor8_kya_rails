@@ -1,6 +1,6 @@
 # Conversations with people who might use this
 
-**Count: 1.**
+**Count: 2.**
 
 That number is the point of this file. Everything else in this repository is a
 thing we decided to build. This is the only page that records what somebody
@@ -8,6 +8,11 @@ outside it actually said. It read zero for the first thirteen days.
 
 It is kept in the repo rather than a notebook because the repo is the thing we
 look at every day, and a zero in a private note is a zero nobody has to explain.
+
+It also read **1** for two days while it was **2**, because nobody went and
+looked at the thread. Both replies below arrived on 11 September and both sat
+unanswered while the work they were about was being done. A file that records
+conversations is worth nothing if the conversations are not read.
 
 ## The rule
 
@@ -21,7 +26,9 @@ telling you what they do today about agent spend counts.
 
 | date | who | where | what they said, in their words | what it changed |
 |---|---|---|---|---|
-| 2026-09-11 | Mr_Tuddles, Pearl Digital (P3 contracts, agentic registry) | forum.canton.network/t/9059, reply to post #9 | "Yes, we support deterministic settlement by agents. what do you have in mind?" | First reply to the one-sentence question, four hours after it was asked. He answered yes to *does anyone ask you to prove your agent didn't do something* and then asked what we have in mind. Next message: one sentence of ours, one question about his -- what happens to a refused settlement attempt in his system today. |
+| 2026-09-11 | Mr_Tuddles, Pearl Digital (P3 contracts, agentic registry) | forum.canton.network/t/9059, reply to post #9 | "Yes, we support deterministic settlement by agents. what do you have in mind?" | First reply to the one-sentence question, four hours after it was asked. |
+| 2026-09-11 | Mr_Tuddles, same thread, later | forum.canton.network/t/9059/12 | "Might be easier for you to just tell us what you are building. We are a stablecoin issuer; our stables are deployed on testnets with agentic payments." Plus: investigating porting to Canton natively, contracts based on their GitLab repo. | **This is the row that counts under the rule at the top of this file**: a fact about what he does, not an opinion about our idea. Stables live on testnets with agentic payments TODAY. He also declined our question twice and asked us to say plainly what we are building, which is a fair request we had not met: both our messages led with the mechanism. Unanswered for two days while we rebuilt the thing he was asking about. |
+| 2026-09-11 | Federico_Rodriguez | forum.canton.network/t/9114/2, on our own topic | "you are still trusting the application to create the receipts and include every attempt. The hash chain makes existing receipts tamper-evident, but it doesn't prove that a receipt wasn't omitted... An alternative worth considering would be to make the refusal itself a valid Canton transaction. For example, wrap the operation in a choice that checks the policy and either performs the action or creates a `RejectedAttempt` audit record. The transaction commits in both cases, but the underlying action only happens when allowed." | A stranger read the design, found the hole, and specified the fix. On **11 September**. `TryCharge` and `ChargeRefused` were built on **12 September** and are that design, down to the shape: one choice, both paths commit, only the allowed one moves money. He also named the limit that survives it, correctly, and it is the one written into KyaMandate.daml and SPEC 6a. He has not told us what he does, so by the rule above this is not a customer conversation; it is something rarer, which is somebody outside the project being right about it before we were. Unanswered for two days. |
 
 ## Who to ask first
 

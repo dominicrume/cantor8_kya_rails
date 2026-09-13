@@ -1,16 +1,27 @@
 #!/usr/bin/env python3
 """What is out there with somebody else's name on it, and has anyone answered.
 
-Three things are waiting on other people and none of them will tell you. This
-asks GitHub directly rather than making you remember three URLs.
+This asks, rather than making you remember the URLs.
 
     python3 tools/waiting.py
 
-Needs nothing installed. Uses gh for authentication if it is there, and falls
-back to the public API, which is enough to read a public issue.
+IT ONLY WATCHED GITHUB FOR ITS FIRST WEEK, AND THAT WAS THE MISTAKE. Every
+reply this project has ever received came from the Canton forum, and none of
+them came from a GitHub issue. On 11 September two people replied on the forum:
+one asked us to say plainly what we are building, and one read the design,
+found the hole and specified the fix a day before it was built. Both sat
+unanswered for two days while this tool reported "nothing yet", truthfully,
+about the wrong place.
+
+A tool called "waiting on other people" that watches only the channel nobody
+answers on is worse than no tool, because it is reassuring.
+
+Forum topics are read as public JSON: Discourse serves any topic at `<url>.json`
+with no key. Needs nothing installed.
 """
 import json
 import os
+import re
 import subprocess  # nosec B404 - shelling out to gh is the point
 import sys
 import urllib.request
@@ -24,6 +35,15 @@ WATCHING = [
      "25 of 30, including the oracle price guard"),
     ("canton-network-devs/Canton-Developer-Hub", 156, "pull",
      "KYA Rails in the tool catalogue"),
+]
+
+# Discourse topics, read as JSON. `us` is our own username: a reply from
+# anybody else is somebody answering, and a reply from us is not.
+FORUM = "https://forum.canton.network"
+US = "orumedominic"
+TOPICS = [
+    (9059, "the OpenZeppelin feedback thread, where the stablecoin issuer is"),
+    (9114, "our own topic: how do you prove your app didn't do something?"),
 ]
 
 GH = os.path.expanduser("~/gh")
@@ -76,10 +96,75 @@ def show(repo, number, kind, what):
     return n
 
 
+def posts_on(number):
+    """Every post on a forum topic, or None if it could not be read.
+
+    Offline is an answer, not an exception: a tool that raises when the network
+    is down is a tool nobody runs, and this one exists to be run every day.
+    """
+    url = "%s/t/%d.json" % (FORUM, number)
+    try:
+        with urllib.request.urlopen(url, timeout=30) as r:   # nosec B310 - literal host
+            data = json.loads(r.read())
+    except Exception as e:                       # noqa: BLE001 - offline is an answer
+        print("  forum/t/%d   could not be read: %s" % (number, str(e)[:40]))
+        return None
+    return (data.get("post_stream") or {}).get("posts") or []
+
+
+def plain(post):
+    """A forum post's text, with Discourse's HTML taken out."""
+    return " ".join(re.sub(r"<[^>]+>", " ", post.get("cooked") or "").split())
+
+
+def topic(number, what):
+    """Posts on one forum topic, and who is owed a reply.
+
+    The thing worth printing is not the post count. It is whether the LAST post
+    is somebody else's, because that is the definition of owing a reply, and it
+    is the question nobody was asking for two days.
+    """
+    posts = posts_on(number)
+    if posts is None:
+        return 0
+    others = [p for p in posts if p.get("username") != US]
+    print("  %-44s %d post(s), %d from other people"
+          % ("forum.canton.network/t/%d" % number, len(posts), len(others)))
+    print("      %s" % what)
+    if not posts:
+        return 0
+    for p in others[-2:]:
+        print("      -> %s (%s): %s"
+              % (p.get("username"), (p.get("created_at") or "")[:10], plain(p)[:96]))
+    return announce(posts[-1])
+
+
+def announce(last):
+    """Say, unmissably, whether the last word was somebody else's.
+
+    Unmissably is the requirement, not a flourish. The old version of this tool
+    printed "nothing yet" for two days while two people waited, and it was
+    telling the truth about the wrong place. A line that can be skimmed past is
+    the same failure with extra steps.
+    """
+    owed = last.get("username") != US
+    if owed:
+        print("      ** THE LAST WORD IS THEIRS. You owe %s a reply. **"
+              % last.get("username"))
+    return 1 if owed else 0
+
+
 def main():
     print("waiting on other people")
     replies = sum(show(r, n, k, w) for r, n, k, w in WATCHING)
     print()
+    print("the forum, which is where every reply has actually come from")
+    owed = sum(topic(n, w) for n, w in TOPICS)
+    print()
+    if owed:
+        print("%d conversation(s) waiting on YOU, not on them." % owed)
+        print("Answer those before filing anything new.")
+        print()
     print("  dev-fund@canton.foundation  -- email, so check your inbox")
     print()
     if replies:

@@ -432,6 +432,21 @@ MUTATIONS = [
 
     # The real rail. Until tests/devnet_parse_smoke.py existed, every one of
     # these could have shipped: no suite ran this file.
+    # The tool watched only GitHub for a week and reported "nothing yet" while
+    # two people waited on the forum. These are the two ways it can go back to
+    # being reassuring rather than useful.
+    ("the forum stops being watched, so only GitHub is",
+     "tools/waiting.py",
+     "    owed = sum(topic(n, w) for n, w in TOPICS)",
+     "    owed = 0",
+     "python3 tests/waiting_smoke.py"),
+
+    ("a thread where somebody else spoke last stops counting as owed",
+     "tools/waiting.py",
+     "    owed = last.get(\"username\") != US",
+     "    owed = False",
+     "python3 tests/waiting_smoke.py"),
+
     ("the DevNet run stops requiring a contract id for a refusal",
      "tools/prove_refusal_on_devnet.py",
      "    if not ref:\n        raise Stop(",
