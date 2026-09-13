@@ -424,6 +424,20 @@ MUTATIONS = [
     # before testChargeAndTryChargeAgreeOnTheCapBoundary existed: a charge
     # landing exactly on the cap was refused by one path and accepted by the
     # other, which makes a spending rule depend on which function was called.
+    # The auditor observer is the part a transparent chain cannot do: on a
+    # ledger, not public, readable by one party named before any of it happened.
+    ("the named auditor stops being able to read the refusal",
+     "step-1-mandate/daml/KyaMandate.daml",
+     "    observer optional [] (\\a -> [a]) auditor",
+     "    observer ([] : [Party])",
+     "python3 tests/daml_tests.py"),
+
+    ("a refusal discloses to everybody instead of the named auditor",
+     "step-1-mandate/daml/KyaMandate.daml",
+     "              owner; spender; payee; amount; memo; rule; refusedAt = now\n              auditor",
+     "              owner; spender; payee; amount; memo; rule; refusedAt = now\n              auditor = Some payee",
+     "python3 tests/daml_tests.py"),
+
     ("the two paths disagree about a charge that lands exactly on the cap",
      "step-1-mandate/daml/KyaMandate.daml",
      '  | m.spent + amount > m.cap     = Some "charge would exceed the cap"',

@@ -72,3 +72,32 @@ Rules for the next one:
 Three people describing our problem in their own words means there is a
 business here. Zero means we have been building for ourselves, which is the
 finding — and a cheaper one to get now than in a quarter.
+
+## What the ecosystem already has, found 2026-09-13
+
+Not a conversation, but it belongs beside one, because it is the thing that
+would have made a claim of ours false.
+
+`arxiv.org/abs/2604.11430`, hardening x402, describes an agentic payment
+control plane that emits "structured JSON-L events for every control decision:
+allowed, redacted, policy-blocked, replay-blocked, or error", each carrying a
+timestamp, the agent identifier, the outcome, **and an HMAC chain link over the
+preceding entry for tamper evidence**.
+
+That is a hash-chained log of refusals. Published, in 2026, by people we have
+never spoken to. **We are not the only ones who thought of recording what an
+agent was stopped from doing, and saying we were would be the kind of claim
+this repository exists to refuse.**
+
+What survives the finding, and is sharper for it:
+
+- Their chain is still written by the application. That is exactly
+  Federico_Rodriguez's critique of ours, and it applies to theirs unchanged.
+- Ours puts the refusal on a ledger as a committed transaction, so the record
+  is not the operator's to write or withhold.
+- Selective disclosure of refusals without the payments has no equivalent we
+  have found.
+
+What it changes: the pitch is no longer "nobody records refusals". It is
+"recording them in your own log does not answer the question, and on Canton
+there is somewhere better to put them".
