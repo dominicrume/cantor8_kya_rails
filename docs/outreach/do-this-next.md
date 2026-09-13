@@ -59,7 +59,13 @@ Click **Comment**.
 
 ---
 
-## [ ] 4. Ask Mr_Tuddles one question  (2 minutes — DUE NOW)
+## [x] 4. Ask Mr_Tuddles one question  — DONE 2026-09-10, and he answered
+
+He replied twice. See **[SEND-THESE-TODAY.md](SEND-THESE-TODAY.md)**, which is
+now the only outreach file that needs reading: two replies owed since
+11 September, both written, neither sent. `python3 tools/waiting.py` names them.
+
+The original step, kept because the question worked:
 
 He builds stablecoins and an "agentic registry" at Pearl Digital. He is the
 closest person in that thread to what we do.
