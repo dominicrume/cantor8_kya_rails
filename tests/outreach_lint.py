@@ -63,13 +63,21 @@ def check(ok, what):
 # Whatever is currently drafted to send. Renamed when it goes out, so this
 # list is the outbox rather than an archive: a lint that checks a sent message
 # is checking something nobody can act on.
-TARGETS = [p for p in [os.path.join(ROOT, "docs", "outreach", "sent-2026-09-13.md")]
-           if os.path.exists(p)]
+TARGETS = [p for p in [
+    os.path.join(ROOT, "docs", "outreach", "sent-2026-09-13.md"),
+    os.path.join(ROOT, "docs", "outreach",
+                 "post-what-a-ledger-does-not-record.md"),
+] if os.path.exists(p)]
 
-# Words each of them used that a reply has to contain, or it is not a reply to
-# them. Checked per file, not per block, because one sheet carries both.
-THEIRS = ["deterministic settlement", "agentic registry", "porting to Canton",
-          "RejectedAttempt", "trade-off"]
+# Words the RECIPIENT used, which a reply has to contain or it is not a reply
+# to them. Keyed by file, because the rule only applies to a reply: a new topic
+# has no addressee, and demanding somebody's vocabulary in a post they have not
+# written yet is the check misfiring rather than the draft being wrong.
+THEIRS = {
+    "sent-2026-09-13.md": ["deterministic settlement", "agentic registry",
+                           "porting to Canton", "RejectedAttempt", "trade-off"],
+    "post-what-a-ledger-does-not-record.md": [],
+}
 
 for path in TARGETS:
     name = os.path.basename(path)
@@ -98,10 +106,15 @@ for path in TARGETS:
     # The mutation harness caught that: swapping "agentic registry" out of the
     # block left this green, because the word was still in my own notes.
     sent = "\n".join(blocks).lower()
-    missing = [t for t in THEIRS if t.lower() not in sent]
+    wanted = THEIRS.get(name)
+    check(wanted is not None,
+          "  %s is listed in THEIRS, so somebody decided whether it is a reply"
+          % name)
+    missing = [t for t in (wanted or []) if t.lower() not in sent]
     check(not missing,
           "  the blocks use their words, not only ours"
-          + (": missing %s" % missing if missing else ""))
+          + (": missing %s" % missing if missing else "")
+          if wanted else "  no addressee, so no vocabulary is required")
     print()
 
 # No em dashes. A standing rule, and outreach is where it matters most.

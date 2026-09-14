@@ -1,0 +1,824 @@
+{
+  "post_stream": {
+    "posts": [
+      {
+        "id": 25602,
+        "name": "legend",
+        "username": "orumedominic",
+        "avatar_template": "https://avatars.discourse-cdn.com/v4/letter/o/3da27b/{size}.png",
+        "created_at": "2026-09-08T09:07:59.674Z",
+        "cooked": "<p>Not what it did.<br>\nLogs cover that. What it tried and was stopped from doing.</p>\n<p>I hit this building a spend-limited agent wallet. The refusals turned out to<br>\nmatter more than the payments, and I could not find a good way to hand<br>\nsomeone proof that a refusal actually happened.</p>\n<p>What I ended up with: every attempt, allowed or refused, becomes one<br>\nhash-chained receipt saying what was tried and which rule decided it.</p>\n<p>The limits are assertMsg fences in the Daml, so the refusal is the ledger\u2019s, not<br>\nmy app saying so about itself. You can check a chain here with nothing<br>\ninstalled: <a href=\"https://dominicrume.github.io/cantor8_kya_rails/\" class=\"inline-onebox\" rel=\"noopener nofollow ugc\">Check a payment record | KYA Rails</a></p>\n<p>But I might be solving something nobody else has.</p>\n<p>Has anyone ever asked you to prove your app didn\u2019t do something?<br>\nWhat did you show them?</p>",
+        "post_number": 1,
+        "post_type": 1,
+        "posts_count": 4,
+        "updated_at": "2026-09-10T21:40:13.815Z",
+        "reply_count": 0,
+        "reply_to_post_number": null,
+        "quote_count": 0,
+        "incoming_link_count": 8,
+        "reads": 11,
+        "readers_count": 10,
+        "score": 42.2,
+        "yours": false,
+        "topic_id": 9114,
+        "topic_slug": "how-do-you-prove-your-app-didnt-do-something",
+        "display_username": "legend",
+        "primary_group_name": null,
+        "flair_name": null,
+        "flair_url": null,
+        "flair_bg_color": null,
+        "flair_color": null,
+        "flair_group_id": null,
+        "badges_granted": [],
+        "version": 4,
+        "can_edit": false,
+        "can_delete": false,
+        "can_recover": false,
+        "can_see_hidden_post": false,
+        "can_wiki": false,
+        "link_counts": [
+          {
+            "url": "https://dominicrume.github.io/cantor8_kya_rails/",
+            "internal": false,
+            "reflection": false,
+            "title": "Check a payment record | KYA Rails",
+            "clicks": 1
+          }
+        ],
+        "read": true,
+        "user_title": null,
+        "bookmarked": false,
+        "actions_summary": [],
+        "moderator": false,
+        "admin": false,
+        "staff": false,
+        "user_id": 2344,
+        "hidden": false,
+        "trust_level": 0,
+        "deleted_at": null,
+        "user_deleted": false,
+        "edit_reason": null,
+        "can_view_edit_history": false,
+        "wiki": false,
+        "post_url": "/t/how-do-you-prove-your-app-didnt-do-something/9114/1",
+        "reactions": [],
+        "current_user_reaction": null,
+        "reaction_users_count": 0,
+        "current_user_used_main_reaction": false,
+        "can_accept_answer": false,
+        "can_unaccept_answer": false,
+        "accepted_answer": false,
+        "topic_accepted_answer": null
+      },
+      {
+        "id": 25628,
+        "name": "Federico Rodriguez",
+        "username": "Federico_Rodriguez",
+        "avatar_template": "/user_avatar/forum.canton.network/federico_rodriguez/{size}/7339_2.png",
+        "created_at": "2026-09-11T12:40:05.571Z",
+        "cooked": "<p>Hey <a class=\"mention\" href=\"/u/orumedominic\">@orumedominic</a> , Is my understanding correct that the hash-chained receipts are produced by the application based on the response it gets from the participant/validator?</p>\n<p>If so, one limitation is that you are still trusting the application to create the receipts and include every attempt. The hash chain makes existing receipts tamper-evident, but it doesn\u2019t prove that a receipt wasn\u2019t omitted or that its contents accurately represent the participant\u2019s response.</p>\n<p>An alternative worth considering would be to make the refusal itself a valid Canton transaction. For example, wrap the operation in a choice that checks the policy and either performs the action or creates a <code>RejectedAttempt</code> audit record. The transaction commits in both cases, but the underlying action only happens when allowed.</p>\n<p>That would make the refusal part of the Canton ledger rather than evidence produced by the application. The trade-off is that rejection becomes explicitly modeled in Daml rather than using a failed transaction.</p>",
+        "post_number": 2,
+        "post_type": 1,
+        "posts_count": 4,
+        "updated_at": "2026-09-11T12:40:05.571Z",
+        "reply_count": 2,
+        "reply_to_post_number": null,
+        "quote_count": 0,
+        "incoming_link_count": 1,
+        "reads": 8,
+        "readers_count": 7,
+        "score": 16.6,
+        "yours": false,
+        "topic_id": 9114,
+        "topic_slug": "how-do-you-prove-your-app-didnt-do-something",
+        "display_username": "Federico Rodriguez",
+        "primary_group_name": "CTP",
+        "flair_name": "CTP",
+        "flair_url": "code",
+        "flair_bg_color": "FFC107",
+        "flair_color": "1A1A1A",
+        "flair_group_id": 151,
+        "badges_granted": [],
+        "version": 1,
+        "can_edit": false,
+        "can_delete": false,
+        "can_recover": false,
+        "can_see_hidden_post": false,
+        "can_wiki": false,
+        "read": true,
+        "user_title": "Community Tech Partner",
+        "title_is_group": true,
+        "bookmarked": false,
+        "actions_summary": [],
+        "moderator": false,
+        "admin": false,
+        "staff": false,
+        "group_moderator": true,
+        "user_id": 2213,
+        "hidden": false,
+        "trust_level": 2,
+        "deleted_at": null,
+        "user_deleted": false,
+        "edit_reason": null,
+        "can_view_edit_history": false,
+        "wiki": false,
+        "post_url": "/t/how-do-you-prove-your-app-didnt-do-something/9114/2",
+        "reactions": [],
+        "current_user_reaction": null,
+        "reaction_users_count": 0,
+        "current_user_used_main_reaction": false,
+        "can_accept_answer": false,
+        "can_unaccept_answer": false,
+        "accepted_answer": false,
+        "topic_accepted_answer": null
+      },
+      {
+        "id": 25632,
+        "name": "legend",
+        "username": "orumedominic",
+        "avatar_template": "https://avatars.discourse-cdn.com/v4/letter/o/3da27b/{size}.png",
+        "created_at": "2026-09-13T12:04:11.957Z",
+        "cooked": "<p>(post deleted by author)</p>",
+        "post_number": 3,
+        "post_type": 1,
+        "posts_count": 4,
+        "updated_at": "2026-09-13T12:06:13.019Z",
+        "reply_count": 0,
+        "reply_to_post_number": 2,
+        "quote_count": 0,
+        "incoming_link_count": 0,
+        "reads": 4,
+        "readers_count": 3,
+        "score": 0.8,
+        "yours": false,
+        "topic_id": 9114,
+        "topic_slug": "how-do-you-prove-your-app-didnt-do-something",
+        "display_username": "legend",
+        "primary_group_name": null,
+        "flair_name": null,
+        "flair_url": null,
+        "flair_bg_color": null,
+        "flair_color": null,
+        "flair_group_id": null,
+        "badges_granted": [],
+        "version": 2,
+        "can_edit": false,
+        "can_delete": false,
+        "can_recover": false,
+        "can_see_hidden_post": false,
+        "can_wiki": false,
+        "read": true,
+        "user_title": null,
+        "reply_to_user": {
+          "id": 2213,
+          "username": "Federico_Rodriguez",
+          "name": "Federico Rodriguez",
+          "avatar_template": "/user_avatar/forum.canton.network/federico_rodriguez/{size}/7339_2.png"
+        },
+        "bookmarked": false,
+        "actions_summary": [],
+        "moderator": false,
+        "admin": false,
+        "staff": false,
+        "user_id": 2344,
+        "hidden": false,
+        "trust_level": 0,
+        "deleted_at": null,
+        "user_deleted": true,
+        "edit_reason": null,
+        "can_view_edit_history": false,
+        "wiki": false,
+        "post_url": "/t/how-do-you-prove-your-app-didnt-do-something/9114/3",
+        "reactions": [],
+        "current_user_reaction": null,
+        "reaction_users_count": 0,
+        "current_user_used_main_reaction": false,
+        "can_accept_answer": false,
+        "can_unaccept_answer": false,
+        "accepted_answer": false,
+        "topic_accepted_answer": null
+      },
+      {
+        "id": 25633,
+        "name": "legend",
+        "username": "orumedominic",
+        "avatar_template": "https://avatars.discourse-cdn.com/v4/letter/o/3da27b/{size}.png",
+        "created_at": "2026-09-13T12:06:42.251Z",
+        "cooked": "<p>Yes, that is right. And the omission gap was the real problem.</p>\n<p>I built what you described.</p>\n<p>A choice called TryCharge checks the policy. If it passes, it pays. If it<br>\nfails, it creates a ChargeRefused contract and pays nothing. Both paths<br>\ncommit. That is your RejectedAttempt under another name.</p>\n<aside class=\"onebox githubblob\" data-onebox-src=\"https://github.com/dominicrume/cantor8_kya_rails/blob/7b9eeb2d5b9c7ee7850524d4bd3f82229d48498a/step-1-mandate/daml/KyaMandate.daml\">\n  <header class=\"source\">\n\n      <a href=\"https://github.com/dominicrume/cantor8_kya_rails/blob/7b9eeb2d5b9c7ee7850524d4bd3f82229d48498a/step-1-mandate/daml/KyaMandate.daml\" target=\"_blank\" rel=\"noopener nofollow ugc\">github.com/dominicrume/cantor8_kya_rails</a>\n  </header>\n\n  <article class=\"onebox-body\">\n    <h4><a href=\"https://github.com/dominicrume/cantor8_kya_rails/blob/7b9eeb2d5b9c7ee7850524d4bd3f82229d48498a/step-1-mandate/daml/KyaMandate.daml\" target=\"_blank\" rel=\"noopener nofollow ugc\">step-1-mandate/daml/KyaMandate.daml</a></h4>\n\n<div class=\"git-blob-info\">\n  <a href=\"https://github.com/dominicrume/cantor8_kya_rails/blob/7b9eeb2d5b9c7ee7850524d4bd3f82229d48498a/step-1-mandate/daml/KyaMandate.daml\" rel=\"noopener nofollow ugc\"><code>7b9eeb2d5</code></a>\n</div>\n\n\n      <pre><code class=\"lang-daml\">-- KyaMandate: extends the Cantor8 hackathon starter Mandate.daml (credit: Cantor8 toolkit)\n-- Additions for KYA Rails: counterparty allow-list, charge memo for the audit trail.\n-- The cap is enforced HERE. A cap checked in Python is a suggestion.\nmodule KyaMandate where\n\nimport DA.Time (RelTime, addRelTime)\n\n-- One contract per accepted charge, so the audit trail lives on the ledger and\n-- not only in our receipt chain. Signed by the same two parties as the mandate;\n-- the payee observes, so they can read what was paid to them without being able\n-- to authorise anything.\ntemplate ChargeRecord\n  with\n    owner   : Party\n    spender : Party\n    payee   : Party\n    amount  : Decimal\n    memo    : Text\n    chargedAt : Time\n  where\n</code></pre>\n\n\n\n  This file has been truncated. <a href=\"https://github.com/dominicrume/cantor8_kya_rails/blob/7b9eeb2d5b9c7ee7850524d4bd3f82229d48498a/step-1-mandate/daml/KyaMandate.daml\" target=\"_blank\" rel=\"noopener nofollow ugc\">show original</a>\n\n  </article>\n\n  <div class=\"onebox-metadata\">\n    \n    \n  </div>\n\n  <div style=\"clear: both\"></div>\n</aside>\n\n<p>You called the trade-off right too. Rejection is modelled in Daml now.<br>\nThat cost a second copy of the rules. They drifted once. I changed one<br>\ncomparison. Every test stayed green. The two paths then disagreed about a<br>\ncharge landing exactly on the cap. There is a test for that now.</p>\n<p>Your caveat still stands. An attempt nobody submits still leaves<br>\nnothing. This only fixes refusals that reached the ledger.</p>\n<p>That was better review than most code gets. Thank you.</p>",
+        "post_number": 4,
+        "post_type": 1,
+        "posts_count": 4,
+        "updated_at": "2026-09-13T12:11:46.757Z",
+        "reply_count": 0,
+        "reply_to_post_number": 2,
+        "quote_count": 0,
+        "incoming_link_count": 2,
+        "reads": 4,
+        "readers_count": 3,
+        "score": 10.8,
+        "yours": false,
+        "topic_id": 9114,
+        "topic_slug": "how-do-you-prove-your-app-didnt-do-something",
+        "display_username": "legend",
+        "primary_group_name": null,
+        "flair_name": null,
+        "flair_url": null,
+        "flair_bg_color": null,
+        "flair_color": null,
+        "flair_group_id": null,
+        "badges_granted": [],
+        "version": 2,
+        "can_edit": false,
+        "can_delete": false,
+        "can_recover": false,
+        "can_see_hidden_post": false,
+        "can_wiki": false,
+        "link_counts": [
+          {
+            "url": "https://github.com/dominicrume/cantor8_kya_rails/blob/7b9eeb2d5b9c7ee7850524d4bd3f82229d48498a/step-1-mandate/daml/KyaMandate.daml",
+            "internal": false,
+            "reflection": false,
+            "title": "cantor8_kya_rails/step-1-mandate/daml/KyaMandate.daml at 7b9eeb2d5b9c7ee7850524d4bd3f82229d48498a \u00b7 dominicrume/cantor8_kya_rails \u00b7 GitHub",
+            "clicks": 0
+          }
+        ],
+        "read": true,
+        "user_title": null,
+        "reply_to_user": {
+          "id": 2213,
+          "username": "Federico_Rodriguez",
+          "name": "Federico Rodriguez",
+          "avatar_template": "/user_avatar/forum.canton.network/federico_rodriguez/{size}/7339_2.png"
+        },
+        "bookmarked": false,
+        "actions_summary": [],
+        "moderator": false,
+        "admin": false,
+        "staff": false,
+        "user_id": 2344,
+        "hidden": false,
+        "trust_level": 0,
+        "deleted_at": null,
+        "user_deleted": false,
+        "edit_reason": "Github link was replaced with a permanent link",
+        "can_view_edit_history": false,
+        "wiki": false,
+        "post_url": "/t/how-do-you-prove-your-app-didnt-do-something/9114/4",
+        "reactions": [],
+        "current_user_reaction": null,
+        "reaction_users_count": 0,
+        "current_user_used_main_reaction": false,
+        "can_accept_answer": false,
+        "can_unaccept_answer": false,
+        "accepted_answer": false,
+        "topic_accepted_answer": null
+      }
+    ],
+    "stream": [
+      25602,
+      25628,
+      25632,
+      25633
+    ]
+  },
+  "timeline_lookup": [
+    [
+      1,
+      6
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      3,
+      0
+    ]
+  ],
+  "suggested_topics": [],
+  "tags": [],
+  "tags_descriptions": {},
+  "fancy_title": "How do you prove your app didn&rsquo;t do something?",
+  "id": 9114,
+  "title": "How do you prove your app didn't do something?",
+  "posts_count": 4,
+  "created_at": "2026-09-08T09:07:59.595Z",
+  "views": 57,
+  "reply_count": 2,
+  "like_count": 0,
+  "last_posted_at": "2026-09-13T12:06:42.251Z",
+  "visible": true,
+  "closed": false,
+  "archived": false,
+  "has_summary": false,
+  "archetype": "regular",
+  "slug": "how-do-you-prove-your-app-didnt-do-something",
+  "category_id": 57,
+  "word_count": 447,
+  "deleted_at": null,
+  "user_id": 2344,
+  "featured_link": null,
+  "pinned_globally": false,
+  "pinned_at": null,
+  "pinned_until": null,
+  "image_url": null,
+  "slow_mode_seconds": 0,
+  "draft": null,
+  "draft_key": "topic_9114",
+  "draft_sequence": null,
+  "unpinned": null,
+  "pinned": false,
+  "current_post_number": 1,
+  "highest_post_number": 4,
+  "deleted_by": null,
+  "actions_summary": [
+    {
+      "id": 4,
+      "count": 0,
+      "hidden": false,
+      "can_act": false
+    },
+    {
+      "id": 8,
+      "count": 0,
+      "hidden": false,
+      "can_act": false
+    },
+    {
+      "id": 10,
+      "count": 0,
+      "hidden": false,
+      "can_act": false
+    },
+    {
+      "id": 7,
+      "count": 0,
+      "hidden": false,
+      "can_act": false
+    }
+  ],
+  "chunk_size": 20,
+  "bookmarked": false,
+  "topic_timer": null,
+  "message_bus_last_id": 35,
+  "participant_count": 2,
+  "show_read_indicator": false,
+  "thumbnails": null,
+  "slow_mode_enabled_until": null,
+  "tags_disable_ads": false,
+  "related_topics": [
+    {
+      "fancy_title": "DAML Ledger API as a Message Queue?",
+      "id": 534,
+      "title": "DAML Ledger API as a Message Queue?",
+      "slug": "daml-ledger-api-as-a-message-queue",
+      "posts_count": 5,
+      "reply_count": 2,
+      "highest_post_number": 5,
+      "image_url": null,
+      "created_at": "2020-05-26T14:35:56.755Z",
+      "last_posted_at": "2020-05-28T06:18:50.638Z",
+      "bumped": true,
+      "bumped_at": "2020-05-28T06:18:50.638Z",
+      "archetype": "regular",
+      "unseen": false,
+      "pinned": false,
+      "unpinned": null,
+      "visible": true,
+      "closed": false,
+      "archived": false,
+      "bookmarked": null,
+      "liked": null,
+      "tags": [
+        {
+          "id": 1,
+          "name": "daml",
+          "slug": "daml"
+        }
+      ],
+      "tags_descriptions": {},
+      "like_count": 10,
+      "views": 575,
+      "category_id": 58,
+      "featured_link": null,
+      "op_like_count": 7,
+      "has_accepted_answer": false,
+      "posters": [
+        {
+          "extras": null,
+          "description": "Original Poster",
+          "user": {
+            "id": 52,
+            "username": "dtanabe",
+            "name": "Davin K. Tanabe",
+            "avatar_template": "/user_avatar/forum.canton.network/dtanabe/{size}/91_2.png",
+            "trust_level": 2
+          }
+        },
+        {
+          "extras": null,
+          "description": "Frequent Poster",
+          "user": {
+            "id": 58,
+            "username": "Max_DeLiso",
+            "name": "Max DeLiso",
+            "avatar_template": "/user_avatar/forum.canton.network/max_deliso/{size}/100_2.png",
+            "trust_level": 2
+          }
+        },
+        {
+          "extras": null,
+          "description": "Recent Poster",
+          "user": {
+            "id": 21,
+            "username": "Leonid_Rozenberg",
+            "name": "Leonid Rozenberg",
+            "avatar_template": "/user_avatar/forum.canton.network/leonid_rozenberg/{size}/48_2.png",
+            "trust_level": 2
+          }
+        },
+        {
+          "extras": "latest",
+          "description": "Most Recent Poster",
+          "user": {
+            "id": 55,
+            "username": "Luciano",
+            "name": "Luciano Joublanc",
+            "avatar_template": "/user_avatar/forum.canton.network/luciano/{size}/319_2.png",
+            "trust_level": 2
+          }
+        }
+      ]
+    },
+    {
+      "fancy_title": "How to add Reject and Revise Choices to Multiparty Agreement Pattern?",
+      "id": 5488,
+      "title": "How to add Reject and Revise Choices to Multiparty Agreement Pattern?",
+      "slug": "how-to-add-reject-and-revise-choices-to-multiparty-agreement-pattern",
+      "posts_count": 8,
+      "reply_count": 3,
+      "highest_post_number": 8,
+      "image_url": null,
+      "created_at": "2022-10-24T11:42:04.849Z",
+      "last_posted_at": "2022-10-25T21:09:13.678Z",
+      "bumped": true,
+      "bumped_at": "2022-10-25T21:09:13.678Z",
+      "archetype": "regular",
+      "unseen": false,
+      "pinned": false,
+      "unpinned": null,
+      "visible": true,
+      "closed": false,
+      "archived": false,
+      "bookmarked": null,
+      "liked": null,
+      "tags": [],
+      "tags_descriptions": {},
+      "like_count": 2,
+      "views": 297,
+      "category_id": 57,
+      "featured_link": null,
+      "op_like_count": 0,
+      "has_accepted_answer": true,
+      "can_have_answer": true,
+      "posters": [
+        {
+          "extras": null,
+          "description": "Original Poster",
+          "user": {
+            "id": 1174,
+            "username": "Dion_Then",
+            "name": "Dion Then",
+            "avatar_template": "/user_avatar/forum.canton.network/dion_then/{size}/5042_2.png",
+            "trust_level": 1
+          }
+        },
+        {
+          "extras": "latest",
+          "description": "Most Recent Poster, Accepted Answer",
+          "user": {
+            "id": 752,
+            "username": "a_putkov",
+            "name": "Alex Putkov",
+            "avatar_template": "/user_avatar/forum.canton.network/a_putkov/{size}/2971_2.png",
+            "trust_level": 2
+          }
+        },
+        {
+          "extras": null,
+          "description": "Recent Poster",
+          "user": {
+            "id": 45,
+            "username": "Gary_Verhaegen",
+            "name": "Gary Verhaegen",
+            "avatar_template": "/user_avatar/forum.canton.network/gary_verhaegen/{size}/81_2.png",
+            "trust_level": 3
+          }
+        }
+      ]
+    },
+    {
+      "fancy_title": "Observers participant node is down",
+      "id": 5811,
+      "title": "Observers participant node is down",
+      "slug": "observers-participant-node-is-down",
+      "posts_count": 13,
+      "reply_count": 6,
+      "highest_post_number": 13,
+      "image_url": null,
+      "created_at": "2022-12-13T15:01:42.977Z",
+      "last_posted_at": "2022-12-20T17:20:33.000Z",
+      "bumped": true,
+      "bumped_at": "2022-12-20T17:20:33.000Z",
+      "archetype": "regular",
+      "unseen": false,
+      "pinned": false,
+      "unpinned": null,
+      "visible": true,
+      "closed": false,
+      "archived": false,
+      "bookmarked": null,
+      "liked": null,
+      "tags": [],
+      "tags_descriptions": {},
+      "like_count": 3,
+      "views": 325,
+      "category_id": 57,
+      "featured_link": null,
+      "op_like_count": 1,
+      "has_accepted_answer": false,
+      "can_have_answer": true,
+      "posters": [
+        {
+          "extras": null,
+          "description": "Original Poster",
+          "user": {
+            "id": 21,
+            "username": "Leonid_Rozenberg",
+            "name": "Leonid Rozenberg",
+            "avatar_template": "/user_avatar/forum.canton.network/leonid_rozenberg/{size}/48_2.png",
+            "trust_level": 2
+          }
+        },
+        {
+          "extras": null,
+          "description": "Frequent Poster",
+          "user": {
+            "id": 63,
+            "username": "Shaul",
+            "name": "Shaul Kfir",
+            "avatar_template": "/user_avatar/forum.canton.network/shaul/{size}/117_2.png",
+            "trust_level": 2
+          }
+        },
+        {
+          "extras": null,
+          "description": "Frequent Poster",
+          "user": {
+            "id": 93,
+            "username": "Ratko_Veprek",
+            "name": "Ratko Veprek",
+            "avatar_template": "/user_avatar/forum.canton.network/ratko_veprek/{size}/206_2.png",
+            "trust_level": 2
+          }
+        },
+        {
+          "extras": null,
+          "description": "Recent Poster",
+          "user": {
+            "id": 2,
+            "username": "bernhard",
+            "name": "Bernhard",
+            "avatar_template": "/user_avatar/forum.canton.network/bernhard/{size}/356_2.png",
+            "admin": true,
+            "moderator": true,
+            "trust_level": 3
+          }
+        },
+        {
+          "extras": "latest",
+          "description": "Most Recent Poster",
+          "user": {
+            "id": 9,
+            "username": "cocreature",
+            "name": "Moritz Kiefer",
+            "avatar_template": "/user_avatar/forum.canton.network/cocreature/{size}/36_2.png",
+            "trust_level": 2
+          }
+        }
+      ]
+    },
+    {
+      "fancy_title": "Testing the exact error message returned from failed transactions",
+      "id": 6137,
+      "title": "Testing the exact error message returned from failed transactions",
+      "slug": "testing-the-exact-error-message-returned-from-failed-transactions",
+      "posts_count": 5,
+      "reply_count": 3,
+      "highest_post_number": 5,
+      "image_url": null,
+      "created_at": "2023-02-17T07:11:46.324Z",
+      "last_posted_at": "2023-02-17T14:29:43.625Z",
+      "bumped": true,
+      "bumped_at": "2023-02-17T14:29:43.625Z",
+      "archetype": "regular",
+      "unseen": false,
+      "pinned": false,
+      "unpinned": null,
+      "visible": true,
+      "closed": false,
+      "archived": false,
+      "bookmarked": null,
+      "liked": null,
+      "tags": [],
+      "tags_descriptions": {},
+      "like_count": 6,
+      "views": 434,
+      "category_id": 58,
+      "featured_link": null,
+      "op_like_count": 3,
+      "has_accepted_answer": false,
+      "posters": [
+        {
+          "extras": "latest",
+          "description": "Original Poster, Most Recent Poster",
+          "user": {
+            "id": 134,
+            "username": "gyorgybalazsi",
+            "name": "Gy\u00f6rgy Bal\u00e1zsi",
+            "avatar_template": "/user_avatar/forum.canton.network/gyorgybalazsi/{size}/684_2.png",
+            "trust_level": 2
+          }
+        },
+        {
+          "extras": null,
+          "description": "Recent Poster",
+          "user": {
+            "id": 40,
+            "username": "Brian_Weir",
+            "name": "Brian Weir",
+            "avatar_template": "/user_avatar/forum.canton.network/brian_weir/{size}/71_2.png",
+            "trust_level": 2
+          }
+        }
+      ]
+    },
+    {
+      "fancy_title": "Negative Testing",
+      "id": 2988,
+      "title": "Negative Testing",
+      "slug": "negative-testing",
+      "posts_count": 6,
+      "reply_count": 1,
+      "highest_post_number": 6,
+      "image_url": null,
+      "created_at": "2021-08-12T07:34:39.126Z",
+      "last_posted_at": "2021-08-12T11:20:58.570Z",
+      "bumped": true,
+      "bumped_at": "2021-08-12T11:20:58.570Z",
+      "archetype": "regular",
+      "unseen": false,
+      "pinned": false,
+      "unpinned": null,
+      "visible": true,
+      "closed": false,
+      "archived": false,
+      "bookmarked": null,
+      "liked": null,
+      "tags": [
+        {
+          "id": 1,
+          "name": "daml",
+          "slug": "daml"
+        },
+        {
+          "id": 52,
+          "name": "daml-sdk",
+          "slug": "daml-sdk"
+        }
+      ],
+      "tags_descriptions": {},
+      "like_count": 7,
+      "views": 466,
+      "category_id": 57,
+      "featured_link": null,
+      "op_like_count": 2,
+      "has_accepted_answer": true,
+      "can_have_answer": true,
+      "posters": [
+        {
+          "extras": null,
+          "description": "Original Poster",
+          "user": {
+            "id": 40,
+            "username": "Brian_Weir",
+            "name": "Brian Weir",
+            "avatar_template": "/user_avatar/forum.canton.network/brian_weir/{size}/71_2.png",
+            "trust_level": 2
+          }
+        },
+        {
+          "extras": "latest",
+          "description": "Most Recent Poster, Accepted Answer",
+          "user": {
+            "id": 9,
+            "username": "cocreature",
+            "name": "Moritz Kiefer",
+            "avatar_template": "/user_avatar/forum.canton.network/cocreature/{size}/36_2.png",
+            "trust_level": 2
+          }
+        },
+        {
+          "extras": null,
+          "description": "Recent Poster",
+          "user": {
+            "id": 2,
+            "username": "bernhard",
+            "name": "Bernhard",
+            "avatar_template": "/user_avatar/forum.canton.network/bernhard/{size}/356_2.png",
+            "admin": true,
+            "moderator": true,
+            "trust_level": 3
+          }
+        }
+      ]
+    }
+  ],
+  "summarizable": false,
+  "has_cached_summary": false,
+  "valid_reactions": [
+    "heart",
+    "+1",
+    "laughing",
+    "open_mouth",
+    "clap",
+    "confetti_ball",
+    "hugs"
+  ],
+  "has_accepted_answer": false,
+  "shared_issue_count": 0,
+  "can_create_shared_issue": false,
+  "shared_issue_visible": true,
+  "discourse_zendesk_plugin_zendesk_id": null,
+  "discourse_zendesk_plugin_zendesk_url": "https://your-url.zendesk.com/agent/tickets/",
+  "details": {
+    "can_edit": false,
+    "notification_level": 1,
+    "participants": [
+      {
+        "id": 2344,
+        "username": "orumedominic",
+        "name": "legend",
+        "avatar_template": "https://avatars.discourse-cdn.com/v4/letter/o/3da27b/{size}.png",
+        "post_count": 3,
+        "primary_group_name": null,
+        "flair_name": null,
+        "flair_url": null,
+        "flair_color": null,
+        "flair_bg_color": null,
+        "flair_group_id": null,
+        "trust_level": 0
+      },
+      {
+        "id": 2213,
+        "username": "Federico_Rodriguez",
+        "name": "Federico Rodriguez",
+        "avatar_template": "/user_avatar/forum.canton.network/federico_rodriguez/{size}/7339_2.png",
+        "post_count": 1,
+        "primary_group_name": "CTP",
+        "flair_name": "CTP",
+        "flair_url": "code",
+        "flair_color": "1A1A1A",
+        "flair_bg_color": "FFC107",
+        "flair_group_id": 151,
+        "trust_level": 2
+      }
+    ],
+    "created_by": {
+      "id": 2344,
+      "username": "orumedominic",
+      "name": "legend",
+      "avatar_template": "https://avatars.discourse-cdn.com/v4/letter/o/3da27b/{size}.png"
+    },
+    "last_poster": {
+      "id": 2344,
+      "username": "orumedominic",
+      "name": "legend",
+      "avatar_template": "https://avatars.discourse-cdn.com/v4/letter/o/3da27b/{size}.png"
+    },
+    "links": [
+      {
+        "url": "https://dominicrume.github.io/cantor8_kya_rails/",
+        "title": "Check a payment record | KYA Rails",
+        "internal": false,
+        "attachment": false,
+        "reflection": false,
+        "clicks": 1,
+        "user_id": 2344,
+        "domain": "dominicrume.github.io",
+        "root_domain": "dominicrume.github.io"
+      }
+    ]
+  },
+  "bookmarks": []
+}
