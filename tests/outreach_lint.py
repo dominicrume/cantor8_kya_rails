@@ -67,6 +67,7 @@ TARGETS = [p for p in [
     os.path.join(ROOT, "docs", "outreach", "sent-2026-09-13.md"),
     os.path.join(ROOT, "docs", "outreach",
                  "post-what-a-ledger-does-not-record.md"),
+    os.path.join(ROOT, "docs", "outreach", "ask-cantor8-for-devnet.md"),
 ] if os.path.exists(p)]
 
 # Words the RECIPIENT used, which a reply has to contain or it is not a reply
@@ -77,6 +78,7 @@ THEIRS = {
     "sent-2026-09-13.md": ["deterministic settlement", "agentic registry",
                            "porting to Canton", "RejectedAttempt", "trade-off"],
     "post-what-a-ledger-does-not-record.md": [],
+    "ask-cantor8-for-devnet.md": [],
 }
 
 for path in TARGETS:
