@@ -13,7 +13,11 @@ Tick a step off by putting an `x` in the box.
 
 Click **Register**. It is free and online.
 
-It is on **Tuesday 16 September 2026, 4:00 PM UK time**.
+It is on **WEDNESDAY 16 September 2026, 16:00 UK**.
+
+The luma listing says "Tuesday, September 16". It is wrong: 16 September
+2026 is a Wednesday. Trust the DATE, not the day name, or you will turn up
+on the 15th. Checked on 14 September.
 
 Put it in your calendar.
 
@@ -104,7 +108,7 @@ Not selling anything.
 
 ---
 
-## [ ] 6. Ask your question live at the webinar  (Tuesday 16 September)
+## [ ] 6. Ask your question live at the webinar  (WEDNESDAY 16 September)
 
 Join at 4:00 PM UK time. When they open the Q&A, type this in the chat:
 

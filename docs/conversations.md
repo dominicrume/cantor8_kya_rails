@@ -125,3 +125,40 @@ What survives the finding, and is sharper for it:
 What it changes: the pitch is no longer "nobody records refusals". It is
 "recording them in your own log does not answer the question, and on Canton
 there is somewhere better to put them".
+
+## The category arrived while we were building, 2026-09-14
+
+Not a conversation. A market finding, and the most consequential one so far.
+
+**"Know Your Agent" (KYA) is now a funded industry category.** Trulioo has a
+white paper and a "Digital Agent Passport". Nuvei is targeting availability in
+H2 2026 with a KYA registry, agent risk scoring, network certifications and a
+developer sandbox. PYMNTS is covering it. There is a `knowyouragent.network`.
+
+What they cover, in their words: verifying the agent developer, locking the
+agent code, signed identity headers, user-signed mandates, agent reputation
+scoring, directory-based revocation, and "keeping actions auditable".
+
+**What none of them describes is what happens to a refused action.** Searched
+for it directly. Identity, provenance, mandate, reputation, revocation. Not
+one word on the attempt that was stopped.
+
+That is the same finding as Pearl Digital in marketing and Franklin Templeton
+in an investment thesis, now at the scale of a category with vendors and
+launch dates. Three independent confirmations that everybody is building the
+half that says no, and nobody is building the half that proves it said no.
+
+### Two consequences, one good and one not
+
+**The complement is now named and funded.** "The evidence layer that sits under
+an agent platform" was an abstraction last week. This week the platforms have
+names: Trulioo, Nuvei, Pearl. The sentence writes itself, in their vocabulary:
+
+> KYA tells you WHO the agent is. This records what it was REFUSED.
+
+**And our name now sits inside somebody else's category.** "Know Your
+AgenticAI" beside "Know Your Agent (KYA)" reads as adjacent at best and
+derivative at worst, and the repository is still called KYA Rails. That is not
+a reason to change the trademark. It is a reason that every sentence about us
+must say what we do that KYA does not, in the first line, every time. The
+positioning is now load-bearing in a way it was not seven days ago.
