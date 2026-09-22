@@ -1,10 +1,10 @@
 # KYA RAILS. THE RULES.
-Build for Cantor8 "Build on Canton" Hackathon, challenge D1: a spend-limited wallet for an AI agent.
+Build for Cantor8 "Build on Canton" Hackathon, challenge D1: a spend-limited wallet for Canton Automated Execution.
 Built with the KYA Method: Promise it. Attack it. Inspect it. Prove it.
 
 ## The promise
-An AI agent may spend money ONLY under a written mandate: a cap, an allow-list
-of counterparties, an expiry. Every action the agent takes, including the ones
+An automated execution may spend money ONLY under a written mandate: a cap, an allow-list
+of counterparties, an expiry. Every action the execution takes, including the ones
 the ledger REFUSES, produces a sealed receipt a human can read and anyone can verify.
 
 ## Must always
@@ -76,8 +76,9 @@ What it requires:
 - No claim without a number behind it.
 
 ## The NOT list
+- We do not build or support generic AI agent platforms. We build Canton evidence layers only.
 - step-1-mandate does not read the chain library or the UI.
-- step-2-agent does not contain business rules; rules live in Daml. The agent only tries.
+- step-2-agent does not contain business rules; rules live in Daml. The application only tries.
 - step-3-verify does not talk to the ledger; it reads receipts.js only.
 
 ## Stage map

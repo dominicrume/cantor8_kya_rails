@@ -1,8 +1,8 @@
-# What an agent was stopped from doing
+# What an automated execution was stopped from doing
 
-*A note on auditability for agentic payments. September 2026.*
+*A note on auditability for deterministic settlement. September 2026.*
 
-The industry says that putting agents on a blockchain makes them auditable.
+The industry says that putting automated execution on a blockchain makes it auditable.
 Every decision recorded on an immutable ledger, recallable later.[^1]
 
 Half of that is true. The missing half is the half a regulator asks for.
@@ -11,10 +11,10 @@ Half of that is true. The missing half is the half a regulator asks for.
 
 A ledger records what happened. It does not record what was prevented.
 
-An agent pays, the payment settles, the record exists. An agent tries to pay
+An application pays, the payment settles, the record exists. An application tries to pay
 and a rule stops it, and the usual implementation aborts the transaction.
 Nothing is written. The ledger afterwards looks exactly as it would if the
-agent had never tried.
+application had never tried.
 
 In Daml this is exact, not approximate. A failed `assertMsg` aborts the whole
 transaction, so a refused action leaves no trace on Canton at all.
@@ -39,7 +39,7 @@ operated*.[^2]
 A control that operates produces refusals. If refusals leave nothing behind,
 the control cannot be evidenced.
 
-"Our agent has a spending cap" describes a configuration. "Here are the eleven
+"Our application has a spending cap" describes a configuration. "Here are the eleven
 times it hit the cap last quarter, and you can check each one without trusting
 us" is evidence.
 
@@ -47,7 +47,7 @@ us" is evidence.
 
 This is not an unnoticed gap. Work on hardening x402 emits an event for every
 control decision, allowed or policy-blocked. Each carries a timestamp, the
-agent, the outcome, and an HMAC link to the previous entry.[^3] That is a
+application, the outcome, and an HMAC link to the previous entry.[^3] That is a
 hash-chained log of refusals, and it beats no log at all.
 
 It does not close the gap. The reason applies equally to the first version of
@@ -106,9 +106,9 @@ itself is worse than none.
 
 ## What it is
 
-An evidence layer that sits under an agent platform. A platform decides what an
-agent may do. This is the record of what it tried and was refused, sealed so
-the other side can check it without trusting whoever ran the agent.
+An evidence layer that sits under a Canton application. An application decides what an
+automated execution may do. This is the record of what it tried and was refused, sealed so
+a counterparty can check it without trusting whoever ran the node.
 
 The reference implementation is MIT, has no dependencies, and is about twenty
 lines in any language.
@@ -123,7 +123,7 @@ regulator is shown.
       *Agentic AI: The Killer Use Case for Blockchain and Crypto*, 2026. The
       claim is not unusual; it is the standard formulation.
 [^2]: EU AI Act Article 12 (record-keeping); DORA audit trail obligations.
-[^3]: *Hardening x402: PII-Safe Agentic Payments via Pre-Execution Metadata
+[^3]: *Hardening x402: PII-Safe Automated Payments via Pre-Execution Metadata
       Filtering*, arXiv:2604.11430.
 [^4]: Canton Network privacy model: sub-transaction privacy, with observer
       rights grantable per contract. `docs.canton.network/overview/learn/privacy-model`

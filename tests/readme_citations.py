@@ -114,6 +114,74 @@ def check_tests(readme, tests):
               "%s exists in KyaTest.daml" % t)
 
 
+DOCS_THAT_NAME_TEMPLATES = [
+    "README.md", "SPEC.md", "docs/dev-fund-proposal.md",
+    "docs/dev-fund-proposal-rfp22.md",
+    "docs/what-an-automated-execution-was-stopped-from-doing.md",
+]
+
+# Somebody else's word for the pattern, used on purpose. Allowed, but only
+# where the same passage says whose word it is.
+BORROWED = {"RejectedAttempt"}
+
+
+def check_template_names():
+    """A document may not name a Daml template the code does not define.
+
+    The dev fund proposal spent a week claiming we commit a `RejectedAttempt`
+    audit record. The template is `ChargeRefused`. RejectedAttempt is what
+    Federico_Rodriguez called the pattern on the forum, and a find-and-replace
+    carried his word into a funding document as though it were our code. A
+    reviewer opening KyaMandate.daml would have found no such thing.
+
+    Borrowing somebody's vocabulary is good. Describing your own artefact with
+    a name it does not have is the failure this repository exists to prevent.
+    """
+    print()
+    print("every Daml template a document names is one the code defines")
+    src = ""
+    daml_dir = os.path.join(ROOT, "step-1-mandate", "daml")
+    for name in sorted(os.listdir(daml_dir)):
+        if name.endswith(".daml"):
+            src += open(os.path.join(daml_dir, name)).read()
+    # Modules count as defined names too. The README says `KyaAnchor`, which is
+    # the MODULE; the template inside it is `ChainAnchor`. Naming a file is not
+    # a claim that a template exists, and the first version of this check
+    # failed the README for being correct.
+    defined = set(re.findall(r"^template\s+(\w+)", src, re.M))
+    defined |= set(re.findall(r"^module\s+(\w+)", src, re.M))
+    defined |= {n[:-5] for n in os.listdir(daml_dir) if n.endswith(".daml")}
+    check(bool(defined), "  the Daml defines templates and modules to check "
+                         "against (%d)" % len(defined))
+
+    for rel in DOCS_THAT_NAME_TEMPLATES:
+        path = os.path.join(ROOT, rel)
+        if os.path.exists(path):
+            check_one_doc(rel, open(path).read(), defined)
+
+
+def names_claimed(text):
+    """Backticked CamelCase that looks like one of our templates.
+
+    A prose word is not a claim about the code. `ChargeRefused` is.
+    """
+    return set(re.findall(
+        r"`([A-Z][A-Za-z]*(?:Refused|Record|Attempt|Anchor|Mandate|Deal"
+        r"|Book|Leg|Quote|Instruction|Proposal))`", text))
+
+
+def check_one_doc(rel, text, defined):
+    claimed = names_claimed(text)
+    bogus = sorted(c for c in claimed if c not in defined and c not in BORROWED)
+    check(not bogus, "  %s names only templates that exist%s"
+          % (rel, "" if not bogus else ": %s not in the Daml" % bogus))
+    for word in sorted(BORROWED & claimed):
+        at = text.index(word)
+        near = text[max(0, at - 400):at + 400]
+        check("Federico" in near or "forum" in near.lower(),
+              "  %s says whose word %s is, in the same passage" % (rel, word))
+
+
 def main():
     readme = open(README).read()
     daml = open(MANDATE).read().splitlines()
@@ -125,6 +193,7 @@ def main():
     check_tests(readme, tests)
     check(daml_fences(daml) == 6,
           "KyaMandate.daml still has 6 assertMsg fences (found %d)" % daml_fences(daml))
+    check_template_names()
 
     print()
     if fails:
