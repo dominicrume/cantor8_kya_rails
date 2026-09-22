@@ -2,14 +2,14 @@
 
 [![ci](https://github.com/dominicrume/cantor8_kya_rails/actions/workflows/ci.yml/badge.svg)](https://github.com/dominicrume/cantor8_kya_rails/actions/workflows/ci.yml)
 
-**Know Your AgenticAI is the evidence layer that sits under an agent
-platform.**
+**Know Your AgenticAI is the evidence layer that sits under a Canton
+application.**
 
-A platform decides what an agent may do. This records what it **tried and was
-refused**, sealed so the other side can check it without trusting whoever ran
-the agent.
+An application decides what an automated execution may do. This records what it **tried and was
+refused**, sealed so a counterparty can check it without trusting whoever ran
+the node.
 
-Every log records what your agent did. The question an auditor, a counterparty
+Every log records what your application did. The question an auditor, a counterparty
 or a regulator actually asks is the other one: *what did it try, and what
 stopped it?* An ordinary log cannot answer that, because the operator who
 writes the log is the party the question is about.
@@ -22,7 +22,7 @@ anchored on Canton, so a chain rewritten from scratch has nowhere to hide.
 And the refusal itself is written to the ledger, which is the part that was
 missing. The normal way to enforce a spending rule is to abort the
 transaction, and an aborted transaction leaves nothing behind: after a refused
-payment the ledger looks exactly as it would if the agent had never been
+payment the ledger looks exactly as it would if the application had never been
 asked. So the accepted payments were checkable against the world and the
 refusals were us writing about ourselves, which is backwards.
 [`TryCharge`](step-1-mandate/daml/KyaMandate.daml) runs the same rules and,
@@ -37,15 +37,15 @@ underneath them: the artefact you hand someone when they ask you to prove a
 negative.
 
 The spending rules are not policy in an application. They are `assertMsg`
-fences in a Daml choice body: the agent cannot argue with them, the operator
+fences in a Daml choice body: the application cannot argue with them, the operator
 cannot quietly widen them, and a crash does not reset them.
 
-KYC asks whether a person is who they say. **KYA asks what an autonomous
-actor was permitted to do, and proves what it was stopped from doing.**
+KYC asks whether a person is who they say. **KYA asks what an automated execution
+was permitted to do, and proves what it was stopped from doing.**
 
 ### D1, answered — the three attacks the judges will run
 
-The brief says: *"We will try to make your agent exceed its cap, and pay someone
+The brief says: *"We will try to make your application exceed its cap, and pay someone
 it should not. Both must fail **on the ledger**, not in your API. Be ready to show
 us the line of Daml that stops it. Then we will revoke and try again."*
 
@@ -91,7 +91,7 @@ that matter are the ones on this page.
 
 Two parts, and the second one is not about Canton:
 
-1. **[SPEC.md](SPEC.md)** — an open format for tamper-evident receipts of agent
+1. **[SPEC.md](SPEC.md)** — an open format for tamper-evident receipts of automated
    actions, **including the actions that were refused**. Stdlib-only, no
    signatures, no network to verify. Three independent implementations and
    [20 conformance vectors](tests/vectors.json). Three independent
@@ -122,8 +122,8 @@ eventually receives:
 
 It arrives from a compromised customer, or a socially engineered operator, or
 occasionally the operator itself. The operator does not have to be dishonest
-for the money to leave; they only have to be convinced. In agent terms this is
-prompt injection, and it is the same attack with a different name.
+for the money to leave; they only have to be convinced. In deterministic settlement,
+this is the core attack vector we must prevent.
 
 Every mitigation people reach for first — a limit in the prompt, a check in the
 backend, a policy document, an instruction in the operating manual — is **the
@@ -162,7 +162,7 @@ country and deciding whether to trust the person who produced it.
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.1.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
 | The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |
-| The tests are themselves tested | `tests/mutation_suite.py` breaks **78** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
+| The tests are themselves tested | `tests/mutation_suite.py` breaks **79** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **32** in the Daml: delete any one and a *named* test goes red. `tests/mutation_py.py` does the same for the refusals at the edges, and now covers **1 of 1** — the journal's, because the webhook adapters it also covered moved to the kya-desk repository with the desk. The count is small and stated rather than rounded: it was 30 of 30 when there were thirty edges, and a repository that quotes yesterday's number is the thing this column exists to prevent |
 | One bad line cannot end the model's session | `tests/mcp_smoke.py` feeds 15 malformed JSON-RPC lines **between** the good ones. Each gets its proper code (-32700 / -32600 / -32601), and the request after them all is still answered |
 | The chain is bound to its origin | the head is published on Canton — a **fully forged** chain verifies green in all three implementations, and the ledger answers `NOT ANCHORED` |
@@ -306,16 +306,16 @@ What this does not prove is that the receipts are *true*. A principal can
 anchor a chain of lies. What they cannot do is anchor one and later swap it,
 or deny publishing it.
 
-### Give the wallet to a language model
+### The limit holds regardless of the caller
 
-The point of the mandate is that it holds even when the agent is persuaded.
-The MCP server lets you try that yourself:
+The point of the mandate is that it holds even if the application logic is flawed.
+The MCP server lets you test that directly:
 
 ```bash
 claude mcp add kya -- python3 step-4-mcp/kya_mcp.py
 ```
 
-Then ask the model to settle a trade, and then ask it to overspend. It will
+Then instruct the client to settle a trade, and then instruct it to overspend. It will
 try, and the ledger will refuse it, and the refusal will be in the statement
 with the rule that caused it. There is no tool that widens the cap, and no
 form of words that gets past it.
@@ -510,9 +510,9 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 
 ---
 
-## Prove an agent *didn't* do the thing it wasn't allowed to do
+## Prove an application *didn't* do the thing it wasn't allowed to do
 
-Logs show what an agent did. Almost nothing shows what it **tried** and was
+Logs show what an application did. Almost nothing shows what it **tried** and was
 stopped from doing, in a form you can hand to somebody who doesn't trust you.
 
 ```python
@@ -533,9 +533,9 @@ refund("1.00", "stranger")      # raises Refused, never reaches Stripe
 No ledger, no chain, no Canton. Stdlib only.
 
 **The point is the first entry.** A receipt reading `REFUSED — over the cap`
-proves the agent was stopped; it does not prove what the cap *was*. An operator
+proves the participant was stopped; it does not prove what the cap *was*. An operator
 who set it to a million produces a record indistinguishable from one who set it
-to five, so "the agent didn't overspend" stayed unprovable — the one thing this
+to five, so "the participant didn't overspend" stayed unprovable — the one thing this
 format exists to prove.
 
 The policy is now receipt #1, carrying the rules as readable text. Every later
@@ -557,7 +557,7 @@ saying no, and it is labelled `self-attested`. A Daml fence is an independent
 party saying no. The two are never written the same way, because the reader's
 whole job is deciding how much to believe it. That is why the spending rules in
 this repository stay in `KyaMandate.daml` and are not reimplemented here —
-`guard` is for agents that have no ledger at all, and it says so on every line
+`guard` is for applications that have no ledger at all, and it says so on every line
 it writes.
 
 ---

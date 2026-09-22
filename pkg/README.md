@@ -1,9 +1,9 @@
 # knowyouragenticai-receipts
 
-**Let an AI agent pay, and prove what it couldn't.**
+**Let an automated execution pay, and prove what it couldn't.**
 
 A tamper-evident record of every payment attempt — including the refusals — for
-agent-operated wallets. Built for Canton Network; works anywhere. Zero
+automated Canton applications. Built for Canton Network; works anywhere. Zero
 dependencies.
 
 ---
@@ -44,7 +44,7 @@ are set once when the chain is made. `stamp()` is there when you need full
 control.
 
 There is a runnable version of the whole idea in
-`python -m knowyouragenticai_receipts example` — an agent with a spending limit, four attempts, two
+`python -m knowyouragenticai_receipts example` — an application with a spending limit, four attempts, two
 stopped, and the record being tampered with and caught:
 
 ```bash
@@ -141,4 +141,4 @@ dependency in everyone's audit trail.
 ---
 
 MIT. Built as part of [KYA Rails](https://github.com/dominicrume/cantor8_kya_rails),
-a spend-limited wallet for AI agents on Canton.
+a spend-limited deterministic settlement wallet for Canton.

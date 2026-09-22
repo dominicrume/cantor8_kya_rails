@@ -162,3 +162,40 @@ derivative at worst, and the repository is still called KYA Rails. That is not
 a reason to change the trademark. It is a reason that every sentence about us
 must say what we do that KYA does not, in the first line, every time. The
 positioning is now load-bearing in a way it was not seven days ago.
+
+
+## What Pearl Digital's own page says, read 2026-09-22
+
+`pearldigital.com/agentic`, the link Mr_Tuddles gave us in post 12. Their
+product is a "Bot Bank": regulated infrastructure for autonomous agents to move
+money, on public testnets, with what they call **Know Your Agent (KYA)**,
+a three-layer model of principal KYC, cryptographic binding, and capability
+scoping. Dual spending caps, a rolling window enforced by an on-chain circular
+buffer, jurisdiction limits, expiry, and a human kill switch.
+
+Then this, verbatim, about what happens when a check fails:
+
+> "If any check fails, the transfer is rejected **and logged**. Nothing
+> rule-breaking reaches the chain."
+
+> "A rule-breaking payment cannot slip through and be caught later, because it
+> is never allowed to execute in the first place."
+
+> Failed transfers trigger compliance event logging but do not settle on-chain.
+
+**That is our gap, written by them, as a feature.** It is a feature, for
+prevention, and their prevention story is stronger than ours. But "rejected and
+logged" does not say logged where, and the answer is their own system: written
+by them, about them. The refusal has no on-chain existence by design.
+
+They also answer "who authorised this transaction". Nobody answers "show me
+what it tried and was stopped from doing, and let me check it without trusting
+you".
+
+Post 13 said exactly this to him on 13 September and has had no reply in eleven
+days. No follow-up: THE-RULES.md calls a second message a debt collector. The
+value of this finding is as evidence for the Dev Fund proposal, not as a reason
+to write to him again.
+
+Note on naming: their KYA is **Know Your Agent**. Ours is **Know Your
+AgenticAI**. Adjacent, not the same, and worth never blurring.

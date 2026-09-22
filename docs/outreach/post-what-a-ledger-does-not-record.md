@@ -24,7 +24,7 @@ apart and names nobody. Anyone who has read the article will recognise it. That
 is enough, and it costs nothing.
 
 The long version with the citations already exists at
-`docs/what-an-agent-was-stopped-from-doing.md`. That one is for a champion to
+`docs/what-an-automated-execution-was-stopped-from-doing.md`. That one is for a champion to
 read, not for a forum.
 
 ## Why a question and not a statement

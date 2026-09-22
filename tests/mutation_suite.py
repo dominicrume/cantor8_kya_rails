@@ -318,6 +318,20 @@ MUTATIONS = [
      '    "kya-agent-1": 1.9,',
      "python3 tests/balance_lint.py"),
 
+    # A funding document claimed we commit a `RejectedAttempt` record for a
+    # week. The template is ChargeRefused. A reviewer opening the Daml would
+    # have found no such thing.
+    #
+    # The mutation invents `RefusalRecord`, not `RejectedAttempt`, because the
+    # latter is on the allowed list: it is Federico_Rodriguez's word for the
+    # pattern and the check permits it where the passage says so. Using it here
+    # made the row BLIND, which was the check working and the row being wrong.
+    ("a document names a Daml template the code does not define",
+     "docs/dev-fund-proposal.md",
+     "The template is `ChargeRefused`;",
+     "The template is `RefusalRecord`;",
+     "python3 tests/readme_citations.py"),
+
     ("a README count drifts from the file that produces it",
      "README.md",
      "**32** in the Daml",

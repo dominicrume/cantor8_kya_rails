@@ -49,12 +49,16 @@ compliance evidence cannot be assembled by an outside observer — it has to be
 produced by the participant, which is exactly the party whose conduct is in
 question. Self-attested evidence is worth what the attestor's reputation is worth.
 
-The narrower half of the problem is refusals. When an authorisation check stops an
+The narrower half of the problem is refusals in deterministic settlement. When an authorisation check stops an
 action, nothing durable is created on-ledger, because nothing happened. There is no
 contract, no event, no archive. The attempt exists only in whatever the application
 chose to log. RFP 27 asks for "audit trails, compliance evidence... while preserving
 Canton's privacy model", and refused authorisations are the part of that trail with
-no ledger artefact behind it.
+no ledger artefact behind it. By committing a rejection record to the ledger,
+refusals become explicitly modeled in Daml. The template is `ChargeRefused`;
+the pattern was named `RejectedAttempt` by Federico_Rodriguez, a Canton
+Community Tech Partner, who read the design on the forum and specified it a day
+before it was built.
 
 **In scope:** the record format and its canonicalisation; a conformance vector suite
 and a language-neutral grader; a Daml reference implementation of a bounded mandate
@@ -92,7 +96,7 @@ so the privacy model is preserved while integrity becomes externally checkable.
 choice body carries the authorisation fences as `assertMsg` assertions: total cap,
 per-period limit, allow-list, expiry, positive amount. Revoke is a consuming choice,
 so it archives the mandate rather than asserting against it. Refusals are produced
-by the ledger, not by application code, which is what makes the resulting evidence
+by the ledger as a `ChargeRefused` contract, not by application code, which is what makes the resulting evidence
 worth more than a log line.
 
 **What already exists and is reproducible from a clean clone**, all figures
