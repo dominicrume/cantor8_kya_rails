@@ -148,6 +148,12 @@ print()
 print("The strongest section, because none of it is self-published and all of "
       "it is timestamped by somebody else's system.")
 print()
+print("Three of these are **merged**, all into the Canton Developer Hub, which "
+      "is not a repository the applicant owns. The four against "
+      "`Cantor8/hackathon-toolkit` are real bug fixes to the event "
+      "organisers' own library, filed on the day they were found, and have "
+      "been open without comment since 31 August.")
+print()
 print("| opened | contribution | where | what it shows | maps to |")
 print("|---|---|---|---|---|")
 CONTRIB = [
@@ -163,6 +169,21 @@ CONTRIB = [
     ("canton-network-devs/Canton-Developer-Hub", 160,
      "A fix for link rendering affecting nineteen catalogue entries, only one "
      "of which is ours."),
+    ("canton-network-devs/Canton-Developer-Hub", 168,
+     "The catalogue entry rewritten: the name is now Know Your AgenticAI and "
+     "the description says what it does rather than listing features."),
+    ("Cantor8/hackathon-toolkit", 7,
+     "The organisers' own toolkit: C8_USER was silently ignored because "
+     "USER was read at import rather than at call time."),
+    ("Cantor8/hackathon-toolkit", 8,
+     "find_party returned a truncated id unless you scanned every party on "
+     "the validator."),
+    ("Cantor8/hackathon-toolkit", 9,
+     "The access token was cached for its whole lifetime and used after "
+     "expiry. Refreshes before it expires now."),
+    ("Cantor8/hackathon-toolkit", 10,
+     "The toolkit README documented a stale allocation flow and omitted the "
+     "DevNet settings a participant needs."),
 ]
 for repo, num in [(c[0], c[1]) for c in CONTRIB]:
     note = next(c[2] for c in CONTRIB if c[0] == repo and c[1] == num)
