@@ -190,14 +190,20 @@ def daml_script_count():
     import shutil
     if shutil.which("daml") is None:
         return -1
-    test_dir = os.path.join(ROOT, "step-1-mandate", "test")
-    subprocess.run(  # nosec B603 B607 - literal argv
-        ["daml", "build", "--no-legacy-assistant-warning"],
-        cwd=os.path.dirname(test_dir), capture_output=True)
-    p = subprocess.run(  # nosec B603 B607 - literal argv
-        ["daml", "test", "--no-legacy-assistant-warning"],
-        cwd=test_dir, capture_output=True, text=True)
-    return (p.stdout + p.stderr).count(": ok,")
+    # BOTH packages. canton-refusal-record is separate on purpose, and a count
+    # that reads only the mandate is a count of the wrong thing: the README
+    # said 111 and this said 103 the moment the second package existed.
+    total = 0
+    for pkg in (os.path.join(ROOT, "step-1-mandate"),
+                os.path.join(ROOT, "step-0-refusal")):
+        subprocess.run(  # nosec B603 B607 - literal argv
+            ["daml", "build", "--no-legacy-assistant-warning"],
+            cwd=pkg, capture_output=True)
+        p = subprocess.run(  # nosec B603 B607 - literal argv
+            ["daml", "test", "--no-legacy-assistant-warning"],
+            cwd=os.path.join(pkg, "test"), capture_output=True, text=True)
+        total += (p.stdout + p.stderr).count(": ok,")
+    return total
 
 
 for pattern, truth, label in CLAIMS:

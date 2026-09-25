@@ -438,6 +438,26 @@ MUTATIONS = [
     # before testChargeAndTryChargeAgreeOnTheCapBoundary existed: a charge
     # landing exactly on the cap was refused by one path and accepted by the
     # other, which makes a spending rule depend on which function was called.
+    # canton-refusal-record exists so somebody else's application can take the
+    # pattern. These are the two ways it stops being that.
+    ("the reusable refusal stops disclosing to the named auditor",
+     "step-0-refusal/daml/Refusal.daml",
+     "    observer optional [] (\\a -> [a]) auditor",
+     "    observer ([] : [Party])",
+     "python3 tests/daml_tests.py"),
+
+    ("a refusal can be recorded with no rule, so it evidences no control",
+     "step-0-refusal/daml/Refusal.daml",
+     '    ensure action /= "" && rule /= ""',
+     "    ensure True",
+     "python3 tests/daml_tests.py"),
+
+    ("one side can mint a refusal about the other alone",
+     "step-0-refusal/daml/Refusal.daml",
+     "    signatory owner, actor",
+     "    signatory owner",
+     "python3 tests/daml_tests.py"),
+
     # The auditor observer is the part a transparent chain cannot do: on a
     # ledger, not public, readable by one party named before any of it happened.
     ("the named auditor stops being able to read the refusal",

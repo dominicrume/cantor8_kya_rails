@@ -33,3 +33,7 @@ kya-desk.db-shm
 step-3-verify/kya-rails-fragment.html
 # the mutation harness's backups while a run is live; never a thing to commit
 .mutation-in-progress/
+
+# The reusable refusal package's build output, same rule as the mandate's.
+step-0-refusal/.daml/
+step-0-refusal/test/.daml/
