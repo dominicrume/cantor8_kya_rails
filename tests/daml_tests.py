@@ -65,10 +65,31 @@ if build.returncode != 0:
             print("  " + line)
     sys.exit(1)
 
+# canton-refusal-record is a SEPARATE package with its own test package, and
+# it has to be built and run separately or it does not run at all. It exists
+# so an application that is not ours can take the refusal pattern without
+# taking our mandate with it, so "the Daml suite passes" has to include it or
+# that claim is about the wrong package.
+REFUSAL = os.path.join(ROOT, "step-0-refusal")
+b = subprocess.run(  # nosec B603 B607 - literal argv, no shell
+    ["daml", "build", "--no-legacy-assistant-warning"],
+    cwd=REFUSAL, capture_output=True, text=True)
+if b.returncode != 0:
+    print("  FAIL canton-refusal-record does not compile")
+    print((b.stdout + b.stderr)[-600:])
+    sys.exit(1)
+
 r = subprocess.run(  # nosec B603 B607 - literal argv, no shell
     ["daml", "test", "--no-legacy-assistant-warning"],
     cwd=TEST, capture_output=True, text=True)
 out = r.stdout + r.stderr
+
+r2 = subprocess.run(  # nosec B603 B607 - literal argv, no shell
+    ["daml", "test", "--no-legacy-assistant-warning"],
+    cwd=os.path.join(REFUSAL, "test"), capture_output=True, text=True)
+out += r2.stdout + r2.stderr
+if r2.returncode != 0:
+    r = r2
 
 # One line per script: `daml/KyaTest.daml:testThing: ok, N active contracts...`
 results = re.findall(r"^(\S+\.daml:\S+?):\s*(ok|fail)", out, re.MULTILINE)

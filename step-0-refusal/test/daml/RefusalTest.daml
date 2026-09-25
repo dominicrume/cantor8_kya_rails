@@ -1,0 +1,144 @@
+-- The point of this suite is not that the template compiles. It is that an
+-- application with NO concept of money can use it, because that is the thing
+-- ChargeRefused could not do and the reason this package exists.
+module RefusalTest where
+
+import DA.Time (hours, addRelTime)
+import Daml.Script
+import Refusal
+
+-- 1. A lending protocol refusing a withdrawal. No payee. No amount field.
+--    If this needed either, the package would have failed at its one job.
+testALendingProtocolCanUseIt : Script ()
+testALendingProtocolCanUseIt = script do
+  treasury <- allocateParty "Treasury"
+  bot      <- allocateParty "RebalanceBot"
+  now <- getTime
+  cid <- submit [treasury, bot] do
+    createCmd RefusalRecord with
+      owner = treasury
+      actor = bot
+      action = "withdraw"
+      detail = "pool=USDC-3M utilisation=0.94"
+      rule = "utilisation above the withdrawal ceiling"
+      refusedAt = now
+      auditor = None
+  Some r <- queryContractId treasury cid
+  assertMsg "the rule did not survive" (r.rule == "utilisation above the withdrawal ceiling")
+
+-- 2. A collateral engine refusing a substitution. Different vocabulary again.
+testACollateralEngineCanUseIt : Script ()
+testACollateralEngineCanUseIt = script do
+  custodian <- allocateParty "Custodian"
+  engine    <- allocateParty "MarginEngine"
+  now <- getTime
+  _ <- submit [custodian, engine] do
+    createCmd RefusalRecord with
+      owner = custodian
+      actor = engine
+      action = "substitute collateral"
+      detail = "out=GILT-2031 in=CORP-BBB haircut=0.22"
+      rule = "proposed collateral is outside the eligibility schedule"
+      refusedAt = now
+      auditor = None
+  pure ()
+
+-- 3. Both signatures are required. A refusal one side can mint alone is a
+--    log line with extra steps.
+testNeitherSideCanRecordAlone : Script ()
+testNeitherSideCanRecordAlone = script do
+  owner <- allocateParty "Owner"
+  actor <- allocateParty "Actor"
+  now <- getTime
+  let rec = RefusalRecord with
+        owner; actor; action = "settle"; detail = "x"
+        rule = "outside the window"; refusedAt = now; auditor = None
+  submitMustFail owner do createCmd rec
+  submitMustFail actor do createCmd rec
+
+-- 4. A refusal with no rule is not evidence of a control. Nor is one with no
+--    action: "something was refused" tells a reader nothing.
+testAnEmptyRuleOrActionIsRefused : Script ()
+testAnEmptyRuleOrActionIsRefused = script do
+  owner <- allocateParty "Owner"
+  actor <- allocateParty "Actor"
+  now <- getTime
+  submitMustFail [owner, actor] do
+    createCmd RefusalRecord with
+      owner; actor; action = "settle"; detail = "x"
+      rule = ""; refusedAt = now; auditor = None
+  submitMustFail [owner, actor] do
+    createCmd RefusalRecord with
+      owner; actor; action = ""; detail = "x"
+      rule = "outside the window"; refusedAt = now; auditor = None
+
+-- 5. THE PART A TRANSPARENT CHAIN CANNOT DO. The named auditor reads it.
+--    Nobody else does. Both halves matter: an auditor who sees everything is
+--    a leak with a job title.
+testOnlyTheNamedAuditorSeesIt : Script ()
+testOnlyTheNamedAuditorSeesIt = script do
+  owner     <- allocateParty "Owner"
+  actor     <- allocateParty "Actor"
+  regulator <- allocateParty "Regulator"
+  stranger  <- allocateParty "SomeOtherBank"
+  now <- getTime
+  _ <- submit [owner, actor] do
+    createCmd RefusalRecord with
+      owner; actor; action = "settle"; detail = "500000 USD"
+      rule = "would exceed the cap"; refusedAt = now
+      auditor = Some regulator
+  seen <- query @RefusalRecord regulator
+  assertMsg "the named auditor cannot see it" (length seen == 1)
+  byStranger <- query @RefusalRecord stranger
+  assertMsg "a party nobody named can read it" (null byStranger)
+
+-- 6. No auditor means no auditor, and the owner still holds their own record.
+testNoAuditorDisclosesToNobody : Script ()
+testNoAuditorDisclosesToNobody = script do
+  owner   <- allocateParty "Owner"
+  actor   <- allocateParty "Actor"
+  watcher <- allocateParty "Watcher"
+  now <- getTime
+  _ <- submit [owner, actor] do
+    createCmd RefusalRecord with
+      owner; actor; action = "settle"; detail = "x"
+      rule = "outside the window"; refusedAt = now; auditor = None
+  seen <- query @RefusalRecord watcher
+  assertMsg "a refusal with no auditor was visible to somebody" (null seen)
+  byOwner <- query @RefusalRecord owner
+  assertMsg "the owner cannot see their own refusal" (length byOwner == 1)
+
+-- 7. Acknowledge lets the auditor prove they can read it, and does not
+--    destroy the record. "We disclosed it" becomes checkable.
+testTheAuditorCanAcknowledgeWithoutConsumingIt : Script ()
+testTheAuditorCanAcknowledgeWithoutConsumingIt = script do
+  owner     <- allocateParty "Owner"
+  actor     <- allocateParty "Actor"
+  regulator <- allocateParty "Regulator"
+  now <- getTime
+  cid <- submit [owner, actor] do
+    createCmd RefusalRecord with
+      owner; actor; action = "settle"; detail = "x"
+      rule = "would exceed the cap"; refusedAt = now
+      auditor = Some regulator
+  got <- submit regulator do exerciseCmd cid Acknowledge
+  assertMsg "Acknowledge returned the wrong rule" (got == "would exceed the cap")
+  still <- queryContractId regulator cid
+  assertMsg "Acknowledge consumed the record" (isSome still)
+  where isSome = optional False (const True)
+
+-- 8. And a stranger cannot acknowledge it, which would otherwise let anyone
+--    manufacture a disclosure they were never entitled to.
+testAStrangerCannotAcknowledge : Script ()
+testAStrangerCannotAcknowledge = script do
+  owner     <- allocateParty "Owner"
+  actor     <- allocateParty "Actor"
+  regulator <- allocateParty "Regulator"
+  stranger  <- allocateParty "Stranger"
+  now <- getTime
+  cid <- submit [owner, actor] do
+    createCmd RefusalRecord with
+      owner; actor; action = "settle"; detail = "x"
+      rule = "would exceed the cap"; refusedAt = now
+      auditor = Some regulator
+  submitMustFail stranger do exerciseCmd cid Acknowledge

@@ -1,0 +1,20 @@
+# A separate package on purpose.
+#
+# ChargeRefused lives inside KyaMandate and has `payee` and `amount` on it. A
+# lending protocol refusing a withdrawal has neither, and a collateral app
+# refusing a substitution has neither. So nobody could reuse the pattern
+# without taking our whole mandate with it, which is the real reason
+# "integration into two Canton applications" had not happened.
+#
+# This is 1.0.0 with no upgrade history, so its shape is still free to be
+# argued with. It depends on nothing but daml-prim and daml-stdlib: an app
+# taking it as a data-dependency gets one module and no opinions about money.
+sdk-version: 3.4.11
+name: canton-refusal-record
+source: daml
+version: 1.0.0
+dependencies:
+  - daml-prim
+  - daml-stdlib
+build-options:
+  - --target=2.1

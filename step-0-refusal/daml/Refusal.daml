@@ -1,0 +1,100 @@
+-- | A refusal that survives, for any Canton application.
+--
+-- THE PROBLEM THIS EXISTS FOR. In Daml a failed `assertMsg` aborts the whole
+-- transaction. Nothing is written. After a refused action the ledger looks
+-- exactly as it would if the application had never tried, so the only record
+-- is whatever the operator's own process wrote afterwards, about itself.
+--
+-- That asymmetry runs the wrong way. What succeeded is corroborated by the
+-- ledger. What was stopped is the operator's word, and it is the half a
+-- regulator asks about. EU AI Act Article 12 and DORA both ask an institution
+-- to evidence that a control OPERATED, and a control that operates produces
+-- refusals.
+--
+-- Note this is specific to ledgers that do not commit failed transactions.
+-- On Ethereum a reverted transaction is still included in a block and still
+-- costs gas, so the attempt is visible. In Daml the transaction never commits.
+-- The pattern below is therefore worth more here than on a public chain.
+--
+-- THE PATTERN. Stop aborting. Evaluate the rule and commit either way: if it
+-- passes, do the thing; if it fails, create one of these and do nothing else.
+-- The contract id and the ledger time then come from the ledger rather than
+-- from the operator, and cannot be invented, backdated or reordered.
+--
+--     now <- getTime
+--     case refusalReason ... of
+--       Some rule -> do
+--         _ <- create RefusalRecord with
+--           owner; actor; action = "withdraw"; detail = show amount
+--           rule; refusedAt = now; auditor
+--         pure ()
+--       None -> do
+--         -- the real work
+--
+-- The pattern was named `RejectedAttempt` by Federico_Rodriguez, a Canton
+-- Community Tech Partner, on forum.canton.network/t/9114 in September 2026.
+-- He also named the limit it does not fix, which is written below.
+module Refusal where
+
+-- | One attempt that a rule stopped.
+--
+-- Deliberately says nothing about money. `action` and `detail` are the
+-- application's own words for what was tried, so a payment app, a lending
+-- protocol and a collateral engine can all use this without one of them
+-- carrying a field that means nothing to it.
+template RefusalRecord
+  with
+    owner : Party
+      -- ^ Who is accountable for the system that refused. A signatory,
+      -- because a refusal nobody signs is a log line.
+    actor : Party
+      -- ^ Who tried. Also a signatory: both sides of the attempt are on the
+      -- record, so neither can later say the other invented it.
+    action : Text
+      -- ^ What was attempted, in the application's own vocabulary.
+      -- "withdraw", "substitute collateral", "settle".
+    detail : Text
+      -- ^ The particulars, encoded however the application likes. Keep it
+      -- short and keep it true: this is the field a human reads first.
+    rule : Text
+      -- ^ WHICH rule refused it, word for word as the application states it
+      -- elsewhere. "refused" on its own is not evidence of a control; the
+      -- name of the control that fired is.
+    refusedAt : Time
+      -- ^ From getTime, which is ledger effective time rather than a clock
+      -- the submitter writes.
+    auditor : Optional Party
+      -- ^ Named once, in advance, by the owner. `None` discloses to nobody
+      -- beyond the two signatories, and that is the default.
+  where
+    signatory owner, actor
+
+    -- The auditor observes, and this is the part a transparent chain cannot
+    -- do: the refusal is ON a ledger and is NOT public, and the one party
+    -- entitled to read it was named before any of these attempts happened.
+    -- They never have to ask the operator for it, which is the whole
+    -- difference between evidence and a report.
+    observer optional [] (\a -> [a]) auditor
+
+    ensure action /= "" && rule /= ""
+
+    -- | Let the auditor confirm they can read it, so "we disclosed" is
+    -- checkable rather than asserted. Non-consuming: asking must not destroy
+    -- the thing being asked about.
+    nonconsuming choice Acknowledge : Text
+      controller optional owner identity auditor
+      do pure rule
+
+-- WHAT THIS DOES NOT DO, written here rather than left to be discovered.
+--
+-- An attempt that was never submitted leaves nothing behind. This makes a
+-- refusal that HAPPENED impossible to invent, delete, backdate or reorder. It
+-- does not make one that never reached the ledger appear, and no ledger
+-- artefact can.
+--
+-- A record is archivable by its signatories. The honest claim is that removing
+-- one is itself a ledger event, not that it cannot be removed.
+--
+-- It proves a rule fired, not that a rule is correct. Whether the fence would
+-- have stopped the action had the record not been written is a fact about
+-- code, not about records.
