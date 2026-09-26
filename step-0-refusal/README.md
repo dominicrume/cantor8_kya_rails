@@ -43,15 +43,23 @@ the operator, and cannot be invented, backdated or reordered.
 lending protocol and a collateral engine all fit, and none of them carries a
 field that means nothing to it.
 
-| application | `action` | `detail` | `rule` |
-|---|---|---|---|
-| payments | `settle` | `95000.00 USD to merchant-4471` | `would exceed the cap` |
-| lending | `withdraw` | `pool=USDC-3M utilisation=0.94` | `utilisation above the withdrawal ceiling` |
-| collateral | `substitute collateral` | `out=GILT-2031 in=CORP-BBB` | `outside the eligibility schedule` |
+The lending and collateral rows below are taken from the test suite, verbatim.
+The payments row is an illustration and is marked as one, because a table that
+mixes tested values with invented ones invites a reader to check the first row
+and trust the rest.
+
+| application | `action` | `detail` | `rule` | |
+|---|---|---|---|---|
+| lending | `withdraw` | `pool=USDC-3M utilisation=0.94` | `utilisation above the withdrawal ceiling` | tested |
+| collateral | `substitute collateral` | `out=GILT-2031 in=CORP-BBB haircut=0.22` | `outside the eligibility schedule` | tested |
+| payments | `settle` | `95000.00 USD to merchant-4471` | `would exceed the cap` | illustration |
 
 The first version of this lived inside our own mandate template and had `payee`
-and `amount` on it. A lending protocol refusing a withdrawal has neither, which
-is why nobody could reuse it, and why this is a separate package.
+and `amount` on it. Anyone could have copied the fifteen lines, and saying
+otherwise would be overstating it. What they could not do was **depend** on it:
+a data-dependency on that DAR hands you an entire spend-limited wallet, and the
+two fields describe a payment rather than whatever they were refusing. This is
+a separate package for that reason.
 
 ## The auditor
 

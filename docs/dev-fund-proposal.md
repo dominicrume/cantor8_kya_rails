@@ -182,6 +182,17 @@ integration is something the applicant can go and do rather than wait for.
   - **Value metric:** review completed and published; all findings rated high or above either remediated or documented with a stated reason.
 
 ### Milestone 3: Integration into two existing Canton rails
+
+**Where this stands today, stated rather than implied.** The pattern is now a
+separate package, `canton-refusal-record`, so an application can depend on the
+refusal record without inheriting a spend-limited wallet, and its test suite
+includes a lending protocol and a collateral engine using it with no concept of
+a payee. That removes the reason a team would have had to say no.
+
+It does not remove the other one: **nobody has been asked yet.** No integration
+proposal has been made to any team, and this milestone is the work of making
+those asks and seeing them through, not of writing more code. The code is the
+precondition and it is done.
 - **Estimated Delivery:** Week 12
 - **Focus:** The format running inside somebody else's application, with the applicant doing the integration work.
 - **Deliverables / Value Metrics:**
