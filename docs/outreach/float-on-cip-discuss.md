@@ -27,29 +27,33 @@ name nobody knows is easy to ignore. A short question is not.
 Paste this:
 
 ```
-118 CIPs, and none of them covers what happens to a refused action.
+A regulator asks a bank to show what its system blocked last quarter.
 
-In Daml a failed assertMsg aborts the transaction. So a blocked action
-leaves nothing behind. What settled is on the ledger. What a rule stopped
-is only in the application's own logs, written by the operator, about the
-operator.
+The bank can show every payment that went through. It cannot show one
+that was stopped.
 
-EU AI Act Article 12 and DORA both ask an institution to evidence that a
-control operated. A control that operates produces refusals.
+That is not sloppiness. In Daml a failed assertMsg aborts the whole
+transaction. A blocked action leaves nothing on the ledger at all. The
+refusals sit in the bank's own logs, written by the bank, about the bank.
 
-The pattern that fixes it is small. Do not abort. Commit either way.
+EU AI Act Article 12 and DORA both ask a firm to prove a control worked.
+A control that works produces refusals.
 
-If the rule passes, do the thing. If it fails, create a record and do
-nothing else. Both paths commit. The id and the time then come from the
-ledger. A named auditor observes the record. Nobody else does.
+The fix is small. Stop aborting. Commit either way.
+
+If the rule passes, do the thing. If it fails, write a record and do
+nothing else. Both paths commit. The id and the time come from the
+ledger. A named auditor reads it. Nobody else does.
+
+I read all 118 CIPs. None covers this.
 
 I have a reference implementation. MIT, one module, no dependencies
 beyond daml-prim and daml-stdlib. The code is here.
 
 https://github.com/dominicrume/cantor8_kya_rails/tree/main/step-0-refusal
 
-Does this belong in a Standards Track CIP? Or is it better left as a
-library people copy?
+Does this belong in a Standards Track CIP? Or is it better as a library
+people copy?
 ```
 
 ## Why it ends there

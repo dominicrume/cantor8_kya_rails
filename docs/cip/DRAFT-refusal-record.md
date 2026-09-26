@@ -18,17 +18,29 @@ rather than after a month of writing. See `docs/outreach/float-on-cip-discuss.md
 
 # 1. Abstract
 
-In Daml a failed `assertMsg` aborts the transaction, so an action stopped by a
-rule leaves nothing on the ledger. What settled is corroborated by the ledger;
-what was refused exists only in the application's own logs, written by the
-operator, about the operator.
+A supervisor asks a firm to show what its system blocked last quarter. The firm
+can show every action that went through. It cannot show one that was stopped.
+
+That gap is structural, not sloppy. In Daml a failed `assertMsg` aborts the
+transaction, so a refused action leaves nothing on the ledger at all.
 
 This CIP proposes a standard template for recording a refused action as a
 committed transaction, with the party entitled to read it named in advance.
 
 # 2. Motivation
 
-The asymmetry runs the wrong way. The half a supervisor asks about is the half
+**Who this is for, and what it saves them.**
+
+| | what they get |
+|---|---|
+| a firm under supervision | an answer to "show me what you stopped" that does not begin with "trust our logs" |
+| its auditor | the refusals, readable without asking the firm for them |
+| an application builder | one module instead of a design problem, and a name other applications already use |
+| a Super Validator | a standard that costs nothing to adopt and nothing to ignore |
+
+The asymmetry today runs the wrong way. What settled is corroborated by the
+ledger. What was refused exists only in the application's own logs, written by
+the operator, about the operator. The half a supervisor asks about is the half
 with no ledger artefact behind it.
 
 EU AI Act Article 12 requires high-risk systems to log events automatically
@@ -48,9 +60,10 @@ uptime.
 
 # 3. Specification
 
-A template with no opinions about money, so a payments application, a lending
-protocol and a collateral engine can all use it without one of them carrying a
-field that means nothing to it.
+A template with no opinions about money.
+
+A payments application, a lending protocol and a collateral engine all fit.
+None of them carries a field that means nothing to it.
 
 ```daml
 template RefusalRecord
@@ -129,9 +142,10 @@ and `daml-stdlib`, MIT.
 
 https://github.com/dominicrume/cantor8_kya_rails/tree/main/step-0-refusal
 
-Eight scripts, including a lending protocol and a collateral engine using it
-with no concept of a payee, an auditor who reads every record while a stranger
-reads none, and a stranger who cannot manufacture an acknowledgement.
+Eight scripts. The two that matter prove it is reusable: a lending protocol and
+a collateral engine, both using it with no concept of a payee. The rest are the
+guards. An auditor reads every record. A stranger reads none, and cannot
+manufacture an acknowledgement.
 
 # 8. Credit
 
