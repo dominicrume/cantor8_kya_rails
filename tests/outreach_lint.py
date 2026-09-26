@@ -48,7 +48,20 @@ def hard(w):
     w = re.sub(r"[^a-z]", "", w.lower())
     return bool(w) and w not in COMMON and len(w) > 7
 def blocks_in(path):
-    return re.findall(r"```\n(.*?)\n```", open(path).read(), re.S)
+    """Only the blocks a person pastes to another person.
+
+    A bare ``` fence is a message. A language-tagged one (```daml) is a code
+    quote for the reader of the plan, not something anybody sends, and
+    measuring its sentence length is nonsense: the integration plan quotes
+    three lines of somebody else's Daml and the lint called it a 49-word
+    sentence in a message that was 211 words too long.
+    """
+    text = open(path).read()
+    out = []
+    for m in re.finditer(r"^```([^\n]*)\n(.*?)\n```", text, re.S | re.M):
+        if not m.group(1).strip():          # bare fence: a thing to paste
+            out.append(m.group(2))
+    return out
 
 
 fails = []
@@ -70,6 +83,7 @@ TARGETS = [p for p in [
     os.path.join(ROOT, "docs", "outreach", "ask-cantor8-for-devnet.md"),
     os.path.join(ROOT, "docs", "outreach", "webinar-wednesday-16-sept.md"),
     os.path.join(ROOT, "docs", "outreach", "float-on-cip-discuss.md"),
+    os.path.join(ROOT, "docs", "outreach", "integration-plan.md"),
 ] if os.path.exists(p)]
 
 # Words the RECIPIENT used, which a reply has to contain or it is not a reply
@@ -83,6 +97,7 @@ THEIRS = {
     "ask-cantor8-for-devnet.md": [],
     "webinar-wednesday-16-sept.md": [],
     "float-on-cip-discuss.md": [],
+    "integration-plan.md": [],
 }
 
 for path in TARGETS:
