@@ -52,7 +52,7 @@ pre{background:var(--card);border:1px solid var(--line);border-radius:6px;
 screen an operator actually works from is <b>/desk</b> on a running desk: the
 float, what was refused and why, and the payout form.<br><br>
 Every number below came from a command that ran on this machine at
-2026-09-26 09:56:01 UTC. Nothing here is cached, and nothing is remembered from a previous run.</p>
+2026-09-26 11:14:46 UTC. Nothing here is cached, and nothing is remembered from a previous run.</p>
 <div class="top"><div><div class="big ok">42<span style='color:var(--dim)'>/42</span></div><div class="lbl">suites green</div></div><div><div class="big ok">103</div><div class="lbl">daml attack scripts</div></div><div><div class="big ok">30 of ?</div><div class="lbl">choices exercised</div></div><div><div class="big ok">1.1.1</div><div class="lbl">package built</div></div><div><div class="big ok">3.4.11</div><div class="lbl">daml sdk</div></div></div>
 <div class="note"><b>Built is not the same as deployed.</b> This repository builds
 <b>1.1.1</b> on SDK <b>3.4.11</b>. What is vetted on Cantor8 DevNet is <b>1.1.0</b>, built on
@@ -60,14 +60,14 @@ Every number below came from a command that ran on this machine at
 fingerprint. 1.1.1 is tested but not yet uploaded, and this line will say so until
 it is.</div>
 <h2>The format</h2><table>
-<tr><td class="s ok">PASS</td><td class="c">conformance.py</td><td class="why">the Python implementation agrees with all 16 conformance vectors</td><td class="n">20/20</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">conformance.py</td><td class="why">the Python implementation agrees with all 16 conformance vectors</td><td class="n">20/20</td><td class="n">0.1s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">conformance.js</td><td class="why">the JavaScript implementation agrees, byte for byte, with the Python one</td><td class="n">20/20</td><td class="n">0.2s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">cd impl/go &amp;&amp; go run .</td><td class="why">a third implementation, in Go, agrees with both</td><td class="n">20/20</td><td class="n">0.3s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">cd impl/go &amp;&amp; go run .</td><td class="why">a third implementation, in Go, agrees with both</td><td class="n">20/20</td><td class="n">0.2s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">conformance_any.py -- python3 impl/pipe/reference.py</td><td class="why">any executable can be graded through a pipe, in any language</td><td class="n">20/20</td><td class="n">0.0s</td></tr>
 </table>
 <h2>The ledger</h2><table>
 <tr><td class="s ok">PASS</td><td class="c">fence_lint.py</td><td class="why">every spending fence is present in the Daml</td><td class="n">1 checks</td><td class="n">0.0s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">daml_tests.py</td><td class="why">the Daml scripts, rebuilt from source, not from whatever DAR was on disk</td><td class="n">9/9</td><td class="n">23.4s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">daml_tests.py</td><td class="why">the Daml scripts, rebuilt from source, not from whatever DAR was on disk</td><td class="n">9/9</td><td class="n">24.3s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">fence_parity.py</td><td class="why">the refusal written to the ledger names the rule that actually fired</td><td class="n">17 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">mirror_boundaries.py</td><td class="why">the Python mirror refuses at exactly the boundaries the Daml does</td><td class="n">15 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">python3 tools/prove_refusal_on_devnet.py --dry-run</td><td class="why">the one command that puts a refusal on DevNet still works, minus the network</td><td class="n"></td><td class="n">0.1s</td></tr>
@@ -76,22 +76,22 @@ it is.</div>
 <tr><td class="s ok">PASS</td><td class="c">anchor_smoke.py</td><td class="why">a forged chain verifies internally and still answers NOT ANCHORED</td><td class="n">10 checks</td><td class="n">0.1s</td></tr>
 </table>
 <h2>The agent</h2><table>
-<tr><td class="s ok">PASS</td><td class="c">journal_smoke.py</td><td class="why">a killed process loses no receipts, and an edited journal is refused</td><td class="n">5 checks</td><td class="n">0.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">journal_smoke.py</td><td class="why">a killed process loses no receipts, and an edited journal is refused</td><td class="n">5 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">no_real_addresses.py</td><td class="why">no address anywhere can receive money, and the screen says so first</td><td class="n">8 checks</td><td class="n">0.1s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">mcp_smoke.py</td><td class="why">the model cannot overspend, redirect, or outlive a revoke -- and cannot end its own session</td><td class="n">23 checks</td><td class="n">0.1s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">mcp_survives_kill.py</td><td class="why">SIGKILL loses no receipts, and buys the agent no cap</td><td class="n">11 checks</td><td class="n">0.2s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">disclosure_smoke.py</td><td class="why">the refusals can be handed over on their own, without the book behind them</td><td class="n">34 checks</td><td class="n">0.0s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">release_readiness.py</td><td class="why">the cap holds under concurrency, stamping is flat, a tampered file is refused</td><td class="n">41 checks</td><td class="n">0.4s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">release_readiness.py</td><td class="why">the cap holds under concurrency, stamping is flat, a tampered file is refused</td><td class="n">41 checks</td><td class="n">0.3s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">policy_smoke.py</td><td class="why">the rules the agent ran under are sealed, so nobody can widen them afterwards</td><td class="n">30 checks</td><td class="n">0.0s</td></tr>
 </table>
 <h2>The record</h2><table>
-<tr><td class="s ok">PASS</td><td class="c">outreach_lint.py</td><td class="why">anything about to be sent is short, plain, and in the other person&#x27;s words</td><td class="n">37 checks</td><td class="n">0.0s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">outreach_lint.py</td><td class="why">anything about to be sent is short, plain, and in the other person&#x27;s words</td><td class="n">44 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">waiting_smoke.py</td><td class="why">a thread where somebody else spoke last is a thread we owe, and it says who</td><td class="n">13 checks</td><td class="n">0.0s</td></tr>
 </table>
 <h2>The desk</h2><table>
 <tr><td class="s ok">PASS</td><td class="c">assurance_smoke.py</td><td class="why">an audit&#x27;s findings are sealed, so softening one breaks the client&#x27;s own check</td><td class="n">30 checks</td><td class="n">0.1s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">ecosystem_scan_smoke.py</td><td class="why">the scan counts files and says so, and never writes a token into a public number</td><td class="n">1/2</td><td class="n">0.0s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">mutation_guard_smoke.py</td><td class="why">a killed mutation run heals on the next one, and cannot be committed meanwhile</td><td class="n">30 checks</td><td class="n">29.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">mutation_guard_smoke.py</td><td class="why">a killed mutation run heals on the next one, and cannot be committed meanwhile</td><td class="n">30 checks</td><td class="n">22.9s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">action_smoke.py</td><td class="why">the action a stranger runs still calls files that exist, and never softens a finding</td><td class="n">32 checks</td><td class="n">0.1s</td></tr>
 </table>
 <h2>The page</h2><table>
@@ -101,7 +101,7 @@ it is.</div>
 <tr><td class="s ok">PASS</td><td class="c">contrast_lint.py</td><td class="why">no text anywhere is invisible against its own background</td><td class="n"></td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">a11y_lint.py</td><td class="why">every page is a document, readable on a phone, and usable without a mouse</td><td class="n">10 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">standalone_smoke.py</td><td class="why">the standalone build has not drifted from the source page</td><td class="n">31 checks</td><td class="n">0.0s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">balance_lint.py</td><td class="why">the float adds up, and every number the README shows a judge is still true</td><td class="n">4 of 4</td><td class="n">36.1s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">balance_lint.py</td><td class="why">the float adds up, and every number the README shows a judge is still true</td><td class="n">4 of 4</td><td class="n">22.9s</td></tr>
 </table>
 <h2>The rules</h2><table>
 <tr><td class="s ok">PASS</td><td class="c">security_lint.py</td><td class="why">no bandit finding in production code</td><td class="n">2 checks</td><td class="n">0.6s</td></tr>
@@ -110,12 +110,12 @@ it is.</div>
 <tr><td class="s ok">PASS</td><td class="c">xss_lint.py</td><td class="why">every innerHTML interpolation goes through esc()</td><td class="n">1 checks</td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">privacy_matrix.py --check</td><td class="why">who signs, observes and is excluded is documented for every contract</td><td class="n"></td><td class="n">0.0s</td></tr>
 <tr><td class="s ok">PASS</td><td class="c">readme_citations.py</td><td class="why">every line of Daml the README shows a judge is still that line</td><td class="n">29 checks</td><td class="n">0.0s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">devhub_entry_check.py</td><td class="why">the Developer Hub listing passes every rule the Foundation publishes</td><td class="n">31 checks</td><td class="n">3.1s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">package_smoke.py</td><td class="why">the installable package refuses what it should refuse</td><td class="n">45 checks</td><td class="n">0.3s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">devhub_entry_check.py</td><td class="why">the Developer Hub listing passes every rule the Foundation publishes</td><td class="n">31 checks</td><td class="n">2.8s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">package_smoke.py</td><td class="why">the installable package refuses what it should refuse</td><td class="n">45 checks</td><td class="n">0.4s</td></tr>
 </table>
 <h2>The tests, tested</h2><table>
 <tr><td class="s ok">PASS</td><td class="c">mutation_py.py</td><td class="why">every refusal at the edges is covered by a named test</td><td class="n"></td><td class="n">0.1s</td></tr>
-<tr><td class="s ok">PASS</td><td class="c">mutation_suite.py</td><td class="why">23 real defects introduced on purpose; every one makes its suite go red</td><td class="n"></td><td class="n">473.6s</td></tr>
+<tr><td class="s ok">PASS</td><td class="c">mutation_suite.py</td><td class="why">23 real defects introduced on purpose; every one makes its suite go red</td><td class="n"></td><td class="n">320.4s</td></tr>
 </table>
 <h2>Reproduce any of it</h2>
 <pre>git clone https://github.com/dominicrume/cantor8_kya_rails
@@ -123,7 +123,7 @@ cd cantor8_kya_rails
 python3 tools/dashboard.py          # regenerates this page from scratch
 python3 tests/daml_tests.py         # the ledger's own attack scripts</pre>
 <footer>
-<b>ALL GREEN</b> &middot; whole run took 594 seconds &middot; generated 2026-09-26 09:56:01 UTC<br>
+<b>ALL GREEN</b> &middot; whole run took 414 seconds &middot; generated 2026-09-26 11:14:46 UTC<br>
 Live verifier: <a href="./">dominicrume.github.io/cantor8_kya_rails</a> &middot;
 Source: <a href="https://github.com/dominicrume/cantor8_kya_rails">github.com/dominicrume/cantor8_kya_rails</a><br>
 A green row means the named command exited zero. It does not mean the thing is
