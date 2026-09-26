@@ -53,6 +53,7 @@ more work. All of it needs a person to press send.
 | | where | what it opens |
 |---|---|---|
 | **Float the CIP idea** | `cip-discuss` mailing list | the only path where the thing being asked for is an opinion, not a favour |
+| **The integration ask** | the existing forum thread, after the float | the Dev Fund milestone. Target and example named in `integration-plan.md` |
 | **Ask Cantor8 for the secret** | as a comment on toolkit PR #10 | `TryCharge` on a real ledger, which is the last unproven claim |
 | **Webinar question** | already passed, 16 Sept | unknown whether attended |
 
