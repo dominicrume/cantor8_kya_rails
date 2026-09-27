@@ -84,6 +84,7 @@ TARGETS = [p for p in [
     os.path.join(ROOT, "docs", "outreach", "webinar-wednesday-16-sept.md"),
     os.path.join(ROOT, "docs", "outreach", "float-on-cip-discuss.md"),
     os.path.join(ROOT, "docs", "outreach", "integration-plan.md"),
+    os.path.join(ROOT, "docs", "outreach", "ask-back.md"),
 ] if os.path.exists(p)]
 
 # Words the RECIPIENT used, which a reply has to contain or it is not a reply
@@ -98,6 +99,7 @@ THEIRS = {
     "webinar-wednesday-16-sept.md": [],
     "float-on-cip-discuss.md": [],
     "integration-plan.md": [],
+    "ask-back.md": [],
 }
 
 for path in TARGETS:
