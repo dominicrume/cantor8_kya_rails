@@ -1,5 +1,57 @@
 # How the Canton Dev Fund actually works
 
+> ## THIS DOCUMENT WAS OVERTAKEN. Re-measured 27 September 2026.
+>
+> **The champion gate described below no longer exists.**
+> `.github/workflows/champion-check.yml` has been deleted from
+> `canton-foundation/canton-dev-fund`. No workflow now closes a proposal for
+> naming the wrong champion, and the pull request template explicitly accepts
+> **`Needs Champion`** as a valid value.
+>
+> The fund moved to **Dev Fund 2.0** on 22 September. The gate is now
+> `rfp-category-check.yml`: a proposal is closed only if it references **no RFP
+> category at all**, and on 24 September they merged a fix to leave proposals
+> open when that check cannot run.
+>
+> **CORRECTION TO THIS CORRECTION, 29 September.** "Removed" was too strong and
+> wrong in the other direction. The champion requirement is alive and is
+> **CIP-0100**: "If no champion can be found... funding from the development
+> fund will not be available." Proposals #851 and #811 were auto-closed for it
+> on 21 and 18 September, citing that CIP by name.
+>
+> What changed is ENFORCEMENT, not the rule. Every proposal filed since Dev
+> Fund 2.0 merged on 22 September is still open and none carries a champion
+> label. The robot stopped closing them.
+>
+> So filing was right and #860 is safe, AND it will not be funded without a
+> champion. Both are true. The route to one is the SIG directory: our proposal
+> is labelled `regulatory-compliance`, that SIG has four named members, two with
+> public GitHub handles, and the review process says SIG members may self-assign
+> proposals and that SIG participation is not limited to Foundation members.
+>
+> **What this changes.** Everything in this project that waited on finding a
+> champion was waiting for the wrong thing: not a name on a list, but a SIG
+> member willing to pick it up. `docs/dev-fund-proposal.md`
+> already says `Needs Champion`, already names RFP 27, and already contains the
+> phrases "audit trails" and "compliance evidence", which are three of the
+> keywords the live checker matches. It would be labelled
+> `rfp-27:security-monitoring` today.
+>
+> **RFP 27 is "Security Monitoring, Auditability and Evidence"**, and asks for
+> "audit trails, compliance evidence... while preserving Canton's privacy
+> model... how privacy, access controls, and selective disclosure will be
+> handled". It also says the Foundation anticipates approving *multiple* grants
+> there.
+>
+> Not RFP 11. "Public verifiability" sounds like this project and is not: it
+> asks for public aggregates of price and volume, which is the opposite of
+> selective disclosure to a named auditor.
+>
+> The measurement below was true on 11 September. It is kept because the lesson
+> is not that the fund changed; it is that a measured fact has a shelf life, and
+> a strategy built on one needs re-measuring before it is used to say no.
+
+
 Measured on 2026-09-11 from the public repository, not from the documentation.
 Everything here is reproducible with `gh`; the numbers are counts, not
 impressions.
