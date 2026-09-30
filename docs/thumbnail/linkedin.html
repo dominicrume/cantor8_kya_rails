@@ -1,0 +1,58 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>LinkedIn thumbnail</title>
+<style>
+  /* LinkedIn renders a post image at 1200x627. Built at exactly that so a
+     screenshot of the card needs no cropping. */
+  :root{
+    --ink:#0d1117; --paper:#f6f4ef; --rule:#d9d3c7;
+    --dim:#6b6257; --live:#1f6f43; --stop:#9a2f2f;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:#8a8a8a;font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+       display:flex;flex-direction:column;align-items:center;gap:18px;padding:24px}
+  .shot{width:1200px;height:627px;background:var(--paper);color:var(--ink);
+        padding:62px 70px;display:flex;flex-direction:column;justify-content:space-between;
+        position:relative;overflow:hidden}
+  .eyebrow{font-size:19px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+           font-weight:600}
+  h1{font-size:63px;line-height:1.08;letter-spacing:-.022em;font-weight:700;
+     max-width:19ch;text-wrap:balance;margin-top:22px}
+  h1 em{font-style:normal;color:var(--stop)}
+  .said{margin-top:26px;font-size:25px;line-height:1.45;color:#2f2a24;max-width:46ch}
+  .said b{font-weight:650}
+  .foot{display:flex;align-items:flex-end;justify-content:space-between;
+        border-top:2px solid var(--rule);padding-top:22px}
+  .proof{display:flex;gap:34px}
+  .n{font-size:34px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .l{font-size:14.5px;color:var(--dim);margin-top:7px;letter-spacing:.03em}
+  .who{text-align:right;font-size:16px;line-height:1.5;color:var(--dim)}
+  .who b{display:block;color:var(--ink);font-size:20px;font-weight:650}
+  /* A quiet mark, not a logo: the refusal that now leaves something behind. */
+  .mark{position:absolute;right:-70px;top:-70px;width:330px;height:330px;
+        border:26px solid var(--stop);border-radius:50%;opacity:.07}
+  .hint{color:#fff;font-size:13px;opacity:.85;font-family:ui-monospace,monospace}
+</style>
+<div class="shot">
+  <div class="mark"></div>
+  <div>
+    <div class="eyebrow">Canton Network &middot; Daml</div>
+    <h1>He told me my design was <em>wrong</em>.</h1>
+    <p class="said">He was right. The receipts were written by my own
+      application, and a hash chain cannot prove that nothing was
+      <b>left out</b>. I shipped his fix the next day.</p>
+  </div>
+  <div class="foot">
+    <div class="proof">
+      <div><div class="n">111</div><div class="l">Daml tests</div></div>
+      <div><div class="n">82</div><div class="l">mutations</div></div>
+      <div><div class="n">3</div><div class="l">languages agree</div></div>
+      <div><div class="n">1</div><div class="l">day to ship it</div></div>
+    </div>
+    <div class="who">
+      <b>Know Your AgenticAI</b>
+      github.com/dominicrume/cantor8_kya_rails
+    </div>
+  </div>
+</div>
+<p class="hint">1200 &times; 627. Screenshot the card only. Cmd+Shift+4, then Space, then click the card.</p>
