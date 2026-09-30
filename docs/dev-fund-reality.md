@@ -29,9 +29,22 @@
 > public GitHub handles, and the review process says SIG members may self-assign
 > proposals and that SIG participation is not limited to Foundation members.
 >
+> **WHAT A CHAMPION ACTUALLY IS, 30 September.** Not a supporter. A seat.
+> CIP-0100: "The Tech & Ops committee should request **one of its members** to
+> become the champion of the external contributor and **represent them in the
+> committee**." Any Canton Foundation member organisation may attend that
+> committee; it elects five voting members and two alternates, quarterly, and
+> those five decide.
+>
+> So a champion must hold a seat. An ecosystem service provider, however
+> friendly, is not automatically one. What a friendly non-member CAN do is
+> introduce you to someone who is, which is the shortest real path and is worth
+> more than the label.
+>
 > **What this changes.** Everything in this project that waited on finding a
-> champion was waiting for the wrong thing: not a name on a list, but a SIG
-> member willing to pick it up. `docs/dev-fund-proposal.md`
+> champion was waiting for the wrong thing: not a name on a list, but a Tech &
+> Ops member willing to represent it, reachable through the SIG the proposal is
+> already labelled into. `docs/dev-fund-proposal.md`
 > already says `Needs Champion`, already names RFP 27, and already contains the
 > phrases "audit trails" and "compliance evidence", which are three of the
 > keywords the live checker matches. It would be labelled
