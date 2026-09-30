@@ -211,3 +211,27 @@ Tags nobody. Posted as `dominicrume` at 21:23 UTC and live at
 The proposal itself has been open since 27 September with both checks passing.
 Comparable proposals sit six to eleven days before a human speaks, so silence
 until roughly 8 October means nothing at all.
+
+## Drafted in Gmail 2026-09-30, awaiting send
+
+Five drafts created, none sent. Each is one click from going out.
+
+| to | firm | opening line |
+|---|---|---|
+| `diogo.silveira@57blocks.com` | 57Blocks | "Saw Blocksmith Canton, PR #793. Different question." |
+| `contact@avicenne.studio` | Avicenne Studio | "You do Daml application design and vendor review." |
+| `info@blocsys.com` | Blocsys | "You place DAML developers. I am one and I am available." |
+| `info@virtuslab.com` | VirtusLab | "You published Mastering Daml." |
+| `info@4mgroup.com` | 4MGroup | "You do strategy and integration in the Canton ecosystem." |
+
+**Blocsys is the outlier and may be the best of the five.** They advertise
+"Hire DAML Developers" as a service, so a DAML developer on the bench is not a
+favour to them, it is supply. That draft is framed as availability rather than
+as a subcontract question, and it offers a technical screen.
+
+ChainSafe and Chain Experts have no published address, only contact forms.
+Moonsong is deliberately absent: the route there is Federico on the forum, and
+sending to their `hello@` inbox would spend the relationship on a generic
+mailbox.
+
+Nothing here has been sent. Record what comes back, in their words.
