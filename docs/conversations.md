@@ -199,3 +199,15 @@ to write to him again.
 
 Note on naming: their KYA is **Know Your Agent**. Ours is **Know Your
 AgenticAI**. Adjacent, not the same, and worth never blurring.
+
+
+## Sent 2026-09-30
+
+**PR #860, Canton Dev Fund.** A comment on our own proposal, 130 words, asking
+for a champion from the Regulatory Compliance SIG and saying what the gap is.
+Tags nobody. Posted as `dominicrume` at 21:23 UTC and live at
+`github.com/canton-foundation/canton-dev-fund/pull/860#issuecomment-5919983251`.
+
+The proposal itself has been open since 27 September with both checks passing.
+Comparable proposals sit six to eleven days before a human speaks, so silence
+until roughly 8 October means nothing at all.
