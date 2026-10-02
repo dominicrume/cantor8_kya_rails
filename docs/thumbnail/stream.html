@@ -1,0 +1,71 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>StreamYard thumbnail, 1280x720</title>
+<!--
+  The StreamYard / YouTube thumbnail, 1280x720.
+
+  Rendered rather than designed in a tool, for the same reason the evidence
+  pack is generated rather than typed: the figures on it are pulled from the
+  repository and can be rechecked. If a number here is wrong, this file is
+  wrong, and that is fixable in public.
+
+  To export:
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+        --headless --disable-gpu --screenshot=docs/thumbnail/stream.png \
+        --window-size=1280,720 --default-background-color=00000000 \
+        docs/thumbnail/stream.html
+
+  Nothing here is a wallet address, a credential or a live endpoint, which
+  tests/no_real_addresses.py enforces for this whole tree anyway.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+  html,body { margin:0; padding:0; background:#0B0F14; }
+  .t {
+    position:relative; width:1280px; height:720px; overflow:hidden;
+    background:#121820; color:#F1F3F2;
+    font-family:'IBM Plex Sans', Arial, Helvetica, sans-serif;
+    box-sizing:border-box; padding:62px 64px;
+    display:flex; flex-direction:column; justify-content:space-between;
+  }
+  /* the amber rail: the one place colour is spent */
+  .rail { position:absolute; left:0; top:0; width:18px; height:720px; background:#E09A42; }
+  .eyebrow {
+    font-family:'JetBrains Mono', 'Courier New', monospace;
+    font-size:23px; font-weight:700; letter-spacing:3px; text-transform:uppercase;
+    color:#E09A42; margin:0;
+  }
+  h1 { font-size:104px; font-weight:700; line-height:0.99; margin:0; letter-spacing:-2px; }
+  h1 .dim { color:#8A98A5; }
+  .sub { font-size:33px; font-weight:600; color:#C3CDD6; margin:0; line-height:1.3; }
+  .badge {
+    display:inline-block; background:#B35A0E; color:#FFFFFF;
+    font-size:30px; font-weight:700; letter-spacing:1.5px;
+    padding:11px 26px; border-radius:12px;
+  }
+  .foot { display:flex; align-items:center; justify-content:space-between; gap:24px; }
+  .url {
+    font-family:'JetBrains Mono', 'Courier New', monospace;
+    font-size:23px; color:#7F8C99; margin:0;
+  }
+  .live {
+    background:#E09A42; color:#1A1206; font-size:25px; font-weight:700;
+    letter-spacing:2px; padding:10px 22px; border-radius:9px;
+  }
+</style>
+<div class="t">
+  <div class="rail"></div>
+
+  <p class="eyebrow">3rd place &middot; Cantor8 &ldquo;Build on Canton&rdquo; &middot; London</p>
+
+  <div style="display:flex;flex-direction:column;gap:26px">
+    <h1>YOUR AI SAID NO.<br><span class="dim">PROVE IT.</span></h1>
+    <p class="sub">The ledger keeps nothing when a rule blocks a payment.<br>So I made the refusal a transaction that commits.</p>
+    <div><span class="badge">REFUSED &nbsp;&middot;&nbsp; ON THE LEDGER</span></div>
+  </div>
+
+  <div class="foot">
+    <p class="url">dominicrume.github.io/cantor8_kya_rails</p>
+    <span class="live">BREAK IT LIVE</span>
+  </div>
+</div>
