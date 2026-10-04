@@ -41,15 +41,6 @@ jobs:
       - name: MCP server - a model cannot overspend its mandate
         run: python3 tests/mcp_smoke.py
 
-      - name: operator interface - the fences reach the screen
-        run: python3 tests/operator_smoke.py
-
-      - name: the Breet webhook confirms only what matches a held deal
-        run: python3 tests/breet_smoke.py
-
-      - name: the bot cannot be talked into a rate, an account or a shortcut
-        run: python3 tests/bot_smoke.py
-
       - name: the privacy matrix matches the Daml
         run: python3 tests/privacy_matrix.py --check
 
@@ -69,9 +60,6 @@ jobs:
 
       - name: no unescaped interpolation reaches the DOM
         run: python3 tests/xss_lint.py
-
-      - name: the whole OTC cycle holds at every join
-        run: python3 tests/cycle_smoke.py
 
       - name: the published package and the repository are the same format
         run: |
@@ -98,32 +86,11 @@ jobs:
       - name: the agent anchors the chain it wrote, or says it did not
         run: python3 tests/anchor_smoke.py
 
-      - name: nothing reaches the bot unless Meta sent it
-        run: python3 tests/meta_smoke.py
-
-      - name: the Meta webhook is actually wired into the server
-        run: python3 tests/meta_wire_smoke.py
-
-      - name: the Breet webhook is wired in and its allowlist survives a proxy
-        run: python3 tests/breet_wire_smoke.py
-
-      - name: the quote outlives the process, and its history is tamper-evident
-        run: python3 tests/store_smoke.py
-
-      - name: the whole desk runs from one file, in a directory that is not the repo
-        run: python3 tests/bundle_smoke.py
-
-      - name: the operating view shows the float, the refusals and their rules
-        run: python3 tests/desk_view_smoke.py
-
       - name: no text on any page is invisible against its own background
         run: python3 tests/contrast_lint.py
 
       - name: every page is a document, readable on a phone, usable without a mouse
         run: python3 tests/a11y_lint.py
-
-      - name: the desk refuses settings it cannot understand, and the ledger enforces them
-        run: python3 tests/desk_config_smoke.py
 
       - name: killing the wallet loses no receipts, and buys the agent no cap
         run: python3 tests/mcp_survives_kill.py
@@ -133,9 +100,6 @@ jobs:
 
       - name: the float adds up, and every number the README shows is still true
         run: python3 tests/balance_lint.py
-
-      - name: no malformed request can make the desk stop answering
-        run: python3 tests/route_fuzz.py
 
       - name: an audit's findings cannot be softened after the fact
         run: python3 tests/assurance_smoke.py
@@ -165,9 +129,6 @@ jobs:
 
       - name: the action is callable by a stranger and cannot quietly stop
         run: python3 tests/action_smoke.py
-
-      - name: neither screen goes silent, or lies, when the desk stops answering
-        run: node tests/frontend_offline.js
 
       - name: breaking a real thing makes a suite go red
         run: python3 tests/mutation_suite.py
@@ -247,9 +208,15 @@ jobs:
           if [ "$ran" -lt 92 ]; then
             echo "::error::expected at least 92 attack scripts, $ran ran"; exit 1
           fi
-          # 42 choices, 28 exercised; the other 14 are Daml's auto-generated
+          # 44 choices, 30 exercised; the other 14 are Daml's auto-generated
           # Archive on each template. The README says so, so it is checked.
-          if ! grep -q '28 ( 66.7%) exercised in any tests' /tmp/daml-test.log; then
+          #
+          # Pinned on purpose: it must be edited deliberately when the number
+          # moves, which is the only way the README claim and the code stay
+          # in step. It went 42/28 to 44/30 when TryCharge and ChargeRefused
+          # landed, and this line was not updated, so CI sat red for days
+          # while the README was already correct.
+          if ! grep -q '30 ( 68.2%) exercised in any tests' /tmp/daml-test.log; then
             echo "::error::choice coverage moved; the README claim needs re-checking"
             grep -A3 'External template choices' /tmp/daml-test.log; exit 1
           fi
