@@ -113,9 +113,6 @@ jobs:
       - name: refusals can be disclosed alone, and nothing can be removed from them
         run: python3 tests/disclosure_smoke.py
 
-      - name: a killed mutation run is healed, and refused at the commit gate meanwhile
-        run: python3 tests/mutation_guard_smoke.py
-
       - name: the ecosystem scan reports an empty result as a result
         run: python3 tests/ecosystem_scan_smoke.py
 
@@ -246,3 +243,11 @@ jobs:
           echo "$HOME/.daml/bin" >> "$GITHUB_PATH"
       - name: deleting any fence must turn a test red
         run: python3 tests/mutation.py
+
+      - name: a killed mutation run is healed, and refused at the commit gate meanwhile
+        # In this job, not the conformance one, for the same reason
+        # balance_lint is: this exercises tools/pre-commit, and that hook runs
+        # balance_lint, which counts Daml scripts by running them. Without the
+        # SDK the hook exits 1 and the smoke test reads that as the gate being
+        # broken, when the truth is the gate could not be asked.
+        run: python3 tests/mutation_guard_smoke.py
