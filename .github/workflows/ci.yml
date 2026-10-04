@@ -98,9 +98,6 @@ jobs:
       - name: every line the README shows a judge is still that line
         run: python3 tests/readme_citations.py
 
-      - name: the float adds up, and every number the README shows is still true
-        run: python3 tests/balance_lint.py
-
       - name: an audit's findings cannot be softened after the fact
         run: python3 tests/assurance_smoke.py
 
@@ -220,6 +217,16 @@ jobs:
             echo "::error::choice coverage moved; the README claim needs re-checking"
             grep -A3 'External template choices' /tmp/daml-test.log; exit 1
           fi
+
+      - name: the float adds up, and every number the README shows is still true
+        # Lives in THIS job, not the conformance one, because
+        # daml_script_count() counts scripts by RUNNING them and returns -1
+        # when the Daml CLI is absent. That -1 is deliberate: it fails loudly
+        # rather than letting the README's 111 stand unexamined. But the
+        # conformance job installs Node, Python and Go and never Daml, so the
+        # check could only ever report -1 there. It was in the wrong job and
+        # it kept main red.
+        run: python3 tests/balance_lint.py
 
   mutation:
     # The only job that tests the tests. Deletes each fence in the Daml in turn
