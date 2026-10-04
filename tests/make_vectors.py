@@ -276,11 +276,122 @@ cases.append({
     "verdict": "FAIL", "fail_at": 3,
 })
 
+# ---------------------------------------------------------------- spec 1.1
+# 17. `outcome` is an open vocabulary (SPEC 4a). An implementation that
+#     hard-codes ACCEPTED and REFUSED calls a valid POLICY record tampered,
+#     which is the one accusation this format must never make by accident.
+b17 = body(n=1, what="policy in force", amount="100.00", currency="USD",
+           instrument="policy", payee="acme",
+           rule="cap=100.00 USD; allow=[acme]", outcome="POLICY",
+           approved_by="the principal, before the agent ran",
+           ledger="self-attested (no ledger)",
+           at="2026-01-01T00:00:00Z", prev="GENESIS")
+cases.append({
+    "name": "unknown-outcome-is-not-tampering",
+    "kind": "seal",
+    "why": "outcome is an open vocabulary (SPEC 4a). A verifier that rejects "
+           "POLICY -- or any value it has not seen -- calls a valid record "
+           "tampered, which is the accusation this format must never make by "
+           "accident. Seal it like any other field.",
+    "body": b17, "prev": "GENESIS",
+    "canonical": canonical(b17), "seal": seal(b17, "GENESIS"),
+})
+
+# ---------------------------------------------------------------- spec 1.2
+# 18. The assurance level is DERIVED by the verifier, never read from the
+#     document. Every field here claims an independent ledger decided it. No
+#     ledger ever saw it. The seal is honest, so the chain holds, and the
+#     level must still come out self-attested.
+b18 = body(n=1, what="payout to a supplier", amount="10.00", currency="USD",
+           instrument="settled on Canton DevNet, block 4417213", payee="acme",
+           rule="an independent Canton validator authorised this under the "
+                "mandate",
+           outcome="ACCEPTED",
+           approved_by="Canton DevNet consensus, not the applicant",
+           ledger="Canton DevNet (real Canton) -- an independent party "
+                  "decided this",
+           at="2026-01-01T00:00:00Z", prev="GENESIS")
+cases.append({
+    "name": "claims-independence-but-is-self-attested",
+    "kind": "seal",
+    "why": "SPEC 6a. Every field in this receipt asserts that an independent "
+           "ledger decided the outcome. No ledger ever saw it -- it was "
+           "written by hand for this vector. The seal is correct, so the "
+           "chain HOLDS, and a conforming verifier must still report "
+           "assurance self-attested: the level is derived from what the "
+           "verifier substantiated, never read from the document. A level a "
+           "producer can write down is a level a producer can assert into "
+           "being.",
+    "body": b18, "prev": "GENESIS",
+    "seal": seal(b18, "GENESIS"), "canonical": canonical(b18),
+    "assurance": "self-attested",
+})
+
+# 19. A refusal exactly as it appears inside a SPEC 6b disclosure, chained
+#     from the policy entry it broke, so an implementation that verifies this
+#     vector can verify a disclosure's shown entries.
+b19 = body(n=2, what="refund a customer", amount="999.00", currency="USD",
+           instrument="policy-governed action", payee="acme",
+           rule="would exceed the cap: 0 + 999.00 > 100.00 USD",
+           outcome="REFUSED",
+           approved_by="the mandate, checked before the call",
+           ledger="self-attested (the operator's own process refused)",
+           at="2026-01-01T00:00:01Z", prev=cases[-2]["seal"])
+cases.append({
+    "name": "disclosure-shown-entries-reseal",
+    "kind": "seal",
+    "why": "SPEC 6b. The body of an entry shown inside a disclosure must "
+           "re-seal to the seal printed beside it, computed by the reader. "
+           "This is that refusal's body and seal, taken from a chain whose "
+           "first entry is the policy it broke. An implementation that can "
+           "verify this vector can verify a disclosure's shown entries.",
+    "body": b19, "prev": cases[-2]["seal"],
+    "seal": seal(b19, cases[-2]["seal"]), "canonical": canonical(b19),
+})
+
+# ---------------------------------------------------------------- spec 1.3
+# 20. `ledger_ref` is optional and present only where there is one, so an
+#     implementation must canonicalise the keys it FINDS rather than a fixed
+#     list. A hardcoded field order seals this differently and its chains
+#     stop interoperating. Note the field establishes nothing on its own.
+b20 = body(n=1, what="settle a merchant payment", amount="95000.00",
+           payee="merchant-4471", currency="USD",
+           instrument="policy-governed action",
+           rule="charge would exceed the cap", outcome="REFUSED",
+           approved_by="the mandate, checked before the call",
+           ledger="Canton", at="2026-01-01T00:00:01Z", prev="GENESIS",
+           ledger_ref="00a1b2c3d4e5f6a7b8c9d0e1f2::ChargeRefused")
+cases.append({
+    "name": "receipt-carrying-a-ledger-reference",
+    "kind": "seal",
+    "why": "SPEC 6a. `ledger_ref` is optional and appears only on receipts "
+           "that have one, so an implementation must canonicalise whatever "
+           "keys are present rather than a fixed list. An implementation "
+           "with a hardcoded field order seals this differently and its "
+           "chains will not interoperate. The field establishes nothing by "
+           "itself: this vector is about bytes, and a verifier must still "
+           "report self-attested.",
+    "body": b20, "prev": "GENESIS",
+    "seal": seal(b20, "GENESIS"), "canonical": canonical(b20),
+})
+
+
 out = {
     "spec": "KYA Receipt Chain",
-    "spec_version": "1.0",
+    "spec_version": "1.3",
     "note": "Generated by tests/make_vectors.py. These vectors are the "
-            "authority: where SPEC.md and a vector disagree, the vector wins.",
+            "authority: where SPEC.md and a vector disagree, the vector "
+            "wins. spec_version 1.1 adds vector 17: an outcome outside "
+            "the two an implementation is likely to have hard-coded. No "
+            "1.0 seal changed. spec_version 1.2 adds vector 18: a "
+            "receipt whose every field claims an independent decider, "
+            "which must still verify as self-attested. Vector 19 "
+            "carries a refusal as it appears inside a SPEC 6b "
+            "disclosure, so shown entries are checkable by any "
+            "implementation. spec_version 1.3 adds vector 20: a receipt "
+            "carrying the optional ledger_ref field, which is present "
+            "only when there is one, so implementations must "
+            "canonicalise the keys they find.",
     "cases": cases,
 }
 path = os.path.join(HERE, "vectors.json")
