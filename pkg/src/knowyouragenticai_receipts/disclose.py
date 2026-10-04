@@ -52,7 +52,7 @@ worse than none:
 """
 from __future__ import annotations
 
-from typing import Any, Callable, Mapping, Sequence
+from typing import AbstractSet, Any, Callable, Mapping, Sequence
 
 from . import GENESIS, canonical, seal
 
@@ -132,7 +132,8 @@ def _check_envelope(doc: Any) -> str:
     return ""
 
 
-def _check_promise(doc: Mapping[str, Any], entries: list) -> str:
+def _check_promise(doc: Mapping[str, Any],
+                   entries: Sequence[Mapping[str, Any]]) -> str:
     """The promise the document makes about itself, checked against it.
 
     A withheld body cannot be recomputed, so a withheld entry's outcome is
@@ -148,7 +149,8 @@ def _check_promise(doc: Mapping[str, Any], entries: list) -> str:
     return ""
 
 
-def _check_totals(doc: Mapping[str, Any], entries: list, prev: str) -> str:
+def _check_totals(doc: Mapping[str, Any],
+                  entries: Sequence[Mapping[str, Any]], prev: str) -> str:
     """The two counts the document states about itself."""
     if doc.get("head") and doc["head"] != prev:
         return "the head does not match the last entry"
@@ -231,7 +233,7 @@ def summary(doc: Mapping[str, Any]) -> str:
     return line + _held_refusal_note(held) + "."
 
 
-def _held_refusal_note(held: list) -> str:
+def _held_refusal_note(held: Sequence[Mapping[str, Any]]) -> str:
     """A refusal kept back is the sentence a reader must not miss."""
     n = sum(1 for e in held if refusals_only(e))
     if not n:
@@ -268,7 +270,8 @@ def what_this_reveals(receipts: Sequence[Mapping[str, Any]],
 
 
 def _running_total_leak(receipts: Sequence[Mapping[str, Any]],
-                        withheld_ns: set, shown_text: str) -> list[str]:
+                        withheld_ns: AbstractSet[Any],
+                        shown_text: str) -> list[str]:
     """The leak that is not any single value: the sum of them.
 
     A cap refusal cannot explain itself without saying how much was already
@@ -298,7 +301,8 @@ def _running_total_leak(receipts: Sequence[Mapping[str, Any]],
     return []
 
 
-def _shown_and_policy_text(entries: list) -> tuple[str, str]:
+def _shown_and_policy_text(
+        entries: Sequence[Mapping[str, Any]]) -> tuple[str, str]:
     """(everything shown, just the policy).
 
     The policy lists the allow-list and the cap on purpose. A withheld payee
