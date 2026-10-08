@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "knowyouragenticai-receipts"
 version = "1.2.0"
-description = "The evidence layer that sits under an agent platform. A platform decides what an agent may do; this records what it tried and was refused, sealed so the other side can check it without trusting whoever ran the agent. Every attempt is a receipt, refusals included, and each seals onto the last. Verifiable in a browser with nothing installed. Zero dependencies."
+description = "The evidence layer that sits under an agent platform. A platform decides what an agent may do; this records what it tried and was refused, sealed so the other side can check it without trusting whoever ran the agent. Every attempt is a receipt, refusals included, and each seals onto the last. Verifiable in a browser with nothing installed. Zero dependencies. Free and MIT licensed; assurance for production agents at https://rumedominic.com/assurance"
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }

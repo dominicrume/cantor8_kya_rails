@@ -348,3 +348,14 @@ Version **1.3**. Changes that alter any seal require a new MAJOR version; none o
 1.2 -> 1.3 added the `ledger-recorded` level to §6a, and the optional `ledger_ref` field a receipt may carry to name the ledger record of a refusal. This exists because of a hole the first two levels hid: an accepted payment is corroborated by the money moving, and a refusal enforced by an aborting assertion is corroborated by nothing, so the half of the chain anyone actually asks for was the half backed only by the producer's word. Closing it is a change at the enforcement layer, not in this format, and the format's part is to carry an address and refuse to treat it as evidence. Vector 20 makes the field binding: it appears only on receipts that have one, so an implementation with a fixed field list seals it differently. Every 1.0, 1.1 and 1.2 seal is unchanged, and a chain with no ledger references is byte-identical to what 1.2 produced.
 
 1.1 -> 1.2 added §6a: the assurance level is derived by the verifier from what it substantiated, never read from a field, and there is deliberately no `ledger-enforced` level. Vector 18 makes it binding -- a receipt whose every field claims an independent decider, sealed correctly, that must still verify as `self-attested`. Every 1.0 and 1.1 seal is unchanged.
+
+---
+
+## Implementing this in production
+
+The format is free to implement and always will be. What the format cannot tell
+you is whether your agent should have been allowed to try in the first place,
+which decisions it may take alone, or who answers for the ones it gets wrong.
+
+That assessment is the assurance engagement:
+**[rumedominic.com/assurance](https://rumedominic.com/assurance)**
