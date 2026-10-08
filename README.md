@@ -636,6 +636,28 @@ swapping the ledger backend was a one-file change.
 
 ---
 
+---
+
+## When a verifying chain is not enough
+
+Everything here is free, MIT licensed and stays that way. The format is public,
+the verifier runs offline in your browser, and the library has no dependencies,
+because a record you have to pay to read is a record you cannot check.
+
+What it does not do is make the decision for you. A chain that verifies proves
+nothing was edited. It does not tell your risk function whether this agent may
+hold a wallet, what it is allowed to decide alone, or who is accountable when it
+spends on the wrong thing. That is a judgement, and it has to be signed and
+dated by someone.
+
+If that is the thing blocking you, the assurance engagement is where it gets
+settled: a decision map of what the agent may decide without a human, an
+accountability chain with named owners, and a regulator-readiness verdict
+against the Know Your AgenticAi standard. UK patent application GB2611754.9,
+filed 20 May 2026, pending.
+
+**[rumedominic.com/assurance](https://rumedominic.com/assurance)**
+
 ## Licence
 
 [MIT](LICENSE). Copyright (c) 2026 Rume Dominic (O'Rume Dominic Uririe).
