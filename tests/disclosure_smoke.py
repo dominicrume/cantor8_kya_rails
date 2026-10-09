@@ -34,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, "pkg", "src"))
 
-from knowyouragenticai_receipts import (                      # noqa: E402
+from knowyouragenticai_receipts import (outcome_digest,                       # noqa: E402
     Policy, Refused, check_disclosure, disclose, guard, refusals_only, verify,
     what_this_reveals)
 from knowyouragenticai_receipts.disclose import (             # noqa: E402
@@ -257,7 +257,11 @@ check(not ok and "claims to show" in why,
       "withholding a refusal while promising to show them all is caught")
 check(str(t["entries"][i]["n"]) in why, "  and the offending entry is named")
 
-# The residual limit, asserted so nobody mistakes it for a guarantee.
+# This block used to assert the opposite. Until SPEC 6c it read "a withheld
+# entry relabelled ACCEPTED under a subset claim still verifies, which is the
+# residual limit, not a bug" -- an honest note that the hole was known. The
+# outcomes digest closes it, so the assertion is inverted rather than deleted:
+# a test that documents a limit should become the test that proves it went.
 t = copy.deepcopy(doc)
 i = refused_index(t)
 t["entries"][i].pop("body")
@@ -265,9 +269,32 @@ t["entries"][i][WITHHELD] = True
 t["entries"][i]["outcome"] = "ACCEPTED"
 t["disclosing"] = "a chosen subset"
 t["shown"] = sum(1 for e in t["entries"] if "body" in e)
-ok, _why = check_disclosure(t)
-check(ok, "a withheld entry relabelled ACCEPTED under a subset claim still "
-          "verifies, which is the residual limit, not a bug")
+ok, why = check_disclosure(t)
+check(not ok, "a withheld entry relabelled ACCEPTED is caught even under a "
+              "subset claim, which `disclosing` alone never could")
+check("outcomes digest" in why, "  and the digest is what catches it (SPEC 6c)")
+
+# What is actually residual now, asserted so nobody mistakes THAT for a
+# guarantee either. A document written before 6c carries no digest, makes no
+# claim, and is still verified exactly as it was. The relabelling goes
+# unnoticed there, and must, because refusing those files would be refusing
+# them over a claim they never made.
+old_style = copy.deepcopy(t)
+old_style.pop("outcomes")
+ok, _why = check_disclosure(old_style)
+check(ok, "a pre-6c document with no digest still verifies, relabelling and "
+          "all, which is the residual limit and is now a narrow one")
+
+# And the limit under the limit: the digest is computed by the producer, so a
+# producer who lies consistently across the whole document matches their own
+# digest. Only anchoring fixes that, which is why outcome_digest() and SPEC 6c
+# both say so in as many words.
+consistent = copy.deepcopy(t)
+consistent["outcomes"] = outcome_digest(
+    [{"n": e.get("n"), "outcome": e.get("outcome")} for e in consistent["entries"]])
+ok, _why = check_disclosure(consistent)
+check(ok, "a producer who recomputes the digest over the same lie still "
+          "verifies: the digest is worth what its anchor is worth, nothing more")
 check("cannot be recomputed" in
       __import__("knowyouragenticai_receipts.disclose", fromlist=["x"]).__doc__,
       "  the limit is written down where a reader will find it")

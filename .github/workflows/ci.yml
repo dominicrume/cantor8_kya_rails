@@ -113,6 +113,12 @@ jobs:
       - name: refusals can be disclosed alone, and nothing can be removed from them
         run: python3 tests/disclosure_smoke.py
 
+      - name: a refusal cannot be hidden by relabelling it accepted
+        # SPEC 6c. Also the Python/JavaScript parity check for the outcomes
+        # digest, lifted out of verifier.html rather than transcribed, so a
+        # drift between the two implementations fails here.
+        run: python3 tests/completeness_smoke.py
+
       - name: the ecosystem scan reports an empty result as a result
         run: python3 tests/ecosystem_scan_smoke.py
 
