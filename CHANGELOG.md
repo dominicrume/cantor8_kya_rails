@@ -32,7 +32,7 @@ meant to outlive the code that wrote them, so that bar is high.
 
   **Alone it proves nothing**, and the function's own docstring says so: the
   producer writes the document and could recompute the digest over the same
-  lie. Its value is that it makes completeness *anchorable*. One value,
+  lie. Its value is that it makes *non-equivocation* anchorable. One value,
   pinned to an origin the producer does not control, now covers every entry's
   outcome as well as the chain's integrity. It still cannot prove an attempt
   was recorded at all. Nothing can.

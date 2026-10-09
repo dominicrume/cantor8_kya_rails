@@ -276,7 +276,7 @@ the 10.00 is an accepted payment withheld two entries above. This cannot be
 redacted, because editing a shown body breaks its seal. A producer SHOULD be
 shown what a disclosure gives away before sending it.
 
-## 6c. Completeness: proving the refusals are all of them
+## 6c. Non-equivocation: proving nobody changed the set afterwards
 
 6b proves nothing was removed from a disclosure. It does not prove nothing
 was hidden inside one.
@@ -288,8 +288,8 @@ withheld entry that admits it was refused. It cannot catch one relabelled
 exceptions: an auditor does not want the exceptions, it wants to know the
 exceptions are all of them.
 
-A hash chain answers sequence integrity. It does not answer completeness,
-because the seal of a withheld entry covers a body the reader never sees.
+A hash chain answers sequence integrity. It does not answer this, because
+the seal of a withheld entry covers a body the reader never sees.
 
 A disclosure **MAY** carry an `outcomes` field: a digest over every entry's
 position and outcome, with the same shape as a seal.
@@ -320,15 +320,32 @@ recompute the digest over the same lie. This is stated here, in the
 specification, because it is the easiest property in this format to
 overclaim.
 
-Its value is that it makes completeness **anchorable**. Before 6c there was
+Its value is that it makes NON-EQUIVOCATION **anchorable**. Before 6c there was
 one value worth pinning to an origin the producer does not control, the chain
 head, and pinning it proved the chain had not been swapped. It said nothing
 about the outcome labels on withheld entries. One anchored value now covers
 both, at the cost of one hash per receipt.
 
-It still cannot prove an attempt was recorded at all. An agent that never
-submits anything leaves nothing behind, and no commitment scheme reaches
-that. Section 8 says the same thing and means it.
+### The hole this does NOT close, named plainly
+
+**Write-time omission.** Everything above is about what happens to the set
+after it exists. A producer who simply never writes a receipt for a refused
+attempt produces a chain that is internally perfect, a digest that verifies,
+and an anchor that every witness will cosign forever. There is no gap to
+find, because the entry was never there.
+
+So `outcomes` proves that the set was not edited, reordered or relabelled
+after it was anchored. It does not prove the set is all of them. Those are
+different claims and this section used to run them together under the word
+*completeness*, which was wrong and is corrected here.
+
+The only thing that closes write-time omission is an independent writer: a
+second party who must co-sign before the action proceeds, so that omitting
+the record and performing the action are the same transaction. On Canton
+that means an auditor as a co-signatory on the mandate, not an observer.
+That is a design this format does not yet have and a ledger connection this
+project does not yet have, and neither fact is improved by calling the
+digest something it is not. Section 8 says the same thing and means it.
 
 So: anchor `head` and `outcomes` together, or `outcomes` is decoration.
 
