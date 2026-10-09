@@ -46,6 +46,31 @@ def toolchain():
     return "daml (version not reported)"
 
 
+def subject_commit(path):
+    """The commit the subject was at, so the finding stays checkable.
+
+    Added after a re-run on 2026-10-09 found that "52 of 69 on 7 September"
+    had quietly stopped being verifiable. Two of the three subject
+    repositories had not moved since March, so those numbers reproduced
+    exactly. The third had been restructured on 30 September and the package
+    the finding named, access-control-v1, no longer existed. There was no way
+    to tell from the sealed record which commit had been measured, because
+    the record carried a date and a toolchain version and not a commit.
+
+    A date pins the finding to a moment. A commit pins it to the code. Only
+    the second survives the subject shipping.
+    """
+    import subprocess  # nosec B404 - fixed argv, no shell
+    try:
+        p = subprocess.run(  # nosec B603 B607 - literal argv
+            ["git", "-C", path, "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=20)
+        sha = p.stdout.strip()
+        return sha if p.returncode == 0 and sha else ""
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
 def stamp_one(chain, row, subject, tools):
     """One fence, one receipt. COVERED and UNCOVERED are both recorded: a report
     that lists only problems is a report nobody can tell apart from a short
@@ -81,6 +106,17 @@ def run(src, test, subject, out_path, under=None):
     if not found:
         print("No fences in %s. Nothing to assure." % src)
         return 1
+
+    # Pin the subject to a commit, inside the seal, not beside it. See
+    # subject_commit() for why this was not here originally and what it cost.
+    sha = subject_commit(src)
+    if sha:
+        subject = "%s @ %s" % (subject, sha)
+    else:
+        subject = "%s @ commit unknown" % subject
+        print("  WARNING: %s is not a git checkout, so this finding cannot be\n"
+              "  pinned to a commit and will not stay checkable once the\n"
+              "  subject ships." % src)
 
     print("assuring %s" % subject)
     compiled, base, _out = daml_mutate.build_and_test(src, test)
