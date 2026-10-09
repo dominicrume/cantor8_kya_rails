@@ -173,3 +173,75 @@ python3 tools/daml_mutate.py --src simple-token --test simple-token-test
 
 `canton-stablecoin` needs its dependency chain built first: `simple-token`, then
 `stablecoin`, then test against `stablecoin-test`.
+
+---
+
+## Re-run, 9 October 2026
+
+Thirty-one days after the issues were filed. All three are still open with no
+reply from OpenZeppelin; the only comment on any of them is mine.
+
+The point of re-running was to find out whether the finding still stands. It
+mostly does, and the part that does not is instructive.
+
+| Repository | Commit | Last changed | Fences | Uncovered | Status |
+|---|---|---|---:|---:|---|
+| `canton-token-template` / `simple-token` | `c96456f` | 2026-03-12 | 32 | **24** | reproduced exactly |
+| `canton-stablecoin` / `stablecoin` | `fbc6392` | 2026-03-12 | 30 | **25** | reproduced exactly |
+| `canton-contracts` / `access-control-v1` | — | — | — | — | **package no longer exists** |
+| | | | **62** | **49** | |
+
+So the headline is **49 of 62**, not 52 of 69, and it should be stated that way
+from now on.
+
+Two of the three subjects have not been touched since **12 March 2026**, six
+months before the original sweep, so those 49 cannot have been quietly fixed.
+The numbers reproduced to the fence.
+
+`canton-contracts` was restructured on 30 September 2026. `access-control-v1`,
+which held 7 fences of which 3 were uncovered, is gone, replaced by
+`scoped-authorization-grant-v1` and `pausable-v1`. Those are untested here
+because they target SDK 3.5.8 and this run used 3.4.11.
+
+### What the re-run found about this report
+
+The September findings recorded the file, the line, the fence text, the
+verdict and the toolchain version, and **not the commit**. That is why the
+`canton-contracts` row above cannot be settled either way: there is no record
+of which commit was measured. A date pins a finding to a moment; only a commit
+pins it to the code.
+
+`tools/assurance.py` now resolves the subject's `HEAD` and puts it inside the
+seal, and says so loudly when the subject is not a git checkout. The two
+re-runs above are sealed with their commits in them:
+
+- [`2026-10-09-canton-token-template-simple-token.json`](findings/2026-10-09-canton-token-template-simple-token.json), 32 entries, head `d45c880b6dab4e9d…`
+- [`2026-10-09-canton-stablecoin-stablecoin.json`](findings/2026-10-09-canton-stablecoin-stablecoin.json), 30 entries, head `23aeeaaaf7171bdb…`
+
+The September files are left exactly as they were. A record that gets tidied
+after the fact is not a record.
+
+### On Mewt
+
+Trail of Bits published [Mewt](https://github.com/trailofbits/mewt), a mutation
+testing framework with Daml support, on 8 July 2026, two months before this
+sweep. Anyone assessing this work should know that and should not have to find
+it themselves.
+
+Mewt and this are not the same test. Mewt's Daml mutations are **CPS**
+(controller party swap), **CPR** (controller party removal) and **SPS**
+(signatory party swap), plus language-agnostic operator shuffles. They ask
+*who may exercise this choice*. This asks *whether the rule inside the choice
+does anything*, by making an `assertMsg` condition or an `ensure` clause
+vacuous.
+
+Mewt's Daml engine does not do that, and says so in its own source, listing
+both as deferred:
+
+```rust
+("ER", "replacing an expression with `error \"mewt\"` needs a dedicated traversal"),
+("CR", "commenting out a binding needs a dedicated traversal"),
+```
+
+`assertMsg` appears nowhere in the Mewt repository. The two tools find
+different defects and neither subsumes the other.
