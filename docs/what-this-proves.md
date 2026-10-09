@@ -17,7 +17,9 @@ Two halves, and until 2026-09-10 only one of them was true.
 
 **What it tried.** Every attempt is an entry — allowed and refused alike, with
 the rule that decided it. Logs record what happened; this records what was
-*stopped*, which is the half nobody else keeps.
+*stopped*, and seals it into the same chain. Who else keeps that half, and
+what is left that is genuinely ours, is set out in
+[prior-art.md](prior-art.md). It is a shorter list than it used to be.
 
 **What it was allowed to do.** The policy is the first entry, carrying the cap,
 the allow-list, the period and the expiry as readable text. Every later entry
