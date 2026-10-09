@@ -31,10 +31,21 @@ everybody asks about is written by the party under examination, about itself.
 
 ## Why this is now a compliance problem, not a design preference
 
-EU AI Act Article 12 requires high-risk AI systems to log events automatically
-across their lifecycle. DORA requires integrity-protected audit trails. Read
-together, they move the burden from *having* a control to *evidencing that it
-operated*.[^2]
+FINRA Rule 3110 requires a supervisory system reasonably designed to achieve
+compliance, Rule 4511 requires the books and records behind it, and SEC Rule
+17a-4 requires those records non-rewritable. FINRA's 2026 Annual Regulatory
+Oversight Report applies all three to AI agents by name: it lists "agents
+acting beyond the user's actual or intended scope and authority" among the
+risks, and asks firms how they track agent actions and establish guardrails.
+Read together they move the burden from HAVING a control to EVIDENCING that
+it operated, and a control that operates produces refusals.
+
+Deliberately not the EU AI Act. Article 12 binds high-risk systems, Annex III
+does not list payments or treasury, and the high-risk date moved to December
+2027. Citing it here would be the fastest way for a compliance officer to
+decide this was written by someone who had not read it. FINRA creates no new
+rule either, so the claim is that an examiner will ask for this, not that the
+law demands it.[^2]
 
 A control that operates produces refusals. If refusals leave nothing behind,
 the control cannot be evidenced.
@@ -122,7 +133,9 @@ regulator is shown.
 [^1]: Sandy Kaul, Head of Digital Assets and Innovation, Franklin Templeton,
       *Agentic AI: The Killer Use Case for Blockchain and Crypto*, 2026. The
       claim is not unusual; it is the standard formulation.
-[^2]: EU AI Act Article 12 (record-keeping); DORA audit trail obligations.
+[^2]: FINRA Rules 3110 and 4511; SEC Rule 17a-4; FINRA 2026 Annual
+    Regulatory Oversight Report, GenAI section. The EU AI Act is omitted on
+    purpose: Annex III does not cover payments or treasury.
 [^3]: *Hardening x402: PII-Safe Automated Payments via Pre-Execution Metadata
       Filtering*, arXiv:2604.11430.
 [^4]: Canton Network privacy model: sub-transaction privacy, with observer
