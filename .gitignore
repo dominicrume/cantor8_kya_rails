@@ -37,3 +37,8 @@ step-3-verify/kya-rails-fragment.html
 # The reusable refusal package's build output, same rule as the mandate's.
 step-0-refusal/.daml/
 step-0-refusal/test/.daml/
+
+# Local tool permissions. Machine-specific, created by whatever assistant is
+# being used that week, and nothing to do with the project. It carried a
+# one-off URL from a job board the first time it appeared.
+.claude/

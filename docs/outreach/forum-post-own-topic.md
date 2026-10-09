@@ -41,8 +41,9 @@ or is it just my problem?
 ## Why it is written this way
 
 It leads with the **refusal**, not the wallet. Nobody needs another wallet, and
-proving a negative about an agent is the part nobody else in this forum is
-claiming.
+proving a negative about an agent is the part this forum talks about least.
+Others do record refusals now, so the claim is the combination and not the
+idea: see prior-art.md before saying otherwise.
 
 It does not name the project in the first line, so it does not read as an
 announcement.
