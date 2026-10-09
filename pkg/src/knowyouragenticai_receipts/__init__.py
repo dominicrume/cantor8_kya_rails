@@ -53,7 +53,7 @@ import time
 from typing import Any, Iterable, Mapping, Sequence
 
 __version__ = "1.2.0"
-__all__ = ["canonical", "seal", "verify", "assert_ascii", "Chain",
+__all__ = ["canonical", "seal", "outcome_digest", "verify", "assert_ascii", "Chain",
            "NonAsciiInReceipt", "BrokenChain", "GENESIS",
            "Policy", "PolicyError", "guard", "attempt", "Refused",
            "assurance", "SELF_ATTESTED", "ANCHORED", "LEDGER_RECORDED",
@@ -93,6 +93,60 @@ def seal(body: Mapping[str, Any], prev: str) -> str:
     receipt's seal, or GENESIS for the first.
     """
     return hashlib.sha256((canonical(body) + prev).encode()).hexdigest()
+
+
+def outcome_digest(receipts: Sequence[Any]) -> str:
+    """One hash over every entry's position and outcome, in order.
+
+    SPEC 6c. This exists because of the one hole SPEC 6b could not close.
+
+    A disclosure shows refusals and withholds the accepted payments. A
+    withheld entry still declares its outcome, because ALWAYS_SHOWN says so,
+    but that declaration is the producer's word: the body is gone, so nothing
+    can contradict it. A producer who wanted to hide a refusal would not
+    withhold it and label it REFUSED, which `disclosing` already catches.
+    They would withhold it and label it ACCEPTED, and no check in 6b sees
+    that. The reader is left asking the only question an auditor ever asks
+    about a population of exceptions: how do I know this is all of them?
+
+    A hash chain answers sequence integrity. It does not answer completeness,
+    because the seal of a withheld entry is computed over a body the reader
+    never sees.
+
+    So the outcomes get their own digest, with the same shape as `seal`:
+    sha256(canonical(step) + previous). It is computed over the FULL chain as
+    the chain is written, and it collapses every outcome into one value.
+
+    What it is worth, stated precisely, because this is easy to overclaim:
+
+      * On its own it proves nothing. The producer generates the disclosure
+        and could recompute this digest over the same lie. Said plainly here
+        so nobody reads the field and assumes more.
+      * Its value is that it makes completeness ANCHORABLE. Before this there
+        was one value worth pinning to an origin the producer does not
+        control, the chain head, and pinning it proved the chain had not been
+        swapped. It said nothing about the outcome labels on withheld
+        entries. Now one anchored value covers both, at the cost of one hash
+        per receipt.
+      * It still cannot prove an attempt was recorded at all. An agent that
+        never submits anything leaves nothing behind, and no commitment
+        scheme reaches that. KyaMandate.daml says the same thing about the
+        ledger, for the same reason.
+
+    So: anchor the pair, or this field is decoration.
+    """
+    digest = GENESIS
+    for index, r in enumerate(receipts, 1):
+        # Spelled out rather than str(r.get("outcome", "")): a missing
+        # outcome is "" in Python and a null one would be "None", while
+        # JavaScript would say "null". Two implementations disagreeing on
+        # one absent field is exactly the drift the vectors exist to stop.
+        raw = r.get("outcome") if isinstance(r, Mapping) else None
+        step = {"n": _position(r, index),
+                "outcome": "" if raw is None else str(raw)}
+        digest = hashlib.sha256(
+            (canonical(step) + digest).encode()).hexdigest()
+    return digest
 
 
 def _non_ascii_field(value: Any) -> bool:

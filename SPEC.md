@@ -276,6 +276,62 @@ the 10.00 is an accepted payment withheld two entries above. This cannot be
 redacted, because editing a shown body breaks its seal. A producer SHOULD be
 shown what a disclosure gives away before sending it.
 
+## 6c. Completeness: proving the refusals are all of them
+
+6b proves nothing was removed from a disclosure. It does not prove nothing
+was hidden inside one.
+
+A withheld entry still declares its `outcome`, but its body is gone, so
+nothing can contradict the declaration. The `disclosing` rule in 6b catches a
+withheld entry that admits it was refused. It cannot catch one relabelled
+`ACCEPTED`. That is the only question an auditor asks about a population of
+exceptions: an auditor does not want the exceptions, it wants to know the
+exceptions are all of them.
+
+A hash chain answers sequence integrity. It does not answer completeness,
+because the seal of a withheld entry covers a body the reader never sees.
+
+A disclosure **MAY** carry an `outcomes` field: a digest over every entry's
+position and outcome, with the same shape as a seal.
+
+```
+digest[0] = "GENESIS"
+digest[i] = sha256( canonical({"n": n_i, "outcome": outcome_i}) + digest[i-1] )
+outcomes  = digest[last]
+```
+
+`n_i` is the entry's own `n` when that is an integer, and otherwise its
+1-based position. `outcome_i` is the empty string when the field is absent or
+null, and `str(outcome)` otherwise. Those two rules exist because an absent
+field is the first place two implementations drift.
+
+- A producer **SHOULD** compute `outcomes` over the **full** chain as it is
+  written, not at disclosure time.
+- A verifier that finds `outcomes` **MUST** recompute it from the entry-level
+  outcomes it can see and refuse the document if they differ.
+- A verifier that finds no `outcomes` **MUST NOT** treat its absence as a
+  failure, and **MUST NOT** treat its absence as a claim. Disclosures written
+  before 6c make no such claim.
+
+### What this is worth, exactly
+
+**Alone, it proves nothing.** The producer writes the document and could
+recompute the digest over the same lie. This is stated here, in the
+specification, because it is the easiest property in this format to
+overclaim.
+
+Its value is that it makes completeness **anchorable**. Before 6c there was
+one value worth pinning to an origin the producer does not control, the chain
+head, and pinning it proved the chain had not been swapped. It said nothing
+about the outcome labels on withheld entries. One anchored value now covers
+both, at the cost of one hash per receipt.
+
+It still cannot prove an attempt was recorded at all. An agent that never
+submits anything leaves nothing behind, and no commitment scheme reaches
+that. Section 8 says the same thing and means it.
+
+So: anchor `head` and `outcomes` together, or `outcomes` is decoration.
+
 ## 7. Verification
 
 ```

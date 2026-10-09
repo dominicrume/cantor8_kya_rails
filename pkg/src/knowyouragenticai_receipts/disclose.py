@@ -54,7 +54,7 @@ from __future__ import annotations
 
 from typing import AbstractSet, Any, Callable, Mapping, Sequence
 
-from . import GENESIS, canonical, seal
+from . import GENESIS, canonical, outcome_digest, seal
 
 __all__ = ["disclose", "check_disclosure", "refusals_only", "WITHHELD",
            "EVERY_REFUSAL", "what_this_reveals"]
@@ -104,7 +104,7 @@ def disclose(receipts: Sequence[Mapping[str, Any]],
     entries = [_entry(r, show(r)) for r in receipts]
     return {
         "kind": "know-your-agenticai-disclosure",
-        "spec": "1.2",
+        "spec": "1.3",
         "count": len(receipts),
         "head": receipts[-1].get("seal", "") if receipts else GENESIS,
         "shown": sum(1 for e in entries if "body" in e),
@@ -115,6 +115,13 @@ def disclose(receipts: Sequence[Mapping[str, Any]],
         # Without this, a producer could withhold a refusal and relabel it
         # accepted, because a withheld entry has no body to contradict it.
         "disclosing": (EVERY_REFUSAL if show is refusals_only else "a chosen subset"),
+        # SPEC 6c. One hash over every entry's position and outcome, taken
+        # over the FULL chain. `disclosing` catches a withheld entry that
+        # admits it was refused. It cannot catch one relabelled accepted,
+        # because a withheld body cannot contradict anything. This can, but
+        # only once it is anchored: see outcome_digest's docstring, which is
+        # blunt about the fact that this field alone proves nothing.
+        "outcomes": outcome_digest(receipts),
         "entries": entries,
     }
 
@@ -210,18 +217,54 @@ def check_disclosure(doc: Any) -> tuple[bool, str]:
     if why:
         return False, why
     entries = doc["entries"]
+    why, prev = _check_links(entries)
+    why = (why
+           or _check_promise(doc, entries)
+           or _check_totals(doc, entries, prev)
+           or _check_outcomes(doc, entries))
+    return (False, why) if why else (True, "")
 
+
+def _check_links(entries: Sequence[Any]) -> tuple[str, str]:
+    """Walk the chain of entries, returning (what is wrong, the last seal).
+
+    Lifted out of check_disclosure when SPEC 6c took that function to
+    complexity 9, one over the ceiling. The alternative was writing an earned
+    exception for it, and a loop that belongs in its own function is not an
+    exception, it is a loop that belongs in its own function.
+    """
     prev = GENESIS
     for index, e in enumerate(entries, start=1):
         why = _check_entry(e, index, prev)
         if why:
-            return False, why
+            return why, prev
         prev = e.get("seal")
         if not isinstance(prev, str) or not prev:
-            return False, "entry %d has no seal" % index
+            return "entry %d has no seal" % index, prev
+    return "", prev
 
-    why = _check_promise(doc, entries) or _check_totals(doc, entries, prev)
-    return (False, why) if why else (True, "")
+
+def _check_outcomes(doc: Mapping[str, Any],
+                    entries: Sequence[Mapping[str, Any]]) -> str:
+    """SPEC 6c. Recompute the outcome digest from what the reader can see.
+
+    Optional on purpose. Disclosures written before 6c carry no `outcomes`
+    field, and refusing them would break every file already handed out for a
+    claim they never made. Absent means not claimed, so nothing is checked
+    and nothing is implied. Present means checked.
+    """
+    claimed = doc.get("outcomes")
+    if claimed is None:
+        return ""
+    if not isinstance(claimed, str) or not claimed:
+        return "the outcomes digest is present but is not a hash"
+    recomputed = outcome_digest(
+        [{"n": e.get("n"), "outcome": e.get("outcome")} for e in entries])
+    if recomputed != claimed:
+        return ("the outcomes digest does not match the outcomes in this "
+                "document: an entry's outcome was changed after the chain "
+                "was written")
+    return ""
 
 
 def summary(doc: Mapping[str, Any]) -> str:

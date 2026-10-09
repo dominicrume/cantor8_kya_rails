@@ -338,11 +338,38 @@ print(json.dumps(disclose(c.receipts)))
     // found this suite green, and reported BLIND. What the numbering actually
     // guards is a document whose links are intact and whose numbers lie, which
     // moves a refusal to a different point in the run.
+    // Two things were wrong with this check and both let the mutation
+    // harness report BLIND on the position check.
+    //
+    // The filename was renumbered.json and the assertion was /numbered/, so
+    // it matched the name of the file rather than the reason given. Any
+    // failure at all satisfied it.
+    //
+    // And since SPEC 6c the outcomes digest covers each entry's `n`, so
+    // renumbering breaks the digest too. That is defence in depth and it is
+    // wanted, but it means this document no longer isolates the position
+    // check: with the check deleted the digest caught the renumbering, the
+    // suite stayed green, and nothing noticed the fence had gone. The same
+    // shape as `spent <= cap` duplicating the Charge assertion, which
+    // KyaMandate.daml already carries a note about.
+    //
+    // So the digest is removed from this one document, leaving the position
+    // check as the only thing that can catch it, and the assertion names the
+    // words that check actually prints.
     const renumbered = JSON.parse(JSON.stringify(DOC));
+    delete renumbered.outcomes;
     renumbered.entries.forEach((e, i) => { e.n = i + 10; });
-    v = await verdictFor('renumbered.json', JSON.stringify(renumbered));
-    check(/does <b>not<\/b> hold/.test(v.innerHTML) && /numbered/.test(v.innerHTML),
+    v = await verdictFor('positions.json', JSON.stringify(renumbered));
+    check(/does <b>not<\/b> hold/.test(v.innerHTML) && /is numbered/.test(v.innerHTML),
           '  and so is renumbering entries while leaving the links intact');
+
+    // And with the digest present, renumbering is caught twice over. Both
+    // are asserted, so deleting either one turns this suite red.
+    const renumberedSealed = JSON.parse(JSON.stringify(DOC));
+    renumberedSealed.entries.forEach((e, i) => { e.n = i + 10; });
+    v = await verdictFor('sealed-positions.json', JSON.stringify(renumberedSealed));
+    check(/does <b>not<\/b> hold/.test(v.innerHTML),
+          '  and the outcomes digest catches it independently (SPEC 6c)');
 
     const softened = JSON.parse(JSON.stringify(DOC));
     softened.entries[at].body.rule = 'a routine check, nothing unusual';

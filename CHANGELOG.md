@@ -11,6 +11,40 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`outcome_digest(receipts)` — one hash over every entry's position and
+  outcome, in order.** SPEC 6c.
+
+  SPEC 6b proved nothing could be removed from a disclosure. It did not prove
+  nothing could be hidden inside one. A withheld entry declares its outcome,
+  but its body is gone, so nothing contradicts the declaration: `disclosing`
+  catches a withheld entry that admits it was refused, and never one
+  relabelled `ACCEPTED`. That is the only question an auditor asks about a
+  population of exceptions, and a hash chain cannot answer it, because the
+  seal of a withheld entry covers a body the reader never sees.
+
+  `disclose()` now emits an `outcomes` field and bumps the disclosure `spec`
+  to `1.3`. `check_disclosure()` recomputes it from the entry-level outcomes
+  and refuses a document where the two disagree.
+
+  **Alone it proves nothing**, and the function's own docstring says so: the
+  producer writes the document and could recompute the digest over the same
+  lie. Its value is that it makes completeness *anchorable*. One value,
+  pinned to an origin the producer does not control, now covers every entry's
+  outcome as well as the chain's integrity. It still cannot prove an attempt
+  was recorded at all. Nothing can.
+
+  Optional on both sides. A disclosure carrying no `outcomes` verifies
+  exactly as before, because refusing one would break every file already
+  handed out, over a claim that file never made.
+
+  Mirrored byte-for-byte in `verifier.html`. `tests/completeness_smoke.py`
+  lifts the JavaScript out of that file rather than transcribing it, so a
+  drift between the two implementations fails the build.
+
 ## [1.2.0] — 2026-09-13
 
 New features, no seal changes. Every 1.0.0 and 1.1.0 chain verifies

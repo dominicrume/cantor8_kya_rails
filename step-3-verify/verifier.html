@@ -439,6 +439,25 @@ async function checkDisclosure(doc){
           ', but this document promises to show every refusal'};
     }
   }
+  // SPEC 6c. The outcomes digest. `disclosing` above catches a withheld
+  // entry that ADMITS it was refused. It cannot catch one relabelled
+  // accepted, because a withheld body contradicts nothing. This can.
+  // Optional: a disclosure written before 6c carries no digest, and absent
+  // means not claimed, so nothing is checked and nothing is implied.
+  // Must stay byte-identical to outcome_digest() in the Python package.
+  if(typeof doc.outcomes === 'string' && doc.outcomes){
+    let od = 'GENESIS';
+    for(let i=0;i<es.length;i++){
+      const e = es[i], o = e.outcome;
+      od = await sha256(stableStringify({
+        n: Number.isInteger(e.n) ? e.n : i+1,
+        outcome: (o===null||o===undefined) ? '' : String(o)
+      }) + od);
+    }
+    if(od !== doc.outcomes)
+      return {ok:false, why:"the outcomes digest does not match the outcomes in "+
+        "this document: an entry's outcome was changed after the chain was written"};
+  }
   if(doc.head && doc.head !== prev) return {ok:false, why:'the head does not match the last entry'};
   if(doc.shown !== undefined && doc.shown !== shown)
     return {ok:false, why:'it says '+doc.shown+' shown and shows '+shown};
