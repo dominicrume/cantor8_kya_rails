@@ -36,8 +36,9 @@ That is not sloppiness. In Daml a failed assertMsg aborts the whole
 transaction. A blocked action leaves nothing on the ledger at all. The
 refusals sit in the bank's own logs, written by the bank, about the bank.
 
-EU AI Act Article 12 and DORA both ask a firm to prove a control worked.
-A control that works produces refusals.
+FINRA Rule 3110 asks a firm to evidence that a control OPERATED.
+Their 2026 report applies that to AI agents exceeding their authority.
+A control that operates produces refusals.
 
 The fix is small. Stop aborting. Commit either way.
 

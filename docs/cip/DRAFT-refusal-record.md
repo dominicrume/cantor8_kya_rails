@@ -43,10 +43,21 @@ ledger. What was refused exists only in the application's own logs, written by
 the operator, about the operator. The half a supervisor asks about is the half
 with no ledger artefact behind it.
 
-EU AI Act Article 12 requires high-risk systems to log events automatically
-across their lifecycle. DORA requires integrity-protected audit trails. Both
-move the burden from HAVING a control to EVIDENCING that it operated, and a
-control that operates produces refusals.
+FINRA Rule 3110 requires a supervisory system reasonably designed to achieve
+compliance, Rule 4511 requires the books and records behind it, and SEC Rule
+17a-4 requires those records non-rewritable. FINRA's 2026 Annual Regulatory
+Oversight Report applies all three to AI agents by name: it lists "agents
+acting beyond the user's actual or intended scope and authority" among the
+risks, and asks firms how they track agent actions and establish guardrails.
+Read together they move the burden from HAVING a control to EVIDENCING that
+it operated, and a control that operates produces refusals.
+
+Deliberately not the EU AI Act. Article 12 binds high-risk systems, Annex III
+does not list payments or treasury, and the high-risk date moved to December
+2027. Citing it here would be the fastest way for a compliance officer to
+decide this was written by someone who had not read it. FINRA creates no new
+rule either, so the claim is that an examiner will ask for this, not that the
+law demands it.
 
 This is specific to ledgers that do not commit failed transactions. On Ethereum
 a reverted transaction is still included in a block and still costs gas, so the

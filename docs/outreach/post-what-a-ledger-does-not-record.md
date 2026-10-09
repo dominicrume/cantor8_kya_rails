@@ -54,9 +54,11 @@ In Daml a failed assertMsg aborts the transaction. So a blocked payment
 leaves nothing behind. What settled is on the ledger. What was stopped
 sits only in your own logs, written by you, about you.
 
-That is the wrong half to be vouching for. EU AI Act Article 12 and DORA
-both ask you to evidence that a control operated. A control that operates
-produces refusals.
+That is the wrong half to be vouching for.
+
+FINRA Rule 3110 asks a firm to evidence that a control OPERATED.
+Their 2026 report applies that to AI agents exceeding their authority.
+A control that operates produces refusals.
 
 So I stopped aborting. The choice now commits either way. If the rule
 passes it pays. If it fails it writes a rejection record and moves no

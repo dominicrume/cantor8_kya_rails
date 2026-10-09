@@ -51,9 +51,10 @@ stopped.
 That gap is structural, not sloppy. In Daml a failed assertMsg aborts the
 whole transaction, so a refused action leaves nothing on the ledger.
 
-EU AI Act Article 12 and DORA both ask a firm to evidence that a control
-OPERATED. A control that operates produces refusals. If refusals leave
-nothing behind, the control cannot be evidenced.
+FINRA Rule 3110 asks a firm to evidence that a control OPERATED.
+Their 2026 report applies that to AI agents exceeding their authority.
+A control that operates produces refusals.
+If refusals leave nothing behind, the control cannot be evidenced.
 
 WHAT I BUILT
 
