@@ -8,8 +8,8 @@ entry that ADMITS it was refused. It never catches one relabelled accepted.
 
 That is the only question an auditor asks about a population of exceptions.
 An auditor does not want the exceptions, it wants to know the exceptions are
-all of them. A hash chain answers sequence integrity, not completeness,
-because the seal of a withheld entry covers a body the reader never sees.
+all of them. A hash chain answers sequence integrity, not this, because the
+seal of a withheld entry covers a body the reader never sees.
 
 So the outcomes get their own digest, with the same shape as a seal:
 sha256(canonical(step) + previous), over every entry's position and outcome.
@@ -19,7 +19,7 @@ the easiest thing in the project to overclaim:
 
   * ALONE IT PROVES NOTHING. The producer writes the disclosure and could
     recompute the digest over the same lie.
-  * Its value is that it makes completeness ANCHORABLE. One value, pinned to
+  * Its value is that it makes NON-EQUIVOCATION ANCHORABLE. One value, pinned to
     an origin the producer does not control, now covers the outcome of every
     entry as well as the integrity of the chain.
   * It cannot prove an attempt was recorded at all. Nothing can.
