@@ -95,6 +95,10 @@ SUITES = [
     ("python3 tests/disclosure_smoke.py", "The agent",
      "the refusals can be handed over on their own, without the book behind them"),
 
+    ("python3 tests/completeness_smoke.py", "The agent",
+     "a refusal cannot be hidden by relabelling it accepted, and Python and "
+     "JavaScript agree on the digest that proves it"),
+
     ("python3 tests/assurance_level_smoke.py", "The page",
      "the level is what the verifier established, not what the document claims"),
 
@@ -165,12 +169,42 @@ def run(cmd):
     argv, cwd = split(cmd)
     start = time.time()
     try:
+        # 2700s, not 600. tests/mutation_suite.py takes about 1630 seconds on
+        # a clean run, so 600 killed it every single time, roughly 40% of the
+        # way through. subprocess.run sends SIGKILL on timeout and a SIGKILL
+        # never runs a finally, so each of those kills left the working tree
+        # holding whatever that row had deliberately broken. On 2026-10-08 it
+        # left `m.spent + amount >= m.cap` in KyaMandate.daml: the cap fence,
+        # off by one, in a tree that was about to be committed.
+        #
+        # SHORTCUTS.md already records this class costing two files in one
+        # night, one of which reached GitHub in a48ffdf. The hook and the
+        # marker directory were the fix for a killed run. Nobody noticed that
+        # the dashboard was the thing doing the killing.
+        #
+        # The cost of the longer window is that a genuinely hung suite now
+        # takes 45 minutes to report instead of 10. That is the right trade:
+        # a hang is visible and annoying, a silently mutated fence is not.
         p = subprocess.run(argv, cwd=cwd, capture_output=True,  # nosec B603 - argv from this file
-                           text=True, timeout=600,
+                           text=True, timeout=2700,
                            env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
         return p.returncode == 0, time.time() - start, p.stdout + p.stderr
     except subprocess.TimeoutExpired:
-        return False, time.time() - start, "timed out after 600s"
+        # Belt and braces. If the thing we just killed was a mutation run, put
+        # the files back before anything else reads them, because the next
+        # suite in this very loop would otherwise measure mutated source and
+        # report a result about code nobody wrote.
+        healed = ""
+        if os.path.isdir(os.path.join(ROOT, ".mutation-in-progress")):
+            try:
+                sys.path.insert(0, os.path.join(ROOT, "tests"))
+                import mutation_suite as _ms
+                _ms.heal()
+                healed = " (a mutation run was killed; its files were healed)"
+            except Exception as e:                    # noqa: BLE001
+                healed = " (COULD NOT HEAL: %s -- the tree may hold a "\
+                         "deliberately broken file)" % e
+        return False, time.time() - start, "timed out after 2700s" + healed
     except OSError as e:
         return False, time.time() - start, "could not start: %s" % e
 
