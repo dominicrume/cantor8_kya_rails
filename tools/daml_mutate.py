@@ -41,15 +41,63 @@ import sys
 FENCE = re.compile(r"^\s*(assertMsg|ensure)\b")
 
 
-def daml(args, cwd):
-    """(ok, output). Never raises: a build that explodes is a result."""
+def toolchain_for(cwd):
+    """("daml"|"dpm", why). Which assistant can build the package in `cwd`.
+
+    Daml split its toolchain in two and the split is not optional. The classic
+    `daml` assistant is deprecated and, in its own words, "will be removed in
+    3.5". SDK 3.5.x is published only through DPM, the Digital Asset Package
+    Manager, and is not on GitHub releases at all: `daml install 3.5.8` fails
+    with a 404 because there is no such release to find.
+
+    So a harness that only knows `daml` silently cannot test any package on
+    3.5 or later. That is not a missing feature, it is a harness that reports
+    "does not build" for code that builds fine, which reads exactly like a
+    finding and is not one.
+
+    The sdk-version in daml.yaml decides. Anything below 3.5 keeps the
+    classic assistant, because 3.4.x is what the existing records were
+    measured with and changing the toolchain changes the result.
+    """
     try:
-        p = subprocess.run(  # nosec B603 B607 - literal argv; daml is on PATH
-            ["daml"] + args + ["--no-legacy-assistant-warning"],
-            cwd=cwd, capture_output=True, text=True, timeout=1800)
+        with open(os.path.join(cwd, "daml.yaml")) as f:
+            for line in f:
+                if line.strip().startswith("sdk-version:"):
+                    v = line.split(":", 1)[1].strip().strip('"\'')
+                    parts = v.split(".")
+                    major, minor = int(parts[0]), int(parts[1])
+                    if (major, minor) >= (3, 5):
+                        return "dpm", "sdk-version %s needs DPM" % v
+                    return "daml", "sdk-version %s" % v
+    except (OSError, ValueError, IndexError):
+        pass
+    return "daml", "no readable sdk-version, assuming the classic assistant"
+
+
+def daml(args, cwd):
+    """(ok, output). Never raises: a build that explodes is a result.
+
+    Dispatches to whichever assistant can actually build this package. See
+    toolchain_for(). `dpm` takes the same verbs without the legacy warning
+    flag, which it does not have and would reject.
+    """
+    tool, _why = toolchain_for(cwd)
+    if tool == "dpm":
+        argv = ["dpm"] + args
+    else:
+        argv = ["daml"] + args + ["--no-legacy-assistant-warning"]
+    try:
+        p = subprocess.run(argv,  # nosec B603 B607 - literal argv
+                           cwd=cwd, capture_output=True, text=True,
+                           timeout=1800)
         return p.returncode == 0, p.stdout + p.stderr
+    except FileNotFoundError:
+        return False, (
+            "%s is not on PATH. SDK 3.5 and later ship only through DPM:\n"
+            "  install it from github.com/digital-asset/dpm/releases,\n"
+            "  verify the published checksum, and put it on PATH." % tool)
     except (OSError, subprocess.TimeoutExpired) as e:
-        return False, "could not run daml: %s" % e
+        return False, "could not run %s: %s" % (tool, e)
 
 
 def sources(pkg, under=None):
