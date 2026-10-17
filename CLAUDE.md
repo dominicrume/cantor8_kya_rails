@@ -42,6 +42,26 @@ Hard rules for any AI touching this code:
   PyPI: ai-code-quality-auditor) is the owner's MSc dissertation tool and has no
   Canton content. Work on one is never a reason to release the other, and a
   version number belonging to one is never bumped for work done in the other.
+- DECIDE FROM THE DATA, NOT FROM THE STORY. Before recommending a direction,
+  go and measure it, and say which numbers you actually read. This rule was
+  written after a comparison against the hackathon winners produced the
+  opposite of the expected answer: 1st place last committed 29 August with 34
+  commits, 2nd place 29 August with 21, and this repository 16 October with
+  over 100. The assumption was "they built more". The data said they stopped
+  on the day and won on presentation. Every plan built on the assumption would
+  have been wrong.
+  The same rule caught three live overclaims in one week: "nobody else keeps
+  the refusal half" (sentry does), "the EU AI Act requires this" (Annex III
+  does not cover payments), and "241 downloads a month" (84 once mirrors are
+  excluded, and that figure was already printed on a CV). A number nobody has
+  plotted is a rumour. If a claim cannot be checked by a stranger in one
+  command, it does not go in a document, a proposal, or a sentence said out
+  loud.
+- STATUS.md and ASK-THE-ORGANISERS.md are kept current, not written once.
+  The first separates proven from mocked from pending so a reader with four
+  minutes can see the shape of the project. The second holds the questions to
+  ask the people who run this ecosystem, written down BEFORE the conversation.
+  Both exist because the team that won the hackathon had them and this did not.
 - Before any release, verify rather than assume: build from committed code and
   never the working tree, list every file that would go public, scan the built
   artefacts for secrets WITH A POSITIVE CONTROL proving the scan reads them,
