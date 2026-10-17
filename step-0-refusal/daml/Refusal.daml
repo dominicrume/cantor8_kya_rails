@@ -7,9 +7,15 @@
 --
 -- That asymmetry runs the wrong way. What succeeded is corroborated by the
 -- ledger. What was stopped is the operator's word, and it is the half a
--- regulator asks about. EU AI Act Article 12 and DORA both ask an institution
--- to evidence that a control OPERATED, and a control that operates produces
--- refusals.
+-- regulator asks about. FINRA Rule 3110 asks a firm to evidence that a
+-- supervisory control OPERATED, 4511 asks for the records behind it, and
+-- SEC 17a-4 asks for those records non-rewritable. A control that operates
+-- produces refusals.
+--
+-- Deliberately not the EU AI Act. Annex III does not list payments or
+-- treasury, so Article 12 almost certainly does not bind a spend-limited
+-- agent at all. That framing was removed from every other file in f6b7041
+-- and this header was missed.
 --
 -- Note this is specific to ledgers that do not commit failed transactions.
 -- On Ethereum a reverted transaction is still included in a block and still

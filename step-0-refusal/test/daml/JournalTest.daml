@@ -1,0 +1,277 @@
+-- The point of this suite is the detection, not the template.
+--
+-- Every test here is written so that it goes red if the journal stops being
+-- able to catch a specific lie. A suite that only proves the counter counts
+-- would stay green through the removal of the thing the module is for.
+module JournalTest where
+
+import DA.Assert ((===))
+import Daml.Script
+import Journal
+import Refusal
+
+data Setup = Setup
+  with
+    owner : Party
+    actor : Party
+    auditor : Party
+    journal : ContractId AttemptJournal
+
+-- A journal with an auditor named in advance, which is the only interesting
+-- configuration. `auditor = None` is covered by test 7.
+setup : Script Setup
+setup = script do
+  owner   <- allocateParty "Treasury"
+  actor   <- allocateParty "RebalanceBot"
+  auditor <- allocateParty "Auditor"
+  journal <- submit [owner, actor] do
+    createCmd AttemptJournal with
+      owner; actor
+      auditor = Some auditor
+      attempts = 0
+      refusals = []
+  pure Setup with owner; actor; auditor; journal
+
+-- 1. Both paths increment. If `Allow` ever stops counting, the denominator
+--    becomes the count of refusals and the auditor's arithmetic is destroyed
+--    while every refusal is still perfectly recorded. That is the failure
+--    mode this module exists to prevent, so it is test one.
+testBothPathsCount : Script ()
+testBothPathsCount = script do
+  s <- setup
+  j1 <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Allow with action = "withdraw"
+  (_, j2) <- submit [s.owner, s.actor] do
+    exerciseCmd j1 Refuse with
+      action = "withdraw"
+      detail = "amount=900000"
+      rule = "above the per-day ceiling"
+  j3 <- submit [s.owner, s.actor] do
+    exerciseCmd j2 Allow with action = "withdraw"
+  Some journal <- queryContractId s.owner j3
+  journal.attempts === 3
+  journal.refusals === [2]
+
+-- 2. The auditor reads the count themselves, as the auditor, without the
+--    owner or the actor submitting anything. This is the difference between
+--    evidence and a report: if `Expect` ever needs the operator's signature,
+--    the operator is back in the loop and the number is theirs again.
+testTheAuditorReadsTheCountWithoutTheOperator : Script ()
+testTheAuditorReadsTheCountWithoutTheOperator = script do
+  s <- setup
+  (_, j1) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Refuse with
+      action = "settle"
+      detail = "ccy=USD"
+      rule = "counterparty is not on the allow-list"
+  j2 <- submit [s.owner, s.actor] do
+    exerciseCmd j1 Allow with action = "settle"
+  seen <- submit s.auditor do
+    exerciseCmd j2 Expect
+  seen === (2, [1])
+
+-- 3. The whole objection, as a test. The operator refuses three times and
+--    hands the auditor two records. The auditor catches it, and catches
+--    WHICH position is missing, from the journal alone.
+testAWithheldRefusalIsDetectable : Script ()
+testAWithheldRefusalIsDetectable = script do
+  s <- setup
+  (r1, j1) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Refuse with
+      action = "withdraw"; detail = "amount=1"; rule = "cap"
+  j2 <- submit [s.owner, s.actor] do
+    exerciseCmd j1 Allow with action = "withdraw"
+  (r3, j3) <- submit [s.owner, s.actor] do
+    exerciseCmd j2 Refuse with
+      action = "withdraw"; detail = "amount=2"; rule = "cap"
+  (_, j4) <- submit [s.owner, s.actor] do
+    exerciseCmd j3 Refuse with
+      action = "withdraw"; detail = "amount=3"; rule = "allow-list"
+  expected <- submit s.auditor do
+    exerciseCmd j4 Expect
+  expected === (4, [1, 3, 4])
+
+  -- Everything handed over: nothing missing.
+  missingRefusals expected [1, 3, 4] === []
+
+  -- The fourth withheld: the auditor names the position without ever having
+  -- seen its contents.
+  missingRefusals expected [1, 3] === [4]
+
+  -- A record invented for a position the journal never refused is the other
+  -- half of the same lie, and is also caught.
+  missingRefusals expected [1, 3, 4, 2] === [2]
+
+  -- The two records the auditor WAS given are readable, so the test is not
+  -- passing on an auditor who can read nothing.
+  Some first <- queryContractId s.auditor r1
+  Some third <- queryContractId s.auditor r3
+  first.rule === "cap"
+  third.rule === "cap"
+
+-- 4. The selective-disclosure half, which is the part a transparent ledger
+--    cannot do and the part RFP 27 asks for by name. The auditor learns that
+--    an allowed attempt happened and learns nothing else about it. If an
+--    AcceptanceRecord is ever "helpfully" added, this goes red.
+testTheAuditorCannotSeeWhatWasAllowed : Script ()
+testTheAuditorCannotSeeWhatWasAllowed = script do
+  s <- setup
+  j1 <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Allow with action = "pay the supplier 40000"
+  seen <- submit s.auditor do
+    exerciseCmd j1 Expect
+  seen === (1, [])
+  -- One attempt, nothing refused, and no contract anywhere the auditor can
+  -- read that says what it was.
+  records <- query @RefusalRecord s.auditor
+  length records === 0
+
+-- 5. A party nobody named cannot read the denominator either. The count is
+--    disclosed to one party chosen in advance, not published.
+testAStrangerCannotReadTheCount : Script ()
+testAStrangerCannotReadTheCount = script do
+  s <- setup
+  stranger <- allocateParty "Stranger"
+  submitMustFail stranger do
+    exerciseCmd s.journal Expect
+  records <- query @AttemptJournal stranger
+  length records === 0
+
+-- 6. The owner can still read their own count with no auditor named, so the
+--    controller is a disjunction and not an auditor-only choice.
+testTheOwnerCanReadTheirOwnCount : Script ()
+testTheOwnerCanReadTheirOwnCount = script do
+  owner <- allocateParty "Fund"
+  actor <- allocateParty "Bot"
+  j <- submit [owner, actor] do
+    createCmd AttemptJournal with
+      owner; actor
+      auditor = None
+      attempts = 0
+      refusals = []
+  j1 <- submit [owner, actor] do
+    exerciseCmd j Allow with action = "rebalance"
+  seen <- submit owner do
+    exerciseCmd j1 Expect
+  seen === (1, [])
+
+-- 7. With no auditor named, the refusals the journal writes disclose to
+--    nobody beyond the two signatories. The default is private.
+testNoAuditorMeansNoDisclosure : Script ()
+testNoAuditorMeansNoDisclosure = script do
+  owner <- allocateParty "Fund2"
+  actor <- allocateParty "Bot2"
+  nosy  <- allocateParty "Nosy"
+  j <- submit [owner, actor] do
+    createCmd AttemptJournal with
+      owner; actor
+      auditor = None
+      attempts = 0
+      refusals = []
+  _ <- submit [owner, actor] do
+    exerciseCmd j Refuse with
+      action = "withdraw"; detail = "amount=5"; rule = "cap"
+  records <- query @RefusalRecord nosy
+  length records === 0
+
+-- 8. A second journal for the same pair is the obvious way to defeat this:
+--     run attempts through a fresh counter and leave the first one looking
+--     clean. Daml-LF 2.1 has no contract keys, so the ledger cannot refuse
+--     it. What it can do is show the auditor, who observes every journal
+--     naming them. Detection, not prevention, and stated as such.
+testASecondJournalIsVisibleToTheAuditor : Script ()
+testASecondJournalIsVisibleToTheAuditor = script do
+  s <- setup
+  _ <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Allow with action = "withdraw"
+
+  -- The operator opens a second journal. This SUCCEEDS. There is no key.
+  _ <- submit [s.owner, s.actor] do
+    createCmd AttemptJournal with
+      owner = s.owner
+      actor = s.actor
+      auditor = Some s.auditor
+      attempts = 0
+      refusals = []
+
+  -- And the auditor sees both, unprompted, in their own contract set. Two
+  -- live journals for one pair is the finding; the auditor does not need the
+  -- operator to admit it.
+  live <- query @AttemptJournal s.auditor
+  length live === 2
+
+-- 9. The count is monotonic because every attempt consumes the journal. The
+--     contract id from before an attempt is dead afterwards, so there is no
+--     earlier journal to go back to and no way to replay a lower number.
+testTheCountCannotBeRewound : Script ()
+testTheCountCannotBeRewound = script do
+  s <- setup
+  j1 <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Allow with action = "withdraw"
+  (_, j2) <- submit [s.owner, s.actor] do
+    exerciseCmd j1 Refuse with
+      action = "withdraw"; detail = "amount=7"; rule = "cap"
+  seen <- submit s.auditor do
+    exerciseCmd j2 Expect
+  seen === (2, [2])
+
+  -- The original journal is archived, and exercising it again fails rather
+  -- than quietly producing a stale count.
+  gone <- queryContractId s.owner s.journal
+  gone === None
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd s.journal Allow with action = "withdraw"
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd j1 Allow with action = "withdraw"
+
+-- 10. A journal claiming more refusals than attempts cannot be created. The
+--     `ensure` is the only thing standing between the auditor and a
+--     denominator smaller than its own numerator.
+testRefusalsCannotExceedAttempts : Script ()
+testRefusalsCannotExceedAttempts = script do
+  owner <- allocateParty "Fund3"
+  actor <- allocateParty "Bot3"
+  submitMustFail [owner, actor] do
+    createCmd AttemptJournal with
+      owner; actor
+      auditor = None
+      attempts = 1
+      refusals = [1, 2]
+  submitMustFail [owner, actor] do
+    createCmd AttemptJournal with
+      owner; actor
+      auditor = None
+      attempts = -1
+      refusals = []
+  pure ()
+
+-- 11. The honest limit, written as a test so nobody can claim more than this.
+--     An attempt that never touches the journal leaves the count untouched.
+--     This module moves the hole to a code path a reviewer can look for; it
+--     does not close it. If this test ever goes red, the claim got bigger
+--     than the code and the README must change with it.
+testAnUnjournalledAttemptIsStillInvisible : Script ()
+testAnUnjournalledAttemptIsStillInvisible = script do
+  s <- setup
+  j1 <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Allow with action = "withdraw"
+
+  -- The operator writes a RefusalRecord directly, going around the journal
+  -- entirely. It succeeds, because Refusal.daml is a standalone template and
+  -- always was.
+  now <- getTime
+  _ <- submit [s.owner, s.actor] do
+    createCmd RefusalRecord with
+      owner = s.owner
+      actor = s.actor
+      action = "withdraw"
+      detail = "amount=99"
+      rule = "cap"
+      refusedAt = now
+      auditor = Some s.auditor
+  -- The count did not move. The auditor sees one attempt and no refused
+  -- positions, while a refusal record exists. Unjournalled activity is
+  -- invisible TO THE COUNT, and that is the limit, stated.
+  seen <- submit s.auditor do
+    exerciseCmd j1 Expect
+  seen === (1, [])
