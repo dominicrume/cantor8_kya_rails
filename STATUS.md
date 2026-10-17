@@ -17,11 +17,12 @@ Read it top to bottom. The weakest claims are at the bottom on purpose.
 |---|---|---|
 | The spending rules are enforced in Daml, not in Python | 32 fences across 5 contracts | `python3 tests/fence_lint.py` |
 | Every fence is load-bearing | 82 mutations, each requires a **named** test to go red | `python3 tests/mutation_suite.py` |
-| The ledger behaves under attack | 111 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
+| The ledger behaves under attack | 123 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
 | A refusal commits as a contract and moves no money | `TryCharge` / `ChargeRefused` in `KyaMandate.daml` | `testRefusalIsOnLedgerAndNothingMoved` |
 | The format is implemented three times and they agree | 20 conformance vectors, Python + JavaScript + Go | `python3 tests/conformance.py`, `node tests/conformance.js`, `cd impl/go && go run .` |
 | A disclosure cannot have an entry removed | SPEC 6b | `python3 tests/disclosure_smoke.py` |
 | A withheld refusal cannot be relabelled accepted | SPEC 6c outcome digest | `python3 tests/completeness_smoke.py` |
+| An auditor can name a **withheld** refusal from the ledger alone | `AttemptJournal` count plus `missingRefusals`, 12 scripts | `daml test --files daml/JournalTest.daml` in `step-0-refusal/test` |
 | The whole suite is green | 43/43 | `python3 tools/dashboard.py` |
 | Two OpenZeppelin Canton packages have untested fences | **49 of 62**, at pinned commits `c96456f` and `fbc6392` | `docs/findings-openzeppelin.md`, sealed records in `docs/findings/` |
 | OpenZeppelin's newer code is clean | `scoped-authorization-grant-v1`: 1 fence, 45 scripts, covered | same tool, SDK 3.5.8 via dpm |
@@ -57,6 +58,12 @@ would not survive being checked:
 - *"The EU AI Act requires this."* Annex III does not cover payments or
   treasury. The hook is FINRA 3110 and 4511 with SEC 17a-4, and even that
   creates no new rule.
-- *"This proves the refusals are all of them."* It proves non-equivocation and
-  append-only ordering. Write-time omission is untouched and unreachable by any
-  commitment scheme. SPEC 6c says so in its own heading.
+- *"This proves the refusals are all of them."* The receipt chain proves
+  non-equivocation and append-only ordering only. Write-time omission is
+  unreachable by any commitment scheme, because the producer chooses what to
+  commit to. SPEC 6c says so in its own heading.
+  `Journal.daml` reaches it **on the ledger and only on the path it covers**: an
+  auditor observing `AttemptJournal` reads the attempt count directly and can
+  name a withheld position. It cannot prevent a second journal, because
+  Daml-LF 2.1 has no contract keys, and it cannot see an attempt that bypassed
+  it. `testAnUnjournalledAttemptIsStillInvisible` holds that line.

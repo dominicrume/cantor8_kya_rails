@@ -57,6 +57,16 @@ Hard rules for any AI touching this code:
   plotted is a rumour. If a claim cannot be checked by a stranger in one
   command, it does not go in a document, a proposal, or a sentence said out
   loud.
+- NEVER A BETTER YESTERDAY. The direction is forward. A measurement that was
+  true last month is not evidence today, a claim that was defensible before a
+  competitor shipped is not defensible after, and a plan built on either is a
+  plan built on a memory. When something is found to be wrong, it gets
+  corrected in the open with the reason written down, and the correction is
+  the work, not an interruption to it. Nothing in this repository is ever
+  quietly tidied to look better than it was.
+- MEASURE AGAINST WHOEVER IS AHEAD, FROM THEIR ARTEFACTS, NOT FROM THEIR
+  REPUTATION. docs/measured-against-the-winners.md is that table and it is
+  kept current. It is why this repository has STATUS.md at all.
 - STATUS.md and ASK-THE-ORGANISERS.md are kept current, not written once.
   The first separates proven from mocked from pending so a reader with four
   minutes can see the shape of the project. The second holds the questions to

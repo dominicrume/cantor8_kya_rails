@@ -1,0 +1,160 @@
+-- | Federico's first objection, answered on the ledger instead of in a hash.
+--
+-- THE OBJECTION. On forum.canton.network/t/9114 a Canton Community Tech
+-- Partner said the hash chain makes existing receipts tamper-evident but
+-- "doesn't prove that a receipt wasn't omitted". Refusal.daml does not fix
+-- that. It makes a refusal that HAPPENED impossible to invent, delete,
+-- backdate or reorder, and says so in its own footer. It is silent about an
+-- attempt that was never recorded at all.
+--
+-- The receipt-chain answer in SPEC 6c is weaker than it sounds: an outcomes
+-- digest catches a refusal RELABELLED at disclosure time, but a producer who
+-- never wrote the entry computes a digest over the shorter list and it
+-- verifies. No commitment scheme reaches write-time omission, because the
+-- producer chooses what to commit to.
+--
+-- WHAT ACTUALLY REACHES IT. Stop trying to prove a negative about records and
+-- publish a POSITIVE number instead. One contract per (owner, actor) holds a
+-- count of every attempt that has passed through it. The auditor is an
+-- observer of that contract, so the auditor reads the count directly from the
+-- ledger rather than from a disclosure the operator assembled.
+--
+-- The auditor can then do arithmetic the operator cannot interfere with:
+--
+--     attempts = 50, refusals = [3, 7, 19]
+--     records handed over = 2
+--     -> one refusal is missing, and its position is 3, 7 or 19.
+--
+-- Note what the auditor still CANNOT see: the 47 attempts that were allowed.
+-- Not what they were, not who they were to, not for how much. The count is
+-- disclosed, the content is not. That is the whole shape of the thing. An
+-- auditor who must take the operator's word for the DENOMINATOR cannot audit
+-- a sample, and a transparent ledger that discloses the numerator as well is
+-- not usable by a regulated firm.
+--
+-- HOW AN APPLICATION WIRES IT. The application holds the journal's contract
+-- id and exercises it in the SAME transaction as the work:
+--
+--     choice Withdraw : ...
+--       with journal : ContractId AttemptJournal
+--       do case refusalReason ... of
+--            Some rule -> do
+--              _ <- exercise journal Refuse with
+--                     action = "withdraw"; detail = show amount; rule
+--              pure ()
+--            None -> do
+--              _ <- exercise journal Allow with action = "withdraw"
+--              -- the real work, here, inside the same transaction
+--
+-- Both branches consume and recreate the journal, so both increment. Daml
+-- commits a transaction whole or not at all, which is the entire load-bearing
+-- fact: the work and the increment cannot come apart. Skipping the increment
+-- means skipping the work.
+--
+-- NO CONTRACT KEY, and this is a Daml 3 fact rather than a preference. Daml-LF
+-- 2.1 removed contract keys: `daml build` on this package rejects a `key`
+-- clause outright with "this feature is not currently supported". So there is
+-- no way to make the ledger refuse a SECOND journal for the same pair.
+--
+-- Uniqueness is therefore DETECTED and not prevented, which is the same
+-- footing as everything else here. The auditor is an observer of every journal
+-- they are named on, so a second journal opened to run attempts past a clean
+-- first one appears in the auditor's own contract set without anyone telling
+-- them. An operator who opens one has created the evidence against themselves.
+-- An auditor's first check is a count of live journals per pair, and test 8
+-- is that check.
+--
+-- WHAT IS STILL NOT PROVEN, and this is a design contract rather than a
+-- theorem. This module cannot force an application to route its choices
+-- through the journal. An application with a second, unjournalled path to the
+-- same asset has a hole, and no module imported by that application can see
+-- it. What this module changes is WHERE the hole has to be: it moves from
+-- "any attempt, invisibly" to "a code path an auditor can look for", and the
+-- count makes the journalled path's completeness checkable rather than
+-- asserted. Archiving the journal to reset the count is itself a ledger event
+-- requiring both signatories.
+module Journal where
+
+import Refusal
+
+-- | One per (owner, actor). Consumed and recreated by every attempt, so the
+-- count is the ledger's and not the application's.
+template AttemptJournal
+  with
+    owner : Party
+      -- ^ Who is accountable. Signatory: a count nobody signs is a metric.
+    actor : Party
+      -- ^ Whose attempts are being counted. Also a signatory, so neither
+      -- party can later claim the other inflated or deflated the number.
+    auditor : Optional Party
+      -- ^ Named once, in advance. This party reads the DENOMINATOR. `None`
+      -- discloses to nobody, and that is the default, same as Refusal.
+    attempts : Int
+      -- ^ Every attempt that has passed through, allowed or refused. The
+      -- number the auditor divides by.
+    refusals : [Int]
+      -- ^ The positions, in order, that were refused. The auditor's list of
+      -- what they are entitled to be shown. Deliberately holds the position
+      -- and NOT the reason: the reason lives on the RefusalRecord, which can
+      -- be withheld. A withheld reason then leaves a position with no record
+      -- against it, which is exactly the detection this module exists for.
+  where
+    signatory owner, actor
+
+    observer optional [] (\a -> [a]) auditor
+
+    -- A fresh journal starts at zero with nothing refused, and no later state
+    -- can have fewer attempts than refusals.
+    ensure attempts >= 0 && length refusals <= attempts
+
+    -- | The rule said no. Numbers the attempt, writes the record, moves
+    -- nothing. Returns the new journal so the caller cannot forget it.
+    choice Refuse : (ContractId RefusalRecord, ContractId AttemptJournal)
+      with
+        action : Text
+        detail : Text
+        rule : Text
+      controller owner, actor
+      do
+        now <- getTime
+        let n = attempts + 1
+        record <- create RefusalRecord with
+          owner; actor; action; detail; rule
+          refusedAt = now
+          auditor
+        journal <- create this with
+          attempts = n
+          refusals = refusals <> [n]
+        pure (record, journal)
+
+    -- | The rule said yes. Numbers the attempt and writes NOTHING about what
+    -- it was. The application does its real work in this same transaction.
+    --
+    -- There is no RefusalRecord here and there is no AcceptanceRecord either.
+    -- The auditor's view of an allowed attempt is that the count went up by
+    -- one. That is the asymmetry the whole project is about, kept on purpose.
+    choice Allow : ContractId AttemptJournal
+      with
+        action : Text
+          -- ^ Taken and discarded. It exists so the call site reads the same
+          -- in both branches and a reviewer can see the two are paired.
+      controller owner, actor
+      do create this with attempts = attempts + 1
+
+    -- | What the auditor is entitled to, readable by the auditor without
+    -- asking the operator for anything. Non-consuming: asking must not
+    -- change the number being asked about.
+    nonconsuming choice Expect : (Int, [Int])
+      controller optional owner identity auditor
+      do pure (attempts, refusals)
+
+-- | Off-ledger arithmetic, here so both sides compute it the same way.
+--
+-- Given what the journal says and the positions actually handed over, the
+-- positions that are missing. An empty result is the only passing answer.
+-- Positions claimed that the journal never refused come back too, because a
+-- fabricated record is the other half of the same lie.
+missingRefusals : (Int, [Int]) -> [Int] -> [Int]
+missingRefusals (_, expected) disclosed =
+  filter (`notElem` disclosed) expected
+    <> filter (`notElem` expected) disclosed

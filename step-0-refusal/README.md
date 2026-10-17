@@ -76,12 +76,57 @@ the difference between evidence and a report.
 `Acknowledge` is non-consuming and returns the rule, so the auditor can
 demonstrate they could read it without destroying the thing being read.
 
+## The journal: the auditor reads the denominator
+
+`Journal.daml` answers the objection `Refusal.daml` cannot. A refusal record
+proves a refusal happened. It says nothing about a refusal that was never
+written, and a hash chain cannot reach that either, because the producer
+chooses what to commit to.
+
+So stop trying to prove a negative about records and publish a positive number.
+`AttemptJournal` is one contract per owner and actor, consumed and recreated by
+every attempt, holding `attempts` and the positions in `refusals`. The auditor
+is an **observer of the journal**, so the auditor reads the count off the ledger
+rather than off a disclosure the operator assembled.
+
+```
+attempts = 50, refusals = [3, 7, 19]
+records handed over = 2
+-> one refusal is missing, and its position is 3, 7 or 19.
+```
+
+The application exercises the journal inside the same transaction as its real
+work. Daml commits a transaction whole or not at all, so the work and the
+increment cannot come apart: skipping the increment means skipping the work.
+
+What the auditor still cannot see is the 47 attempts that were allowed. Not
+what they were, not to whom, not for how much. **The count is disclosed and the
+content is not.** An auditor who has to take the operator's word for the
+denominator cannot audit a sample; a transparent ledger that discloses the
+numerator too is unusable by a regulated firm. This sits between those.
+
+Two things about it that are limits and not features:
+
+- **There is no contract key.** Daml-LF 2.1 removed them, and `daml build`
+  rejects a `key` clause outright. So the ledger cannot refuse a second journal
+  for the same pair. What it does instead is show the auditor, who observes
+  every journal naming them: an operator who opens a second one has created the
+  evidence against themselves. Detection, not prevention.
+- **This module cannot force an application to route through it.** An
+  application with a second, unjournalled path to the same asset has a hole,
+  and no module it imports can see that. What changes is where the hole has to
+  be: from "any attempt, invisibly" to "a code path a reviewer can look for".
+
+`testAnUnjournalledAttemptIsStillInvisible` asserts that limit, so the claim
+cannot grow past the code without a test going red.
+
 ## What it does not do
 
-- **An attempt that was never submitted leaves nothing behind.** This makes a
-  refusal that happened impossible to invent, delete, backdate or reorder. It
-  does not make one that never reached the ledger appear, and no ledger
-  artefact can.
+- **An attempt that never touches the journal leaves nothing behind.** The
+  journal makes omission detectable on the path it covers. It does not make an
+  attempt that bypassed it appear, and no ledger artefact can.
+- **A refusal that happened** is impossible to invent, delete, backdate or
+  reorder.
 - **A record is archivable by its signatories.** The honest claim is that
   removing one is itself a ledger event, not that it cannot be removed.
 - **It proves a rule fired, not that a rule is correct.**
@@ -94,9 +139,10 @@ daml build
 
 Then add the DAR as a `data-dependencies` entry in your own `daml.yaml`.
 
-Eight scripts cover it, including the two that matter: a lending protocol and a
-collateral engine using it with no concept of a payee, and an auditor who sees
-every record while a stranger sees none. `python3 tests/daml_tests.py` from the
+Twenty scripts cover it: eight on the record and twelve on the journal. The
+ones that matter are a lending protocol and a collateral engine using it with
+no concept of a payee, an auditor who sees every record while a stranger sees
+none, `testAWithheldRefusalIsDetectable`, and `testTheAuditorCannotSeeWhatWasAllowed`. `python3 tests/daml_tests.py` from the
 repository root runs them alongside everything else.
 
 ## Credit
