@@ -1,0 +1,84 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Room briefing</title>
+<style>
+@page{size:A4;margin:11mm}
+body{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:8.6pt;line-height:1.3;color:#111;margin:0}
+h1{font-size:13pt;margin:0 0 1mm 0}
+.sub{font-size:7.6pt;color:#555;margin:0 0 3mm 0}
+h2{font-size:8.8pt;margin:3.2mm 0 1.2mm 0;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #000;padding-bottom:.6mm}
+p{margin:0 0 1.4mm 0}
+table{width:100%;border-collapse:collapse;margin:0 0 1.4mm 0}
+td{padding:.8mm 1.6mm;vertical-align:top;border-bottom:.4pt solid #ddd}
+td:first-child{width:30%;font-weight:600}
+.ask{background:#f2f2f2;padding:1.6mm 2mm;margin:0 0 1.6mm 0;border-left:2.5pt solid #000}
+.q{font-style:italic}
+.warn{color:#8a1c00;font-weight:600}
+.two{display:flex;gap:5mm}
+.two>div{flex:1}
+ul{margin:0 0 1.4mm 0;padding-left:4mm}
+li{margin:0 0 .6mm 0}
+</style></head><body>
+
+<h1>Room briefing &mdash; Cantor8 winners' dinner</h1>
+<p class="sub">Sunday 18 October 2026, 4&ndash;6pm. Studio6ix, 43&ndash;47 Glengall Rd, London SE15 6NF. Arrive 3:45pm.
+Vorem &middot; O'Rume Dominic Uririe &middot; 3rd place, Build on Canton, 29 August 2026.</p>
+
+<h2>The three asks, in this order</h2>
+<div class="ask"><b>1. The DevNet credential.</b> This is the first ask, not the champion. It is small, it costs the giver nothing, it can be done on a phone, and it unblocks every claim you have.<br>
+<span class="q">&ldquo;I came third in August and I still have never had a DevNet credential. Everything I've built is proven in Daml Script and has never touched a real ledger. Who do I ask?&rdquo;</span></div>
+<div class="ask"><b>2. A name, not a favour.</b> Only after the first lands.<br>
+<span class="q">&ldquo;My Dev Fund proposal is under RFP 27 and has no champion, so it has never entered review. Who should I be talking to?&rdquo;</span></div>
+<div class="ask"><b>3. Work.</b> Only if they ask what you want.<br>
+<span class="q">&ldquo;A contract. I'm looking for Daml and Canton work.&rdquo;</span></div>
+
+<h2>Who is who &mdash; corrected this morning</h2>
+<table>
+<tr><td>Amanda Martin</td><td><b>Chief Operating Officer</b>, Canton Foundation. <b>She sent your invitation.</b> Thank her by name first. She is the right person for &ldquo;who handles DevNet credentials?&rdquo;</td></tr>
+<tr><td>J&oslash;rgen Ouaknine</td><td class="warn">NOT Founding Chairman. He is a <b>Board Member</b>, and Global Head of Innovation &amp; Digital Assets at <b>Euroclear</b>. Do not call him Chairman.</td></tr>
+<tr><td>Dr Johnna Powell</td><td><b>Chair of the Board</b>, Canton Foundation. DTCC. This is the actual chair.</td></tr>
+<tr><td>Pedro Neves</td><td>Community &amp; Governance, Canton Foundation. Added you to Slack at 22:11 on Friday. Thank him if present.</td></tr>
+<tr><td>Cantor8 people</td><td>Davide Falcone, Alex Gorelik, Alex Sumner, Niko Cherkezishvilli, Paruyr Babayan, Roman Borovtsov. All listed as SIG members. <b>Davide is your DevNet route.</b></td></tr>
+<tr><td>Kinga Bosse</td><td>Board member, <b>MPCH</b>. Richard Domikis of MPCH is on the Security SIG. Same firm.</td></tr>
+</table>
+
+<h2>The warmest champion lead, found this morning</h2>
+<p><b>Stanislav German-Evtushenko (<tt>stas-sbi</tt>), SBI Security Solutions.</b> He is on the Security SIG <b>and he is already listed as a requested reviewer on PR #860.</b> He has not reviewed yet. He is the single warmest name you have.
+Other requested reviewers: <tt>tkatrichenko</tt>, <tt>hythloda</tt>, <tt>omaiko-intellecteu</tt>, <tt>waynecollier-da</tt>, <tt>isegall-da</tt>.</p>
+
+<h2>What you say when they ask what it does</h2>
+<p>One sentence, then stop talking:</p>
+<p class="q">&ldquo;It records what an automated agent was refused as a ledger contract, and discloses those refusals to an auditor party named in advance, without disclosing the actions that were allowed.&rdquo;</p>
+<p>If they want more: <i>&ldquo;In Daml a failed check aborts the transaction, so a control that worked leaves no evidence it worked. I make the refusal commit.&rdquo;</i></p>
+<p><b>Do not lead with &ldquo;AI agent&rdquo;.</b> Every agent-themed Dev Fund proposal ever filed has been closed unmerged: #784, #578, #381, #367.</p>
+
+<div class="two"><div>
+<h2>True, and checkable</h2>
+<ul>
+<li>3rd place, Build on Canton, 29 Aug 2026, solo.</li>
+<li>Listed on the Canton Dev Hub as a <b>Partner</b> tool, &ldquo;Know Your AgenticAI&rdquo;, AI Tools.</li>
+<li>123 Daml test scripts. 43 test suites. 82 mutations, each needing a named test to go red.</li>
+<li>3 PRs merged into the Canton Developer Hub repo (#156, #160, #168).</li>
+<li>49 of 62 authorisation conditions in two OpenZeppelin Canton packages could be deleted with the suite still green.</li>
+<li>Refusals commit as contracts, disclosed to an auditor named in advance.</li>
+</ul>
+</div><div>
+<h2>Do NOT say</h2>
+<ul>
+<li class="warn">&ldquo;Nobody else does this.&rdquo; <tt>khalydmaina/sentry</tt> writes rejected transfers to Canton in Daml.</li>
+<li class="warn">&ldquo;The EU AI Act requires it.&rdquo; Annex III does not cover payments.</li>
+<li class="warn">Any claim it runs on a ledger. <b>It has never run on DevNet.</b> Say that before they ask.</li>
+<li class="warn">&ldquo;Founding Chairman&rdquo; to J&oslash;rgen Ouaknine.</li>
+<li class="warn">Do not chase Dr Adaku about the accelerator. Her email said next steps come by email.</li>
+<li class="warn">Do not re-send Philip the CV or the DevNet ask. He has both already, on Telegram.</li>
+</ul>
+</div></div>
+
+<h2>State of play this morning</h2>
+<p><b>PR #860:</b> open, file now correctly under <tt>/rfps/security-assurance-incident-readiness/</tt>, label removal requested 17 Oct. Board status &ldquo;Incoming&rdquo;. 6 reviewers awaiting, 0 reviews. <b>Needs 1 approving review to merge.</b><br>
+<b>Vacuumlabs thread 9084:</b> your reply posted 17 Oct, 63 views, <b>no answer yet</b>.<br>
+<b>Forum, fresh and unanswered:</b> &ldquo;Implementing scheduled and recurring actions in Daml 3.5&rdquo;, posted 17 Oct, 5 views, 0 replies. Directly adjacent to your work.<br>
+<b>HackCanton Season 4 is recruiting</b> (announced 14 Oct). Your form answers are drafted.</p>
+
+<p style="margin-top:3mm;font-size:7.4pt;color:#555">Ask for a name, not a favour. A name costs them nothing and they will have one.
+Say the limit before they find it. The thing that makes you credible in that room is that you tell them what does not work yet.</p>
+
+</body></html>

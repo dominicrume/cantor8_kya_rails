@@ -49,6 +49,20 @@ directory.
 | **Richard Domikis** | **MPCH** | |
 | **Stanislav German-Evtushenko** | **SBI Security Solutions** | `stas-sbi` |
 
+## The warmest name, and it was there all along
+
+**Stanislav German-Evtushenko (`stas-sbi`), SBI Security Solutions, is already
+a requested reviewer on PR #860.** He is also on the Security SIG. As of
+18 October he has not reviewed.
+
+He is not somebody to go and find. He is already assigned. The other requested
+reviewers are `tkatrichenko`, `hythloda`, `omaiko-intellecteu`,
+`waynecollier-da` and `isegall-da`. Zero reviews have been submitted, and the
+PR needs one approving review to merge.
+
+This was missed for three weeks because nobody read the reviewer list on our
+own pull request.
+
 **Approach the non-Digital-Asset ones first.** Four of the seven are Digital
 Asset, who are busy and heavily petitioned. Metrika, MPCH and SBI are
 independent firms whose own work is monitoring, custody and security. They have
@@ -69,9 +83,16 @@ Security.
 
 ## Step 2, tomorrow at the dinner
 
-If **Dr Jørgen Ouaknine**, Founding Chairman of the Canton Foundation, is in the
-room, he is the highest-leverage person there. The ask is one sentence and it is
-not for money:
+**Correction, 18 October 2026.** This file said Jørgen Ouaknine was "Founding
+Chairman of the Canton Foundation". **He is not.** The Foundation's own About
+page lists him as a **Board Member**, and Global Head of Innovation and Digital
+Assets at **Euroclear**. The **Chair of the Board is Dr Johnna Powell of DTCC**.
+Calling a board member Chairman in front of the actual chair is how a
+conversation ends, and this file nearly caused it.
+
+If **Jørgen Ouaknine** is in the room he is still worth talking to, as is
+anyone from C7, 7RIDGE or Alchemy. The ask is one sentence and it is not for
+money:
 
 > "My Dev Fund proposal is under RFP 27 and it has no champion, so it has never
 > entered review. Who should I be talking to?"

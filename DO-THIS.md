@@ -66,8 +66,20 @@ with a job to do. The other two are optional.
 question you genuinely want answered, and it shows you built something before
 you turned up.
 
-- [ ] Submitted
-- [ ] Channels joined: ____________________
+**DONE, 17 October 2026.** Amanda Martin, COO of the Canton Foundation,
+processed it and confirmed by email on 17 Oct at 09:32. Ten channels granted:
+`#fa-metrics`, `#validator-operations-3`, `#supervalidator-operator-feedback`,
+`#sig-defi-liquidity`, `#sig-dar-app-management`, `#sig-dapp-integration`,
+`#sig-daml-tooling`, `#sig-canton-protocol-multi-synchronizer`,
+`#sig-canton-apis`, `#sig-attestor-pools-daos-multisig`.
+
+Pedro Neves (Community and Governance) did the Slack add at 22:11 on 17 Oct.
+
+**Still missing the two that matter most:** `#sig-regulatory-compliance` and
+`#sig-security`. Neither was on the dropdown. Reply to Amanda's own email and
+ask for them, since she handled it and invited questions.
+
+- [ ] Asked Amanda for the two missing channels
 
 ---
 
@@ -149,8 +161,8 @@ Rume_Dominic_Room_Briefing_18_Oct.pdf    x1   (yours, read on the train)
 
 All four are in `~/Downloads`.
 
-**The one sentence, if Dr Jørgen Ouaknine or anyone from C7, 7RIDGE or Alchemy
-is in the room:**
+**The one sentence, if Jørgen Ouaknine (Board Member, Euroclear, NOT the
+chairman) or anyone from C7, 7RIDGE or Alchemy is in the room:**
 
 > "My Dev Fund proposal is under RFP 27 and it has no champion, so it has never
 > entered review. Who should I be talking to?"
@@ -171,25 +183,23 @@ filed has been closed unmerged: #784, #578, #381, #367.
 
 ## Monday 19 October
 
-**Move the proposal file.** On your PR #860 branch:
+**DONE, 17 October 2026.** The file now sits at
+`rfps/security-assurance-incident-readiness/2026-09-Independent-refusal-evidence-for-canton.md`,
+and the comment asking maintainers to drop `rfp-11`, `rfp-12`, `rfp-22` and
+`rfp-26` went up the same day. Nothing further to do on either.
 
-```bash
-git mv proposals/<your-file>.md \
-       rfps/security-assurance-incident-readiness/<your-file>.md
-git commit -m "Move to /rfps/, matching the RFP 27 alignment the body declares"
-git push
-```
+**What is actually left on #860.** It is open, board status "Incoming", and it
+needs **one approving review to merge**. Six reviewers are listed as awaiting:
+`tkatrichenko`, `hythloda`, **`stas-sbi`**, `omaiko-intellecteu`,
+`waynecollier-da`, `isegall-da`. **Zero reviews submitted.**
 
-The repo's own README reserves `/proposals/` for work that does **not** respond
-to an RFP. Yours declares RFP 27 alignment. The rival that got a vote on
-16 October filed under `/rfps/`. **One file move, and it is visible to a
-reviewer before they read a word of substance.**
+`stas-sbi` is Stanislav German-Evtushenko of SBI Security Solutions, and he is
+on the Security SIG. He is already assigned to the PR. That is the warmest
+name available and it was sitting on our own pull request unread for three
+weeks.
 
-- [ ] Moved
-
-**Do not** try to remove the six stale labels yourself. You lack the
-permission, and the bot only ever adds. Ask a maintainer in the PR thread, once,
-with the keyword evidence, and let it go.
+- [ ] Say hello in `#sig-security` once Amanda grants it, with the contract-key
+      question and nothing else
 
 ---
 
