@@ -29,7 +29,7 @@ Things that exist and cannot be taken away.
 | **Three merged pull requests** | Canton Developer Hub #156, #160, #168, into a repository not owned here | this is the Dev Fund's own integration milestone, met |
 | **A public listing** | "Know Your AgenticAI" in the official Canton Developer Hub catalogue | live, with the evidence-layer description |
 | **Four unpaid fixes** | open PRs to the organisers' own toolkit, `Cantor8/hackathon-toolkit` #7 to #10 | filed 31 August, still open |
-| **A test suite that tests itself** | 43 suites, 82 mutations, 123 Daml scripts | rare, and the thing most engineers notice first |
+| **A test suite that tests itself** | 43 suites, 82 mutations, 125 Daml scripts | rare, and the thing most engineers notice first |
 
 **Reach: 0 stars, 0 forks.** Said plainly so it is never rounded up.
 

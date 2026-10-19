@@ -43,7 +43,7 @@ and presented it better. The gap was never depth.
 | Script that regenerates the README's numbers | `scripts/measure.mjs` | `tools/evidence_pack.py` |
 | Chaos test | `scripts/killtest.sh`, kill -9 and resume | `tests/mutation_guard_smoke.py` |
 | Tests against the deployed instance | `test/live.test.mjs` | `tests/devnet_check.py`, never run |
-| Offline tests needing no credentials | 76 | 43 suites, 123 Daml scripts, 82 mutations |
+| Offline tests needing no credentials | 76 | 43 suites, 125 Daml scripts, 82 mutations |
 | Stated limits | "Honest boundary" section | `SHORTCUTS.md`, `STATUS.md` |
 
 ## The three real gaps

@@ -275,3 +275,82 @@ testAnUnjournalledAttemptIsStillInvisible = script do
   seen <- submit s.auditor do
     exerciseCmd j1 Expect
   seen === (1, [])
+
+-- 12. Arpit Karnatak of Vacuumlabs raised this on forum 9084 on 18 October
+--     2026, and he was right. It is the sharpest objection anyone has made to
+--     this design, so it gets a test rather than a paragraph.
+--
+--     His case: the check PASSES, the work proceeds, and then something later
+--     in the same transaction reverts. Daml commits whole or not at all, so
+--     the rollback takes the count with it. The attempt leaves nothing.
+--
+--     That is the other face of the property test 9 relies on. The work and
+--     the count cannot come apart, which is exactly why they also die
+--     together. You cannot have both: write the record in the same
+--     transaction and they are inseparable but both vanish on a revert; write
+--     it first in its own transaction and it survives but no longer matches
+--     what happened.
+--
+--     The refuse branch does NOT have this problem, and that asymmetry is the
+--     answer. When the check says no, the record is the only thing in the
+--     transaction. There is no later step that can revert it. Test 13 holds
+--     that line.
+testAnAllowedAttemptThatRevertsIsLost : Script ()
+testAnAllowedAttemptThatRevertsIsLost = script do
+  s <- setup
+  j1 <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Allow with action = "withdraw"
+
+  -- One transaction: the journal increments, then the work fails. An empty
+  -- `action` breaks RefusalRecord's `ensure`, standing in for any later step
+  -- that reverts. Written with `*>` because Commands is applicative, not
+  -- monadic: two commands in one submission are one transaction.
+  now <- getTime
+  submitMustFail [s.owner, s.actor] $
+    exerciseCmd j1 Allow with action = "withdraw"
+      *> createCmd RefusalRecord with
+           owner = s.owner
+           actor = s.actor
+           action = ""
+           detail = "the work that reverted"
+           rule = "irrelevant, this never commits"
+           refusedAt = now
+           auditor = None
+
+  -- The count did not move. One attempt on the ledger, two in the world.
+  seen <- submit s.auditor do
+    exerciseCmd j1 Expect
+  seen === (1, [])
+
+-- 13. The asymmetry that makes the design still worth having. A refusal is
+--     the ONLY thing in its transaction, so there is no later step that can
+--     take it down with it. Test 12's failure mode cannot reach this branch.
+testARefusalHasNothingLaterThatCanRevertIt : Script ()
+testARefusalHasNothingLaterThatCanRevertIt = script do
+  s <- setup
+  (record, j1) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Refuse with
+      action = "withdraw"
+      detail = "amount=900000"
+      rule = "above the per-day ceiling"
+
+  -- Committed, readable by the auditor, and the count moved.
+  Some r <- queryContractId s.auditor record
+  r.rule === "above the per-day ceiling"
+  seen <- submit s.auditor do
+    exerciseCmd j1 Expect
+  seen === (1, [1])
+
+  -- And a later transaction that reverts cannot reach back and undo it.
+  now <- getTime
+  submitMustFail [s.owner, s.actor] do
+    createCmd RefusalRecord with
+      owner = s.owner
+      actor = s.actor
+      action = ""
+      detail = "a later failure"
+      rule = "irrelevant"
+      refusedAt = now
+      auditor = None
+  Some still <- queryContractId s.auditor record
+  still.rule === "above the per-day ceiling"

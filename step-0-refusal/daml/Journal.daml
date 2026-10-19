@@ -64,6 +64,33 @@
 -- An auditor's first check is a count of live journals per pair, and test 8
 -- is that check.
 --
+-- THE REVERT CASE, raised by Arpit Karnatak of Vacuumlabs on
+-- forum.canton.network/t/9084 on 18 October 2026, and he is right. If the
+-- check PASSES, the work proceeds, and then something later in the same
+-- transaction reverts, Daml rolls the whole thing back and takes the count
+-- with it. The attempt leaves nothing.
+--
+-- That is the other face of the property above. The work and the count cannot
+-- come apart, which is exactly why they also die together. The trade-off is
+-- real and has no free side:
+--
+--   same transaction as the work -> inseparable, but both vanish on a revert
+--   its own transaction, first   -> survives the revert, but can now describe
+--                                   work that never happened
+--
+-- The refuse branch does NOT have this problem, and the asymmetry is the
+-- answer rather than an excuse. When the check says no, the RefusalRecord is
+-- the only thing in that transaction. There is no later step that can revert
+-- it. `testARefusalHasNothingLaterThatCanRevertIt` holds that, and
+-- `testAnAllowedAttemptThatRevertsIsLost` holds the limit.
+--
+-- So the claim is narrow on purpose. This is a complete record of refusals
+-- that were DECIDED. It is not a complete log of everything attempted, and
+-- offchain logging remains the right tool for reverts. The difference is
+-- incentive, not mechanism: nobody gains by hiding a crash, and somebody can
+-- gain by losing a refusal. The second is the one that has to sit where it
+-- cannot be quietly dropped.
+--
 -- WHAT IS STILL NOT PROVEN, and this is a design contract rather than a
 -- theorem. This module cannot force an application to route its choices
 -- through the journal. An application with a second, unjournalled path to the

@@ -17,12 +17,12 @@ Read it top to bottom. The weakest claims are at the bottom on purpose.
 |---|---|---|
 | The spending rules are enforced in Daml, not in Python | 32 fences across 5 contracts | `python3 tests/fence_lint.py` |
 | Every fence is load-bearing | 82 mutations, each requires a **named** test to go red | `python3 tests/mutation_suite.py` |
-| The ledger behaves under attack | 123 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
+| The ledger behaves under attack | 125 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
 | A refusal commits as a contract and moves no money | `TryCharge` / `ChargeRefused` in `KyaMandate.daml` | `testRefusalIsOnLedgerAndNothingMoved` |
 | The format is implemented three times and they agree | 20 conformance vectors, Python + JavaScript + Go | `python3 tests/conformance.py`, `node tests/conformance.js`, `cd impl/go && go run .` |
 | A disclosure cannot have an entry removed | SPEC 6b | `python3 tests/disclosure_smoke.py` |
 | A withheld refusal cannot be relabelled accepted | SPEC 6c outcome digest | `python3 tests/completeness_smoke.py` |
-| An auditor can name a **withheld** refusal from the ledger alone | `AttemptJournal` count plus `missingRefusals`, 12 scripts | `daml test --files daml/JournalTest.daml` in `step-0-refusal/test` |
+| An auditor can name a **withheld** refusal from the ledger alone | `AttemptJournal` count plus `missingRefusals`, 14 scripts | `daml test --files daml/JournalTest.daml` in `step-0-refusal/test` |
 | The whole suite is green | 43/43 | `python3 tools/dashboard.py` |
 | Two OpenZeppelin Canton packages have untested fences | **49 of 62**, at pinned commits `c96456f` and `fbc6392` | `docs/findings-openzeppelin.md`, sealed records in `docs/findings/` |
 | OpenZeppelin's newer code is clean | `scoped-authorization-grant-v1`: 1 fence, 45 scripts, covered | same tool, SDK 3.5.8 via dpm |
