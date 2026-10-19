@@ -1,78 +1,88 @@
 # Second reply to Vacuumlabs, forum 9084
 
-**What changed:** Arpit Karnatak raised the revert case on 18 October. On
-19 October it is solved, in code, with tests, and the limitation is gone
-rather than conceded.
+Arpit raised the revert case on 18 October. Solved on 19 October, then broken
+and fixed twice more the same day by reviewing it as an attacker.
 
-## What "solved" means precisely, so the post does not overclaim
+## Why the post names its own flaws
 
-- A record now survives the work reverting. **Yes.** `testTheRecordSurvivesARevert`.
-- The count is now complete. **Yes.** The number is taken in transaction one.
-- The resolution cannot lie about the attempt. **Yes.** sha256 commitment.
-- An attempt that never touches the journal is still invisible. **Unchanged**,
-  and still stated in the code.
-- Distinguishing "reverted" from "still in flight" needs an application-chosen
-  timeout. **Still true.**
+The first version of this post claimed a clean win. Then a review found that
+the commitment bound but did not hide, and that signatories could archive the
+evidence. Both would have failed an institutional security review.
 
-## Prior art the post must credit, because a reviewer will know it
+**A post that names its own two flaws and shows the fix is worth more to this
+audience than one that claims a clean win.** Everyone reading it has shipped
+something broken. Nobody believes the clean win.
 
-- **Write-ahead logging.** Mohan et al., ARIES, ACM TODS 1992. The mechanism
-  is theirs. The only difference is who reads the durable intention: WAL
-  recovers a system, this informs an auditor.
-- **Daml propose-accept.** The two-transaction shape is documented and
-  standard. It exists there for authority, reused here for evidence.
-- **Hyperledger Fabric** has retained failed transactions with a validation
-  code for years. Own it in the post rather than have it raised.
-- **Not** Sagas. Different problem.
+## What must be credited, because a reviewer will know
+
+- **Write-ahead logging.** Mohan et al., ARIES, ACM TODS 1992.
+- **Daml propose-accept.** The two-transaction shape, documented and standard.
+- **Hyperledger Fabric**, which has retained failed transactions with a
+  validation code for years.
+- **Not** Sagas. Different problem, and citing it would be wrong.
 
 ---
 
 ## THE POST
 
-Solved. It needed two transactions instead of one.
+Solved, and then broken twice by reviewing it properly. All three are worth
+writing down.
 
-You were right that nothing written inside a transaction survives that
-transaction aborting. That is atomicity, not a gap in the design. So the
-record has to commit before the work, not alongside it.
+**The fix.** Nothing written inside a transaction survives that transaction
+aborting. That is atomicity, not a gap. So the record has to commit before
+the work.
 
 Open the attempt in its own transaction. It holds nothing else, so nothing can
-revert it. The work happens in the next transaction and consumes the attempt.
-If that reverts, the attempt simply stays open.
+revert it. The work happens next and consumes it. If that reverts, the attempt
+stays open, and an attempt left open is the evidence. The absence of a
+resolution is the record.
 
-An attempt left open is the evidence. The absence of a resolution is the
-record.
+**First thing I got wrong.** The attempt carried a sha256 commitment over the
+action and detail, and I claimed it revealed nothing. It did not hide at all.
+A commitment needs binding and hiding; I had binding. sha256 over "withdraw"
+and a round amount is brute-forced in seconds by anyone who guesses the
+format, and payments are exactly the low-entropy case where that works. It now
+takes a random salt held off the ledger and revealed at resolution.
 
-The attempt carries a sha256 commitment over the action and detail, length
-prefixed so the boundary cannot be moved afterwards. The resolution has to
-match it, so you cannot open an attempt to move 900,000 and resolve it as a
-refused request for 10. And an open attempt shows the auditor a position, a
-time and a digest, nothing else, so an allowed action stays private.
+**Second thing I got wrong, and I had not tested it.** Daml's implicit
+`Archive` is controlled by the signatories. Both parties on the attempt are
+signatories, and in the ordinary case one firm controls both. So the subject
+of the evidence could delete it, and an auditor querying active contracts
+would see a clean ledger.
 
-What an auditor reconciles, all of it off the ledger:
+That cannot be prevented. So every legitimate ending now mints a small
+resolution marker carrying the position and the outcome kind, nothing else.
+Deleting an attempt then leaves a numbered hole:
 
-    50  attempts, from the counter
-    12  refusals, disclosed to them
-     3  still open: tried, never resolved
-    35  settled, and they learn nothing else about those
+    attempts      50   monotonic counter, cannot be rewound
+    resolutions   47
+    still open     2
+    ------------------
+    unaccounted    1   archived with no resolution
 
-None of those numbers is mine.
+That last line is the finding. The marker leaks nothing new, because anyone
+who can count already knew settled equals attempts minus refusals minus open.
 
-Credit where it is due. This is write-ahead logging, which is Mohan et al.
-1992, and the two-transaction shape is Daml's own propose-accept pattern used
-for a different reason. Fabric has retained failed transactions with a
-validation code for years, though that covers consensus-layer failures rather
-than application policy. What is new here, if anything, is treating the
-unresolved record as the artefact and binding it with a commitment.
+**Three I could not fix, so they are documented.** Nothing forces an attempt
+to be opened before the work; a second path to the asset bypasses all of it.
+The open time is ledger time, so the submitting participant has latitude
+inside the skew window. And opening attempts is free, so noise can bury a real
+unresolved one.
 
-Eleven scripts on it. Removing the commitment check or the counter both turn
-named tests red.
+**Credit.** This is write-ahead logging, Mohan et al. 1992, with the durable
+intention read by an auditor rather than by a recovery manager. The
+two-transaction shape is Daml's own propose-accept used for a different
+reason. Fabric has retained failed transactions with a validation code for
+years, though that covers consensus-layer failures and not application policy.
+What is left that is arguably mine is treating the unresolved record as the
+artefact and binding it with a salted commitment.
+
+Fifteen scripts on it, 37 on the package. Dropping the salt, removing the
+minimum salt length, or minting a marker at the wrong position each turn named
+tests red.
 
 step-0-refusal/daml/Attempt.daml. MIT, no dependencies past the standard
 library.
 
-Two things still open, so nobody is surprised later. An attempt that never
-opens is still invisible, and nothing fixes that. And an open attempt cannot
-tell you by itself whether the work reverted or is still in flight; that needs
-a timeout you choose.
-
-Thanks for the objection. It was the right one and it changed the design.
+Thanks for the objection. It was the right one, and the two things it led me
+to find were worse than the one you raised.
