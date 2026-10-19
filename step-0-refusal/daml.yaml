@@ -16,5 +16,12 @@ version: 1.0.0
 dependencies:
   - daml-prim
   - daml-stdlib
+data-dependencies:
+  - interface/.daml/dist/canton-journal-interface-1.0.0.dar
 build-options:
   - --target=2.1
+  # sha256 lives in DA.Crypto.Text, which Daml still marks alpha. The
+  # commitment in Attempt.daml depends on it, so this is a known exposure
+  # and not a silenced warning: if the module changes, the commitment
+  # changes with it. Recorded in SHORTCUTS.md.
+  - -Wno-crypto-text-is-alpha

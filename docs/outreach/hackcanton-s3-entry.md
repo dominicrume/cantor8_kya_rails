@@ -75,7 +75,7 @@ WHAT I BUILT
 
 WHAT IS ALREADY DONE, BEFORE THIS HACKATHON
 
-140 Daml test scripts across two packages. 43 test suites. 82 mutations,
+147 Daml test scripts across two packages. 43 test suites. 82 mutations,
 each of which breaks something real and requires a NAMED test to go red.
 32 spending fences, each proven load-bearing by deleting it. A written
 specification with 20 conformance vectors, implemented three times

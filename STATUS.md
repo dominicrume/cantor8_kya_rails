@@ -17,7 +17,7 @@ Read it top to bottom. The weakest claims are at the bottom on purpose.
 |---|---|---|
 | The spending rules are enforced in Daml, not in Python | 32 fences across 5 contracts | `python3 tests/fence_lint.py` |
 | Every fence is load-bearing | 82 mutations, each requires a **named** test to go red | `python3 tests/mutation_suite.py` |
-| The ledger behaves under attack | 140 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
+| The ledger behaves under attack | 147 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
 | A refusal commits as a contract and moves no money | `TryCharge` / `ChargeRefused` in `KyaMandate.daml` | `testRefusalIsOnLedgerAndNothingMoved` |
 | The format is implemented three times and they agree | 20 conformance vectors, Python + JavaScript + Go | `python3 tests/conformance.py`, `node tests/conformance.js`, `cd impl/go && go run .` |
 | A disclosure cannot have an entry removed | SPEC 6b | `python3 tests/disclosure_smoke.py` |
@@ -26,7 +26,9 @@ Read it top to bottom. The weakest claims are at the bottom on purpose.
 | **A record survives the work reverting** | Two-phase `Attempt`: opened in its own transaction, consumed by the work. An attempt left open is the evidence. 15 scripts | `daml test --files daml/AttemptTest.daml` in `step-0-refusal/test` |
 | A resolution cannot lie about what the attempt was | **salted** sha256 commitment, length-prefixed | `testTheResolutionCannotLieAboutTheAttempt` |
 | An open attempt does not leak what was attempted | the salt is held off-ledger, so the digest hides as well as binds | `testTheCommitmentHidesAndNotJustBinds` |
-| **Destroying the evidence leaves a numbered hole** | signatories CAN archive an open attempt; every legitimate ending mints a `Resolution` marker, so the count does not reconcile | `testArchivingAnAttemptLeavesANumberedHole` | `daml test --files daml/JournalTest.daml` in `step-0-refusal/test` |
+| **Destroying the evidence requires the guardian** | the guardian is a signatory of every `Attempt`, so owner and actor together cannot archive one. Every legitimate ending also mints a `Resolution` marker | `testArchivingAnAttemptLeavesANumberedHole` |
+| **An asset cannot move outside the journal** | the guardian is a signatory of the asset, and its authority exists only inside an attempt resolution. Enforced by Daml's authorization model, not by convention | `testTheAssetCannotMoveOutsideTheJournal` |
+| The limit of that enforcement is stated and tested | a submitter holding BOTH actor and guardian authority bypasses it. This is a control under segregation of duties and a convention without it | `testSubmittingAsTheGuardianDefeatsIt` | `daml test --files daml/JournalTest.daml` in `step-0-refusal/test` |
 | The whole suite is green | 43/43 | `python3 tools/dashboard.py` |
 | Two OpenZeppelin Canton packages have untested fences | **49 of 62**, at pinned commits `c96456f` and `fbc6392` | `docs/findings-openzeppelin.md`, sealed records in `docs/findings/` |
 | OpenZeppelin's newer code is clean | `scoped-authorization-grant-v1`: 1 fence, 45 scripts, covered | same tool, SDK 3.5.8 via dpm |

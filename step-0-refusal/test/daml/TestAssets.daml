@@ -1,0 +1,37 @@
+-- Application-side assets used by the suites. Written the way an integrator
+-- would write them: the only unusual line is `signatory owner, guardian`.
+module TestAssets where
+
+import Guarded
+
+-- | A guarded asset. Cannot move without the guardian's authority, which
+-- only exists inside an attempt resolution.
+template Wallet
+  with
+    holder : Party
+    guard : Party
+    balance : Decimal
+  where
+    signatory holder, guard
+
+    interface instance Journalled for Wallet where
+      view = JournalledView with owner = holder; guardian = guard
+      perform = do
+        _ <- create this with balance = balance - 1.0
+        pure ()
+
+-- | Names a guardian in its view but leaves it off the signatory line. Looks
+-- guarded, is not. `assertGuarded` exists to catch exactly this.
+template LooseWallet
+  with
+    holder : Party
+    guard : Party
+    balance : Decimal
+  where
+    signatory holder
+
+    interface instance Journalled for LooseWallet where
+      view = JournalledView with owner = holder; guardian = guard
+      perform = do
+        _ <- create this with balance = balance - 1.0
+        pure ()

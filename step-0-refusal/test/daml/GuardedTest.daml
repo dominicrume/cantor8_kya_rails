@@ -1,0 +1,186 @@
+-- The hole everything else sat on: nothing forced an application to use the
+-- journal. This suite decides whether that is now closed.
+--
+-- The honest headline, which test 4 proves rather than asserts: enforcement
+-- holds exactly to the degree that the guardian party is SEPARATED from the
+-- actor. Daml gives a submitter the authority of every party it submits as.
+-- Split guardian and actor between compliance and trading and this is a
+-- control. Let one person submit as both and it is a convention again.
+module GuardedTest where
+
+import DA.Assert ((===))
+import Daml.Script
+
+import Attempt
+import Guarded hiding (owner, guardian)
+import Journal
+import TestAssets
+
+data Env = Env
+  with
+    owner : Party
+    actor : Party
+    guardian : Party
+    auditor : Party
+    journal : ContractId AttemptJournal
+
+env : Script Env
+env = script do
+  o <- allocateParty "Treasury3"
+  a <- allocateParty "Bot3"
+  g <- allocateParty "Compliance"
+  d <- allocateParty "Auditor3"
+  j <- submit [o, a, g] do
+    createCmd AttemptJournal with
+      owner = o
+      actor = a
+      guardian = g
+      auditor = Some d
+      attempts = 0
+      refusals = []
+  pure Env with
+    owner = o
+    actor = a
+    guardian = g
+    auditor = d
+    journal = j
+
+aSalt : Text
+aSalt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+
+-- 1. The journalled path works. Open an attempt, settle it, and the
+--    application's own work runs inside the settlement.
+testTheJournalledPathWorks : Script ()
+testTheJournalledPathWorks = script do
+  e <- env
+  wallet <- submit [e.owner, e.guardian] do
+    createCmd Wallet with holder = e.owner; guard = e.guardian; balance = 100.0
+
+  (attempt, j1) <- submit [e.owner, e.actor] do
+    exerciseCmd e.journal Open with
+      salt = aSalt; action = "withdraw"; detail = "amount=1"
+
+  _ <- submit [e.owner, e.actor] do
+    exerciseCmd attempt SettleAttempt with
+      salt = aSalt; action = "withdraw"; detail = "amount=1"
+      target = toInterfaceContractId @Journalled wallet
+
+  -- The work happened: a new wallet at 99.
+  [(_, w)] <- query @Wallet e.owner
+  w.balance === 99.0
+
+  -- And it is counted.
+  seen <- submit e.auditor do exerciseCmd j1 Expect
+  seen === (1, [])
+
+-- 2. THE TEST. The actor tries to move the asset WITHOUT a journal entry,
+--    and the ledger refuses, because the actor does not hold the guardian's
+--    authority.
+--
+--    Before Guarded.daml this succeeded and nothing recorded it.
+testTheAssetCannotMoveOutsideTheJournal : Script ()
+testTheAssetCannotMoveOutsideTheJournal = script do
+  e <- env
+  wallet <- submit [e.owner, e.guardian] do
+    createCmd Wallet with holder = e.owner; guard = e.guardian; balance = 100.0
+
+  -- Owner and actor together, with no guardian and no attempt. Refused.
+  submitMustFail [e.owner, e.actor] do
+    exerciseCmd (toInterfaceContractId @Journalled wallet) Perform
+
+  -- Owner alone cannot archive it either: the guardian is a signatory.
+  submitMustFail [e.owner] do
+    archiveCmd wallet
+
+  -- Nothing moved and nothing was counted.
+  wallets <- query @Wallet e.owner
+  length wallets === 1
+  seen <- submit e.auditor do exerciseCmd e.journal Expect
+  seen === (0, [])
+
+-- 3. An asset that names a guardian in its view but leaves it off the
+--    signatory line LOOKS guarded and is not. The resolution refuses it
+--    rather than quietly settling something unenforced.
+testAnUnguardedAssetIsRejectedAtResolution : Script ()
+testAnUnguardedAssetIsRejectedAtResolution = script do
+  e <- env
+  loose <- submit e.owner do
+    createCmd LooseWallet with
+      holder = e.owner; guard = e.guardian; balance = 100.0
+
+  (attempt, _) <- submit [e.owner, e.actor] do
+    exerciseCmd e.journal Open with
+      salt = aSalt; action = "withdraw"; detail = "amount=1"
+
+  submitMustFail [e.owner, e.actor] do
+    exerciseCmd attempt SettleAttempt with
+      salt = aSalt; action = "withdraw"; detail = "amount=1"
+      target = toInterfaceContractId @Journalled loose
+
+-- 4. The limit of the whole design, tested rather than asserted.
+--
+--    If one party can submit as BOTH the actor and the guardian, Daml hands
+--    it both authorities and the asset moves with no journal entry. So this
+--    is a control only when the guardian is operated by someone who is not
+--    the actor. Segregation of duties is doing the work; the code only makes
+--    it enforceable.
+--
+--    If this test ever goes red, something changed in Daml's authorization
+--    model and the README must change with it.
+testSubmittingAsTheGuardianDefeatsIt : Script ()
+testSubmittingAsTheGuardianDefeatsIt = script do
+  e <- env
+  wallet <- submit [e.owner, e.guardian] do
+    createCmd Wallet with holder = e.owner; guard = e.guardian; balance = 100.0
+
+  -- Submitting as the guardian too. This SUCCEEDS, with no attempt opened.
+  submit [e.owner, e.guardian] do
+    exerciseCmd (toInterfaceContractId @Journalled wallet) Perform
+
+  -- The work happened and the counter never moved. That is the residual
+  -- hole, and it is a question about who runs which participant, not about
+  -- this code.
+  seen <- submit e.auditor do exerciseCmd e.journal Expect
+  seen === (0, [])
+
+-- 5. The guardian alone cannot move it either. The control is a conjunction,
+--    not a transfer of power to compliance.
+testTheGuardianAloneCannotMoveIt : Script ()
+testTheGuardianAloneCannotMoveIt = script do
+  e <- env
+  wallet <- submit [e.owner, e.guardian] do
+    createCmd Wallet with holder = e.owner; guard = e.guardian; balance = 100.0
+  submitMustFail [e.guardian] do
+    exerciseCmd (toInterfaceContractId @Journalled wallet) Perform
+  submitMustFail [e.guardian] do
+    archiveCmd wallet
+
+-- 6. A refused attempt moves nothing, and the asset is untouched. The
+--    refusal branch never reaches the application's work at all.
+testARefusedAttemptNeverTouchesTheAsset : Script ()
+testARefusedAttemptNeverTouchesTheAsset = script do
+  e <- env
+  wallet <- submit [e.owner, e.guardian] do
+    createCmd Wallet with holder = e.owner; guard = e.guardian; balance = 100.0
+
+  (attempt, j1) <- submit [e.owner, e.actor] do
+    exerciseCmd e.journal Open with
+      salt = aSalt; action = "withdraw"; detail = "amount=900000"
+
+  (record, _) <- submit [e.owner, e.actor] do
+    exerciseCmd attempt RefuseAttempt with
+      salt = aSalt; action = "withdraw"; detail = "amount=900000"
+      rule = "above the per-day ceiling"
+
+  Some r <- queryContractId e.auditor record
+  r.rule === "above the per-day ceiling"
+
+  [(_, w)] <- query @Wallet e.owner
+  w.balance === 100.0
+
+  -- One attempt counted. `refusals` stays empty on purpose: in the two-phase
+  -- flow the journal cannot know at open time which way an attempt will go,
+  -- so the auditor reconciles against the refusal records and the resolution
+  -- markers instead of reading a list off the journal.
+  seen <- submit e.auditor do exerciseCmd j1 Expect
+  seen === (1, [])

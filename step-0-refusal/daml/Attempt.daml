@@ -95,6 +95,7 @@ import DA.Crypto.Text (sha256, toHex)
 import DA.Text qualified as T
 
 import Refusal
+import Guarded
 
 -- | What an attempt commits to, without disclosing it.
 --
@@ -173,6 +174,7 @@ template Resolution
   with
     owner : Party
     actor : Party
+    guardian : Party
     auditor : Optional Party
     n : Int
       -- ^ The position of the attempt this closes.
@@ -180,7 +182,7 @@ template Resolution
       -- ^ Which way it went. Not what it was.
     resolvedAt : Time
   where
-    signatory owner, actor
+    signatory owner, actor, guardian
     observer optional [] (\a -> [a]) auditor
     ensure n >= 1
 
@@ -196,6 +198,17 @@ template Attempt
     actor : Party
       -- ^ Who is trying. Also signatory, so neither can later say the other
       -- opened it alone.
+    guardian : Party
+      -- ^ The party whose authority the guarded asset requires. A SIGNATORY
+      -- here on purpose: that is the mechanism by which guardian authority
+      -- reaches the second transaction, where the work happens.
+      --
+      -- This enforces the journal exactly to the degree that `guardian` is
+      -- separated from `actor`. Daml hands a submitter the authority of every
+      -- party it submits as, so an operator who can submit as the guardian
+      -- can reach the asset directly and you are back to a convention. Split
+      -- them between compliance and trading and it is a control.
+      -- `GuardedTest` tests both directions.
     auditor : Optional Party
       -- ^ Named in advance, as everywhere else here. Sees that an attempt
       -- happened and when. Does not see what it was.
@@ -209,7 +222,7 @@ template Attempt
     openedAt : Time
       -- ^ Ledger effective time, not a clock the submitter writes.
   where
-    signatory owner, actor
+    signatory owner, actor, guardian
 
     observer optional [] (\a -> [a]) auditor
 
@@ -237,7 +250,7 @@ template Attempt
           refusedAt = now
           auditor
         marker <- create Resolution with
-          owner; actor; auditor; n
+          owner; actor; guardian; auditor; n
           outcome = Refused
           resolvedAt = now
         pure (record, marker)
@@ -258,14 +271,21 @@ template Attempt
         salt : Text
         action : Text
         detail : Text
+        target : ContractId Journalled
+          -- ^ The application's own contract. Its work runs HERE, inside
+          -- this choice, because this is the only place the guardian's
+          -- authority exists. That is what makes the journal non-optional
+          -- rather than recommended.
       controller owner, actor
       do
         assertMsg
           "the settlement does not match what the attempt committed to"
           (attemptCommitment salt action detail == commitment)
+        assertGuarded target
+        exercise target Perform
         now <- getTime
         create Resolution with
-          owner; actor; auditor; n
+          owner; actor; guardian; auditor; n
           outcome = Settled
           resolvedAt = now
 
@@ -282,7 +302,7 @@ template Attempt
         assertMsg "an abandonment needs a reason" (reason /= "")
         now <- getTime
         create Resolution with
-          owner; actor; auditor; n
+          owner; actor; guardian; auditor; n
           outcome = Abandoned
           resolvedAt = now
 
