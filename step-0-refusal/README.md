@@ -117,8 +117,26 @@ Two things about it that are limits and not features:
   and no module it imports can see that. What changes is where the hole has to
   be: from "any attempt, invisibly" to "a code path a reviewer can look for".
 
-`testAnUnjournalledAttemptIsStillInvisible` asserts that limit, so the claim
+- **A revert after the check passes loses the attempt.** Raised by Arpit
+  Karnatak of Vacuumlabs on [forum 9084](https://forum.canton.network/t/9084)
+  on 18 October 2026. If the check passes, the work runs, and something later
+  in the same transaction reverts, Daml rolls back the count too. The
+  trade-off has no free side: in the same transaction the record and the work
+  are inseparable but both die on a revert; in its own transaction first the
+  record survives but can describe work that never happened.
+
+  The refuse branch does not have this problem, and that asymmetry is the
+  whole answer. When the check says no, the record is the only thing in the
+  transaction and nothing later can revert it.
+
+`testAnUnjournalledAttemptIsStillInvisible`,
+`testAnAllowedAttemptThatRevertsIsLost` and
+`testARefusalHasNothingLaterThatCanRevertIt` assert those limits, so the claim
 cannot grow past the code without a test going red.
+
+**Why offchain logging is still right for reverts.** The difference is
+incentive, not mechanism. Nobody gains by hiding a crash. Somebody can gain by
+losing a refusal. Only the second needs to sit where it cannot be dropped.
 
 ## What it does not do
 
@@ -139,7 +157,7 @@ daml build
 
 Then add the DAR as a `data-dependencies` entry in your own `daml.yaml`.
 
-Twenty scripts cover it: eight on the record and twelve on the journal. The
+Twenty two scripts cover it: eight on the record and fourteen on the journal. The
 ones that matter are a lending protocol and a collateral engine using it with
 no concept of a payee, an auditor who sees every record while a stranger sees
 none, `testAWithheldRefusalIsDetectable`, and `testTheAuditorCannotSeeWhatWasAllowed`. `python3 tests/daml_tests.py` from the
