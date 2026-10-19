@@ -24,7 +24,7 @@ I ask because of what I have shipped, not what I would like to do.
 
 Three pull requests merged into the Canton Developer Hub. Eight fixes to
 the Cantor8 hackathon toolkit, four issues and four pull requests. A Daml
-package, canton-refusal-record, with 20 test scripts, where deleting any
+package, canton-refusal-record, with 37 test scripts, where deleting any
 spending rule turns a named test red. A Dev Fund proposal open under RFP
 27.
 

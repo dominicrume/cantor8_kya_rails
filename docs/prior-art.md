@@ -151,3 +151,118 @@ Read it before any pitch. Then say the three defensible things and stop.
 The reason to publish a list of people who got somewhere first is the same as
 the reason `SHORTCUTS.md` exists: a claim that survives a stranger checking it
 is worth more than a claim that sounds better.
+
+---
+
+## Added 19 October 2026, after researching the two-phase attempt design
+
+### Hearsay, arXiv:2609.32495 — cite it, and know it cuts at us
+
+*"Hearsay: Can an Auditor Trust the Record a Deployed Agent Harness Writes?"*
+Dai, Yang, Shao, Ng, Liu, Ju, He, Hu. Submitted **26 September 2026**, cs.CR.
+Verified to exist with a positive and negative control on arXiv.
+
+Its definition is the one this repository has been circling:
+
+> a record is *evidentiary* when a reader who was not there can check it
+> without trusting the writer
+
+Across sixteen deployed agent frameworks, none writes one.
+
+**The finding that is aimed straight at our receipt chain:** the authors
+injected 28 omissions and fabrications. An append-only log kept **outside** the
+harness caught all 28. **A hash chain over the harness's own record passed all
+28.**
+
+That is `knowyouragenticai-receipts` with no anchor, described precisely. SPEC
+6c already says the digest proves nothing until it is pinned somewhere the
+producer does not control, and this paper is the independent demonstration of
+why.
+
+It also validates the Daml half. `Journal.daml` and `Attempt.daml` ARE the
+second writer the paper argues for: the ledger, not the application, assigns
+the contract id and the record time.
+
+**Cite it in anything that mentions the chain.** A reviewer who knows it and
+sees it uncited will reach for it as a weapon. Three weeks old at time of
+writing, so most readers will not know it yet.
+
+### Hyperledger Fabric — the nearest shipped system, and it shipped first
+
+Fabric's own docs:
+
+> Failed transactions are not applied to the ledger, but they are retained for
+> audit purposes
+
+with a 28-value `TxValidationCode` enum in `fabric-protos/peer/transaction.proto`,
+including `ENDORSEMENT_POLICY_FAILURE` and `MVCC_READ_CONFLICT`.
+
+**Own this up front rather than have it raised.** The real distinction: Fabric
+retains **consensus-layer** validation failures. A chaincode that refuses on
+application policy during endorsement never reaches the orderer, so an
+application-level refusal is not on Fabric's ledger either. That is the same
+gap, in a different place.
+
+Source: hyperledger-fabric.readthedocs.io/en/latest/peers/peers.html and
+github.com/hyperledger/fabric-protos.
+
+### Ethereum — the attempt is visible, the decision is not
+
+A reverted transaction is included in a block and pays gas, so the attempt is
+observable. But logs emitted before the revert are **discarded**: the
+execution specs return an empty log tuple on any error. EIP-7889, "Emit revert
+reason in receipts", exists for this and is **Stagnant**.
+
+So the EVM proves something was tried and says nothing about why it failed.
+
+### Daml propose-accept — the shape is theirs, not ours
+
+The two-transaction shape is the documented Daml propose-accept pattern. It
+exists to solve an **authority** problem: no party can unilaterally create a
+contract binding another. `Attempt.daml` reuses the shape for a
+**durability-of-evidence** problem. Credit the pattern; claim only the purpose.
+
+Daml Finance's allocate / approve / execute is also two-phase, and its
+changelog is explicit that the staging exists to *detect settlement failures
+earlier*, not to *record them*. Different goal.
+
+**Not found, which is not the same as absent:** no Daml doc, forum thread,
+daml-finance module or public repo using propose-accept for failed-attempt
+evidence. Keyword search only. Ask on the forum before claiming it.
+
+### Write-ahead logging — the correct analogue
+
+Mohan, Haderle, Lindsay, Pirahesh, Schwarz. *ARIES*, ACM TODS 17(1):94-162,
+March 1992. DOI 10.1145/128765.128770.
+
+Make the intention durable before the mutation, so a crash between the two
+leaves a readable record. Identical mechanism. The difference is who reads it:
+WAL recovers the system, this one informs an auditor.
+
+**Do not cite Sagas** (Garcia-Molina and Salem, SIGMOD 1987). That pattern is
+about compensating actions restoring consistency, not retaining evidence. If
+it comes up, it is what this is *not*.
+
+### Regulation — the overclaim waiting to happen
+
+**No rule found requires a firm to evidence that a specific automated control
+fired on a specific occasion.** The nearest obligations:
+
+| Rule | What it actually says |
+|---|---|
+| **SEC 17a-3(a)(6)** | memorandum of each order **"whether executed or unexecuted"**. The best hook, and it is about orders, not controls |
+| **FINRA 3120** | controls must be **tested**, results reported to senior management annually |
+| **FINRA 3110** | supervisory **reviews** evidenced in writing. Human review, not automated control |
+| **RTS 6 Art 21(5)** | DEA providers keep records of **alerts generated by monitoring systems**. Closest thing in MiFID II, and narrow |
+| **PCI-DSS 10.2.1.4** | log all **invalid logical access attempts**. Authentication, not business policy |
+
+RTS 6 Art 15(6) covers **overriding** a blocked order, and requires a
+procedure for the override, **not a record of the block**.
+
+The defensible sentence, and the only one to use:
+
+> The design **anticipates** a requirement rather than satisfying an existing
+> one.
+
+This is the same failure mode as the EU AI Act overclaim. It is written down
+here so it does not happen twice.

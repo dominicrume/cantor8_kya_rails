@@ -18,7 +18,7 @@ and the one the organisers are shortest of. It gets you onto a team as the
 person who can actually write the contract rather than the person who can do
 a bit of everything.
 
-You have two Daml packages on SDK 3.4.11, 125 test scripts, 32 spending
+You have two Daml packages on SDK 3.4.11, 140 test scripts, 32 spending
 fences each proven load-bearing, and an on-ledger design a Canton Community
 Tech Partner reviewed. That answer is not a stretch.
 
@@ -48,7 +48,7 @@ The evidence is public:
 
 - two Daml packages, one reusable with no dependencies beyond the standard
   library
-- 125 Daml test scripts, 43 test suites, 82 mutations where each one breaks
+- 140 Daml test scripts, 43 test suites, 82 mutations where each one breaks
   something real and requires a *named* test to go red
 - a written specification implemented three times independently and agreeing
 - three pull requests merged into the official Canton Developer Hub

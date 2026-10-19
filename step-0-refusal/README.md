@@ -129,6 +129,23 @@ Two things about it that are limits and not features:
   whole answer. When the check says no, the record is the only thing in the
   transaction and nothing later can revert it.
 
+- **The commitment binds but did not hide, until 19 October.** The first
+  version hashed the action and detail with no salt. `sha256` over "withdraw"
+  and a round amount is brute-forced in seconds by anyone who guesses the
+  format, and payments are exactly that low-entropy case. The claim that an
+  open attempt revealed nothing was **false**. It now takes a random salt,
+  held off the ledger and revealed at resolution.
+  `testTheCommitmentHidesAndNotJustBinds` holds it.
+
+- **Signatories can archive an open attempt.** Daml's implicit `Archive` is
+  controlled by the signatories, and in the ordinary case one firm controls
+  both parties. So the subject of the evidence can delete it. That cannot be
+  prevented, so it is made **detectable**: every legitimate ending mints a
+  `Resolution` marker carrying only the position and the outcome kind. An
+  attempt archived with no resolution leaves a numbered hole in the auditor's
+  arithmetic. `testArchivingAnAttemptLeavesANumberedHole` performs the
+  deletion and then finds it.
+
 `testAnUnjournalledAttemptIsStillInvisible`,
 `testAnAllowedAttemptThatRevertsIsLost` and
 `testARefusalHasNothingLaterThatCanRevertIt` assert those limits, so the claim
@@ -157,7 +174,7 @@ daml build
 
 Then add the DAR as a `data-dependencies` entry in your own `daml.yaml`.
 
-Twenty two scripts cover it: eight on the record and fourteen on the journal. The
+Thirty seven scripts cover it: eight on the record, fourteen on the journal and fifteen on two-phase attempts. The
 ones that matter are a lending protocol and a collateral engine using it with
 no concept of a payee, an auditor who sees every record while a stranger sees
 none, `testAWithheldRefusalIsDetectable`, and `testTheAuditorCannotSeeWhatWasAllowed`. `python3 tests/daml_tests.py` from the

@@ -1,0 +1,293 @@
+-- | Two-phase attempts: a record that survives a revert.
+--
+-- THE OBJECTION THIS EXISTS FOR. Arpit Karnatak of Vacuumlabs, on
+-- forum.canton.network/t/9084, 18 October 2026:
+--
+--   "We can commit when a check fails, but then there can be a case when
+--    checks pass but something else fails/reverts later on in the
+--    transaction, and that will not be committed and cause inconsistencies
+--    for what goes onchain, if we use chain as the source of truth."
+--
+-- He is right, and Journal.daml's `Allow` has exactly that hole. The count is
+-- taken in the same transaction as the work, so a revert takes the count with
+-- it. The ledger then under-reports attempts and an auditor dividing by it is
+-- dividing by a number that quietly lost its losers.
+--
+-- WHY IT CANNOT BE FIXED IN ONE TRANSACTION. Daml commits whole or not at
+-- all. There is no way for a record written inside a transaction to survive
+-- that transaction aborting; that is atomicity, not a missing feature. So any
+-- fix MUST span more than one transaction. Once you accept that, the shape is
+-- forced:
+--
+--   TX1  open the attempt. It contains nothing else, so nothing can revert it.
+--   TX2  do the work, consuming the attempt. If this reverts, TX1 still stands.
+--
+-- An attempt left OPEN is therefore the evidence that something was tried and
+-- did not complete. The absence of a resolution is the record. That is the
+-- whole trick, and it is why this works where a same-transaction write cannot.
+--
+-- PRIOR ART, named up front so nobody has to raise it.
+--
+-- The mechanism is WRITE-AHEAD LOGGING. The defining WAL property is that the
+-- intention is made durable BEFORE the mutation, so a crash between the two
+-- leaves a readable record of what was going to happen. That is transaction 1
+-- exactly. Canonical reference: Mohan, Haderle, Lindsay, Pirahesh and
+-- Schwarz, "ARIES", ACM TODS 17(1):94-162, 1992. The only difference here is
+-- the consumer of the durability: WAL makes the intention durable so the
+-- SYSTEM can recover; this makes it durable so a THIRD PARTY can audit. Same
+-- mechanism, opposite reader.
+--
+-- The two-transaction shape in Daml is the PROPOSE-ACCEPT pattern, which is
+-- documented and standard. It exists there to solve an authority problem: no
+-- party can unilaterally create a contract binding another. This reuses the
+-- shape for a durability-of-evidence problem instead. Credit where it is due;
+-- the shape is not ours.
+--
+-- Two-phase commit's prepare phase is a weaker analogue, because a prepare
+-- record is a participant-local artefact meant to be forgotten after commit,
+-- not evidence meant to be read later. The SAGA pattern (Garcia-Molina and
+-- Salem, SIGMOD 1987) is NOT the analogue and should not be cited as one: it
+-- is about compensating actions restoring consistency, not about retaining
+-- evidence.
+--
+-- Hyperledger Fabric already retains failed transactions on its ledger with a
+-- validation code. Anyone who knows Fabric will say so, and they are right.
+--
+-- So what, if anything, is actually ours: using the UNRESOLVED record as the
+-- artefact rather than as a recovery aid, and pairing it with a commitment so
+-- the resolution cannot lie about what the attempt was. That is a modest
+-- claim and it is the one that survives.
+--
+-- WHY THE AUDITOR STILL CANNOT SEE WHAT YOU DID. An attempt discloses its
+-- position, its time and a `commitment`, and nothing else. The commitment is
+-- sha256 over the action and detail, so it reveals nothing and fixes
+-- everything: at resolution time the refusal must carry an action and detail
+-- that hash to it, or the choice fails.
+--
+-- So the operator cannot open an attempt to move 90,000 and then resolve it
+-- as a refused request for 10. The ledger will not let them. That is the same
+-- non-equivocation property the receipt chain gets from SPEC 6c, enforced
+-- here by the ledger instead of by a verifier.
+--
+-- WHAT AN AUDITOR RECONCILES.
+--
+--     attempts            50   from the journal
+--     refusal records     12   disclosed to them
+--     still open           3   tried, never resolved: reverted or in flight
+--     ------------------------
+--     settled             35   allowed, and they learn nothing else about them
+--
+-- Every number on the left comes off the ledger. None of them is the
+-- operator's word.
+--
+-- WHEN NOT TO USE THIS. If the work cannot revert after the check, one
+-- transaction is simpler and cheaper, and `Journal.Allow` is correct. Use
+-- this when the work can fail for reasons the check does not cover, which in
+-- payments and settlement is most of the time.
+--
+-- WHAT IT STILL DOES NOT DO. An open attempt cannot distinguish "the work
+-- reverted" from "the work is still in flight" without a timeout the
+-- application chooses. And nothing here forces an application to open an
+-- attempt before acting; that is a design contract, same as the journal.
+module Attempt where
+
+import DA.Crypto.Text (sha256, toHex)
+import DA.Text qualified as T
+
+import Refusal
+
+-- | What an attempt commits to, without disclosing it.
+--
+-- A COMMITMENT SCHEME NEEDS TWO PROPERTIES AND THE FIRST VERSION HAD ONE.
+--
+-- Binding: the committer cannot later open it to a different value. Second
+-- preimage resistance gives that, and the first version had it.
+--
+-- Hiding: a reader cannot learn the value from the commitment. The first
+-- version did NOT have it, and the claim that an open attempt revealed
+-- nothing was false. `sha256("8:withdrawamount=900000")` is brute-forced in
+-- seconds by anyone who guesses the format, and payment actions are exactly
+-- the low-entropy case where that works: a handful of verbs and round
+-- amounts. The whole input space is enumerable.
+--
+-- So the commitment takes a `salt`, which the opener generates at random and
+-- keeps OFF the ledger, revealing it only at resolution. Hiding is restored
+-- and binding is untouched.
+--
+-- The salt must be unpredictable and fresh per attempt. Reuse it and two
+-- attempts over the same action collide visibly, which hands a reader the
+-- equality they were not supposed to learn.
+--
+-- An operator who loses a salt cannot resolve that attempt. It stays open,
+-- which the auditor reads as unresolved, which is honest: an attempt nobody
+-- can account for is exactly what an unresolved attempt means.
+--
+-- Length-prefixed so the split is unambiguous: without it, action "ab" with
+-- detail "c" and action "a" with detail "bc" would commit to the same digest
+-- and an operator could move the boundary after the fact. The salt is
+-- length-prefixed for the same reason.
+--
+-- `toHex` first because Daml's `sha256` takes a hex string, not arbitrary
+-- text. So the digest is sha256 over the UTF-8 bytes of the prefixed string,
+-- which is what any other language computes from those bytes.
+attemptCommitment : Text -> Text -> Text -> Text
+attemptCommitment salt action detail =
+  sha256 (toHex (
+    show (T.length salt) <> ":" <> salt <>
+    show (T.length action) <> ":" <> action <> detail))
+
+-- | How an attempt ended. Deliberately says nothing about WHAT it was.
+data Outcome
+  = Settled
+    -- ^ The work completed. The auditor learns no more than this.
+  | Refused
+    -- ^ A rule stopped it. The RefusalRecord carries the detail.
+  | Abandoned
+    -- ^ Closed on purpose without acting, with a reason on the record.
+  deriving (Eq, Show)
+
+-- | Proof that an attempt ended, and how.
+--
+-- WHY THIS EXISTS. Daml gives every template an implicit `Archive` choice
+-- controlled by its signatories. `owner` and `actor` are both signatories,
+-- and in the ordinary case one firm controls both parties. So without this,
+-- the subject of the evidence can simply archive an open attempt and an
+-- auditor querying active contracts sees a clean ledger.
+--
+-- Every legitimate ending now mints one of these. The auditor's arithmetic
+-- then closes:
+--
+--     attempts      50   monotonic counter, cannot be rewound
+--     resolutions   47   these markers
+--     still open     2
+--     ----------------
+--     unaccounted    1   an attempt archived with no resolution
+--
+-- That last line is the finding. Destroying the evidence leaves a hole with
+-- a number on it.
+--
+-- It leaks nothing new. An auditor who can count already knew that attempts
+-- minus refusals minus open equals settled; this only makes it checkable
+-- per position instead of in aggregate.
+template Resolution
+  with
+    owner : Party
+    actor : Party
+    auditor : Optional Party
+    n : Int
+      -- ^ The position of the attempt this closes.
+    outcome : Outcome
+      -- ^ Which way it went. Not what it was.
+    resolvedAt : Time
+  where
+    signatory owner, actor
+    observer optional [] (\a -> [a]) auditor
+    ensure n >= 1
+
+-- | One attempt, opened before the work and resolved after it.
+--
+-- Left open, this IS the evidence that something was tried and did not
+-- complete. Resolved, it is archived and the resolution says which way it
+-- went.
+template Attempt
+  with
+    owner : Party
+      -- ^ Accountable for the system. Signatory.
+    actor : Party
+      -- ^ Who is trying. Also signatory, so neither can later say the other
+      -- opened it alone.
+    auditor : Optional Party
+      -- ^ Named in advance, as everywhere else here. Sees that an attempt
+      -- happened and when. Does not see what it was.
+    n : Int
+      -- ^ Position, taken from the journal in the same transaction that
+      -- opened this. The number the auditor divides by.
+    commitment : Text
+      -- ^ `attemptCommitment action detail`. Binds this attempt to one
+      -- specific action without revealing it, so a resolution cannot
+      -- describe a different one.
+    openedAt : Time
+      -- ^ Ledger effective time, not a clock the submitter writes.
+  where
+    signatory owner, actor
+
+    observer optional [] (\a -> [a]) auditor
+
+    ensure n >= 1 && commitment /= ""
+
+    -- | The rule said no. Archives the attempt and writes the refusal, which
+    -- must match what was committed to.
+    --
+    -- This is the only choice that reveals the action, and it reveals it only
+    -- on the branch where the auditor is entitled to see it.
+    choice RefuseAttempt : (ContractId RefusalRecord, ContractId Resolution)
+      with
+        salt : Text
+        action : Text
+        detail : Text
+        rule : Text
+      controller owner, actor
+      do
+        assertMsg
+          "the refusal does not match what the attempt committed to"
+          (attemptCommitment salt action detail == commitment)
+        now <- getTime
+        record <- create RefusalRecord with
+          owner; actor; action; detail; rule
+          refusedAt = now
+          auditor
+        marker <- create Resolution with
+          owner; actor; auditor; n
+          outcome = Refused
+          resolvedAt = now
+        pure (record, marker)
+
+    -- | The work succeeded. Archives the attempt and writes nothing about
+    -- what it was.
+    --
+    -- The auditor's whole view of an allowed attempt is that it opened and
+    -- then stopped being open. No AcceptanceRecord, deliberately. Adding one
+    -- would hand over the actions that were allowed, which is the thing this
+    -- design exists to avoid.
+    --
+    -- The caller does its real work in this same transaction. If that work
+    -- reverts, this choice reverts with it and the attempt stays open, which
+    -- is the entire point.
+    choice SettleAttempt : ContractId Resolution
+      with
+        salt : Text
+        action : Text
+        detail : Text
+      controller owner, actor
+      do
+        assertMsg
+          "the settlement does not match what the attempt committed to"
+          (attemptCommitment salt action detail == commitment)
+        now <- getTime
+        create Resolution with
+          owner; actor; auditor; n
+          outcome = Settled
+          resolvedAt = now
+
+    -- | Closed on purpose rather than left dangling. Says so on the record.
+    --
+    -- An operator who abandons attempts honestly looks better than one whose
+    -- ledger is full of open attempts they will not explain, and the auditor
+    -- can tell the two apart.
+    choice AbandonAttempt : ContractId Resolution
+      with
+        reason : Text
+      controller owner, actor
+      do
+        assertMsg "an abandonment needs a reason" (reason /= "")
+        now <- getTime
+        create Resolution with
+          owner; actor; auditor; n
+          outcome = Abandoned
+          resolvedAt = now
+
+    -- | What the auditor can read without asking the operator: that this
+    -- attempt exists, its position, and when it opened. Non-consuming.
+    nonconsuming choice Opened : (Int, Time)
+      controller optional owner identity auditor
+      do pure (n, openedAt)
