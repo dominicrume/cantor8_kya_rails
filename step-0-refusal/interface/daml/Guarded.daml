@@ -1,0 +1,95 @@
+-- | Making the journal non-optional, using Daml's authorization model.
+--
+-- THE HOLE EVERYTHING ELSE SAT ON. Journal.daml and Attempt.daml both ended
+-- with the same admission: nothing forces an application to route through
+-- them. An application with a second path to the same asset bypasses all of
+-- it, and no module it imports can see that. Every other guarantee here was
+-- conditional on the application cooperating, which is not a guarantee.
+--
+-- Honest version of what that meant: an auditor asking "can I trust this
+-- record" was being answered with "if the application chose to write it".
+--
+-- THE FIX IS NOT A CONVENTION. It is Daml's authorization model.
+--
+-- In Daml, a consuming choice needs the authority of the contract's
+-- signatories. A party's authority is only available inside a transaction
+-- where that party is a signatory of a contract being exercised, or an
+-- explicit controller.
+--
+-- So: put a `guardian` party on the ASSET as a signatory, and make the
+-- guardian's authority reachable ONLY from inside an attempt resolution.
+-- Then an application that tries to move the asset any other way does not
+-- have the authority and the ledger refuses it. Not discouraged. Refused.
+--
+--     template Wallet
+--       with owner : Party; guardian : Party; balance : Decimal
+--       where signatory owner, guardian        -- <- the whole fix
+--
+-- The guardian is a signatory of `AttemptJournal`, so its authority flows
+-- into `Open`. `Open` creates an `Attempt` that also carries the guardian as
+-- a signatory, which is what carries that authority into the SECOND
+-- transaction, where the work happens. Exercise `SettleAttempt` and the body
+-- has owner, actor and guardian authority, enough to consume the asset.
+-- Exercise anything on the asset outside that, and you have owner authority
+-- and nothing else.
+--
+-- WHAT AN APPLICATION HAS TO DO. Implement `Journalled` on whatever it wants
+-- journalled, and name the guardian as a signatory of it. That is the whole
+-- integration. The work itself stays entirely the application's: `perform`
+-- is its own code, and this module never sees inside it.
+--
+-- WHAT THIS DOES NOT DO, and it is a smaller hole than the one it closes.
+-- An application can still create assets that do NOT name the guardian, and
+-- those are outside the journal. But that is now visible in the template
+-- definition rather than hidden in a code path: a reviewer reads the
+-- `signatory` line and knows immediately. The question moves from "audit
+-- every call site" to "read one line per template", which is the difference
+-- between an audit that is possible and one that is not.
+--
+-- The guardian party is also a dependency. If its participant is down,
+-- nothing moves. That is the cost of the guarantee and it should be a
+-- deliberate choice, not a surprise.
+module Guarded where
+
+-- | What the guard needs to know about a thing it guards.
+data JournalledView = JournalledView
+  with
+    owner : Party
+      -- ^ Whose asset this is.
+    guardian : Party
+      -- ^ The journal's party. MUST be a signatory of the implementing
+      -- template, or the guarantee is not there. `assertGuarded` checks it.
+  deriving (Eq, Show)
+
+-- | Implemented by anything an application wants to be unable to move
+-- without a journal entry.
+interface Journalled where
+  viewtype JournalledView
+
+  -- | The application's own work. This module never looks inside it and does
+  -- not want to: the point is that WHEN it runs is constrained, not what it
+  -- does.
+  perform : Update ()
+
+  -- | The only way the work runs. Controlled by the guardian as well as the
+  -- owner, so it cannot be exercised outside a context that carries guardian
+  -- authority, and the only such context is an attempt resolution.
+  choice Perform : ()
+    controller (view this).owner, (view this).guardian
+    do perform this
+
+-- | Fails unless the guardian really is a signatory of the implementing
+-- contract.
+--
+-- Naming the guardian in the view while leaving it off the `signatory` line
+-- would produce something that looks guarded, passes a glance, and is not.
+-- Called on every resolution, so a template wired up wrongly fails the first
+-- time it is used rather than silently never being enforced.
+assertGuarded : ContractId Journalled -> Update ()
+assertGuarded cid = do
+  guarded <- fetch cid
+  let v = view guarded
+  signatories <- signatory <$> pure guarded
+  assertMsg
+    "the guardian is not a signatory of this contract, so it is not guarded"
+    (v.guardian `elem` signatories)

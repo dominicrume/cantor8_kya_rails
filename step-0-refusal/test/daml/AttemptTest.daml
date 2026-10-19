@@ -10,27 +10,42 @@ import Daml.Script
 
 import Attempt
 import Journal
+import Guarded hiding (owner, guardian)
+import TestAssets
 import Refusal
 
 data Two = Two
   with
     owner : Party
     actor : Party
+    guardian : Party
     auditor : Party
     journal : ContractId AttemptJournal
+    wallet : ContractId Wallet
 
 twoSetup : Script Two
 twoSetup = script do
-  owner   <- allocateParty "Treasury2"
-  actor   <- allocateParty "Bot2"
-  auditor <- allocateParty "Auditor2"
-  journal <- submit [owner, actor] do
+  o <- allocateParty "Treasury2"
+  a <- allocateParty "Bot2"
+  g <- allocateParty "Compliance2"
+  d <- allocateParty "Auditor2"
+  j <- submit [o, a, g] do
     createCmd AttemptJournal with
-      owner; actor
-      auditor = Some auditor
+      owner = o
+      actor = a
+      guardian = g
+      auditor = Some d
       attempts = 0
       refusals = []
-  pure Two with owner; actor; auditor; journal
+  w <- submit [o, g] do
+    createCmd Wallet with holder = o; guard = g; balance = 1000.0
+  pure Two with
+    owner = o
+    actor = a
+    guardian = g
+    auditor = d
+    journal = j
+    wallet = w
 
 -- 1. Opening takes the number and the attempt in one transaction that holds
 --    nothing else. Both are on the ledger before any work is attempted.
@@ -72,6 +87,7 @@ testTheRecordSurvivesARevert = script do
         salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
         action = "withdraw"
         detail = "amount=900000"
+        target = toInterfaceContractId @Journalled s.wallet
       *> createCmd RefusalRecord with
            owner = s.owner
            actor = s.actor
@@ -111,6 +127,7 @@ testSettlingRevealsNothing = script do
       salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
       action = "pay"
       detail = "40000 to supplier-12"
+      target = toInterfaceContractId @Journalled s.wallet
   open <- query @Attempt s.auditor
   length open === 0
   records <- query @RefusalRecord s.auditor
@@ -173,6 +190,7 @@ testTheResolutionCannotLieAboutTheAttempt = script do
       salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
       action = "withdraw"
       detail = "amount=10"
+      target = toInterfaceContractId @Journalled s.wallet
 
   -- The truth still works.
   (_, _) <- submit [s.owner, s.actor] do
@@ -253,7 +271,7 @@ testTheAuditorCanAccountForEveryAttempt = script do
   (a1, j1) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "one"
   submit [s.owner, s.actor] do
-    exerciseCmd a1 SettleAttempt with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "one"
+    exerciseCmd a1 SettleAttempt with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "one"; target = toInterfaceContractId @Journalled s.wallet
 
   (a2, j2) <- submit [s.owner, s.actor] do
     exerciseCmd j1 Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "two"
@@ -266,7 +284,7 @@ testTheAuditorCanAccountForEveryAttempt = script do
     exerciseCmd j2 Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "three"
   now <- getTime
   submitMustFail [s.owner, s.actor] $
-    exerciseCmd a3 SettleAttempt with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "three"
+    exerciseCmd a3 SettleAttempt with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "three"; target = toInterfaceContractId @Journalled s.wallet
       *> createCmd RefusalRecord with
            owner = s.owner; actor = s.actor
            action = ""; detail = "reverted"; rule = "x"
@@ -347,6 +365,7 @@ testArchivingAnAttemptLeavesANumberedHole = script do
       salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
       action = "pay"
       detail = "one"
+      target = toInterfaceContractId @Journalled s.wallet
 
   (a2, j2) <- submit [s.owner, s.actor] do
     exerciseCmd j1 Open with
@@ -354,9 +373,19 @@ testArchivingAnAttemptLeavesANumberedHole = script do
       action = "pay"
       detail = "two"
 
-  -- The operator destroys the evidence. This SUCCEEDS. There is no way to
-  -- stop signatories archiving their own contract.
-  submit [s.owner, s.actor] do
+  -- The operator tries to destroy the evidence. It now FAILS. Adding the
+  -- guardian as a signatory of the Attempt closed this: archiving needs
+  -- every signatory, so owner and actor together are not enough.
+  --
+  -- This was a mitigation and is now a prevention, and it came free with the
+  -- enforcement work rather than being designed for.
+  submitMustFail [s.owner, s.actor] do
+    archiveCmd a2
+
+  -- With the guardian it succeeds, which is the same segregation-of-duties
+  -- caveat as everywhere else: this is a control when compliance and trading
+  -- are separate parties, and a convention when one person submits as both.
+  submit [s.owner, s.actor, s.guardian] do
     archiveCmd a2
 
   -- The auditor's arithmetic finds it anyway.
@@ -389,6 +418,7 @@ testAResolutionRevealsOnlyTheOutcome = script do
       salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
       action = "pay"
       detail = "90000 USD to merchant-4471"
+      target = toInterfaceContractId @Journalled s.wallet
   Some r <- queryContractId s.auditor marker
   r.n === 1
   r.outcome === Settled

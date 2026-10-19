@@ -1,0 +1,21 @@
+# The interface lives in its own package, on Daml's own advice:
+#
+#   "This package defines both interfaces and templates. This may make this
+#    package and its dependents not upgradeable. It is recommended that
+#    interfaces are defined in their own package separate from their
+#    implementations."
+#
+# That recommendation matters more here than usual. Canton's upgrade check
+# refuses a version that drops a data type its predecessor had, so a package
+# that is hard to upgrade is a package that is hard to fix. An application
+# takes a data-dependency on THIS, implements `Journalled` on its own asset,
+# and never has to depend on our templates at all.
+sdk-version: 3.4.11
+name: canton-journal-interface
+source: daml
+version: 1.0.0
+dependencies:
+  - daml-prim
+  - daml-stdlib
+build-options:
+  - --target=2.1

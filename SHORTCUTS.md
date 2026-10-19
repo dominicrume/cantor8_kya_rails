@@ -29,3 +29,22 @@
 2026-09-26 | CORRECTION to commit 921128b. That commit says the Dev Fund's integration milestone "had not happened, and the reason was in the code rather than in the outreach". **That is false, and it is the comfortable half of the truth.** The code was one reason nobody could say yes: `ChargeRefused` sat inside `KyaMandate` with `payee` and `amount` on it, so a lending or collateral app could not depend on it. But checking the record rather than asserting it: **nobody has ever been asked to integrate.** `docs/outreach/` contains no message to anyone proposing they adopt the pattern, `docs/conversations.md` holds three rows and none of them is an integration conversation, and the one rule that file states about asking is "not *would you use this*". So the honest version is that both were missing, and the outreach was missing more completely: the code made a yes awkward, while the absence of an ask made a yes impossible. Writing it the other way round turned a distribution problem into an engineering problem, which is the more comfortable one to have and the one an engineer reaches for. | it was an assertion about cause, made without looking, in a commit message | the milestone needs two integrations and there is still no plan for when to ask or whom. Decide that before building anything else for it. `canton-refusal-record` makes a yes cheap; it does not make anyone say it.
 
 2026-09-26 | Two smaller overstatements in the same work, both now fixed in `step-0-refusal/README.md`. "Nobody could take the pattern without taking your whole mandate" was too strong: anyone could copy fifteen lines. What they could not do was DEPEND on it. And the three-row example table mixed two rows lifted verbatim from the test suite with one invented for illustration, without saying which was which, which invites a reader to check one and trust the rest. The rows are labelled now.
+
+## `DA.Crypto.Text` is an alpha module
+
+`attemptCommitment` in `step-0-refusal/daml/Attempt.daml` uses `sha256` and
+`toHex` from `DA.Crypto.Text`, which Daml marks as alpha: *"It can change
+without notice."* The build warning is suppressed with
+`-Wno-crypto-text-is-alpha`, and that suppression is recorded here rather than
+left silent.
+
+**What it means in practice.** If the module's behaviour changes, every
+commitment already written becomes unverifiable, because a resolution has to
+reproduce the digest. There is no migration path for a contract already on a
+ledger.
+
+**Why it was accepted.** There is no stable alternative in Daml-LF 2.1, and a
+commitment computed off-ledger and passed in would move the one load-bearing
+computation out of the thing enforcing it.
+
+Added 19 October 2026.

@@ -115,6 +115,10 @@ template AttemptJournal
     actor : Party
       -- ^ Whose attempts are being counted. Also a signatory, so neither
       -- party can later claim the other inflated or deflated the number.
+    guardian : Party
+      -- ^ The party a guarded asset requires. A signatory here, so its
+      -- authority flows into `Open` and onto the `Attempt` it creates.
+      -- See Guarded.daml for what this does and what it does not do.
     auditor : Optional Party
       -- ^ Named once, in advance. This party reads the DENOMINATOR. `None`
       -- discloses to nobody, and that is the default, same as Refusal.
@@ -128,7 +132,7 @@ template AttemptJournal
       -- be withheld. A withheld reason then leaves a position with no record
       -- against it, which is exactly the detection this module exists for.
   where
-    signatory owner, actor
+    signatory owner, actor, guardian
 
     observer optional [] (\a -> [a]) auditor
 
@@ -202,7 +206,7 @@ template AttemptJournal
         now <- getTime
         let n = attempts + 1
         attempt <- create Attempt with
-          owner; actor; auditor; n
+          owner; actor; guardian; auditor; n
           commitment = attemptCommitment salt action detail
           openedAt = now
         journal <- create this with attempts = n

@@ -14,6 +14,7 @@ data Setup = Setup
   with
     owner : Party
     actor : Party
+    guardian : Party
     auditor : Party
     journal : ContractId AttemptJournal
 
@@ -21,16 +22,24 @@ data Setup = Setup
 -- configuration. `auditor = None` is covered by test 7.
 setup : Script Setup
 setup = script do
-  owner   <- allocateParty "Treasury"
-  actor   <- allocateParty "RebalanceBot"
-  auditor <- allocateParty "Auditor"
-  journal <- submit [owner, actor] do
+  o <- allocateParty "Treasury"
+  a <- allocateParty "RebalanceBot"
+  g <- allocateParty "Compliance1"
+  d <- allocateParty "Auditor"
+  j <- submit [o, a, g] do
     createCmd AttemptJournal with
-      owner; actor
-      auditor = Some auditor
+      owner = o
+      actor = a
+      guardian = g
+      auditor = Some d
       attempts = 0
       refusals = []
-  pure Setup with owner; actor; auditor; journal
+  pure Setup with
+    owner = o
+    actor = a
+    guardian = g
+    auditor = d
+    journal = j
 
 -- 1. Both paths increment. If `Allow` ever stops counting, the denominator
 --    becomes the count of refusals and the auditor's arithmetic is destroyed
@@ -143,9 +152,12 @@ testTheOwnerCanReadTheirOwnCount : Script ()
 testTheOwnerCanReadTheirOwnCount = script do
   owner <- allocateParty "Fund"
   actor <- allocateParty "Bot"
-  j <- submit [owner, actor] do
+  guardian <- allocateParty "G1"
+  j <- submit [owner, actor, guardian] do
     createCmd AttemptJournal with
-      owner; actor
+      owner = owner
+      actor = actor
+      guardian = guardian
       auditor = None
       attempts = 0
       refusals = []
@@ -161,10 +173,13 @@ testNoAuditorMeansNoDisclosure : Script ()
 testNoAuditorMeansNoDisclosure = script do
   owner <- allocateParty "Fund2"
   actor <- allocateParty "Bot2"
+  guardian <- allocateParty "G2"
   nosy  <- allocateParty "Nosy"
-  j <- submit [owner, actor] do
+  j <- submit [owner, actor, guardian] do
     createCmd AttemptJournal with
-      owner; actor
+      owner = owner
+      actor = actor
+      guardian = guardian
       auditor = None
       attempts = 0
       refusals = []
@@ -185,11 +200,15 @@ testASecondJournalIsVisibleToTheAuditor = script do
   _ <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Allow with action = "withdraw"
 
-  -- The operator opens a second journal. This SUCCEEDS. There is no key.
-  _ <- submit [s.owner, s.actor] do
+  -- The operator opens a second journal. This SUCCEEDS: Daml-LF 2.1 has no
+  -- contract keys, so nothing refuses it. Note it now needs the guardian as
+  -- well, which means a second journal cannot be opened behind compliance's
+  -- back either.
+  _ <- submit [s.owner, s.actor, s.guardian] do
     createCmd AttemptJournal with
       owner = s.owner
       actor = s.actor
+      guardian = s.guardian
       auditor = Some s.auditor
       attempts = 0
       refusals = []
@@ -231,15 +250,20 @@ testRefusalsCannotExceedAttempts : Script ()
 testRefusalsCannotExceedAttempts = script do
   owner <- allocateParty "Fund3"
   actor <- allocateParty "Bot3"
-  submitMustFail [owner, actor] do
+  guardian <- allocateParty "G3"
+  submitMustFail [owner, actor, guardian] do
     createCmd AttemptJournal with
-      owner; actor
+      owner = owner
+      actor = actor
+      guardian = guardian
       auditor = None
       attempts = 1
       refusals = [1, 2]
-  submitMustFail [owner, actor] do
+  submitMustFail [owner, actor, guardian] do
     createCmd AttemptJournal with
-      owner; actor
+      owner = owner
+      actor = actor
+      guardian = guardian
       auditor = None
       attempts = -1
       refusals = []

@@ -155,6 +155,52 @@ cannot grow past the code without a test going red.
 incentive, not mechanism. Nobody gains by hiding a crash. Somebody can gain by
 losing a refusal. Only the second needs to sit where it cannot be dropped.
 
+## Making the journal non-optional
+
+Every guarantee above used to end with the same admission: nothing forced an
+application to route through the journal. An auditor asking "can I trust this
+record" was being answered with "if the application chose to write one".
+
+That is now closed by Daml's authorization model rather than by convention.
+
+Put a **guardian** party on the asset as a signatory. The guardian is also a
+signatory of the journal and of every attempt it opens, so its authority
+reaches the second transaction, where the work happens. An application that
+tries to move the asset any other way does not hold that authority and the
+ledger refuses it.
+
+```daml
+template Wallet
+  with holder : Party; guard : Party; balance : Decimal
+  where
+    signatory holder, guard          -- the whole fix is this line
+
+    interface instance Journalled for Wallet where
+      view = JournalledView with owner = holder; guardian = guard
+      perform = do ...               -- your own work, unchanged
+```
+
+`testTheAssetCannotMoveOutsideTheJournal` proves the bypass fails.
+
+The interface lives in its own package, `canton-journal-interface`, on Daml's
+own advice that mixing interfaces and templates makes a package hard to
+upgrade. An application depends on that one and never has to depend on ours.
+
+**The limit, tested rather than asserted.** Daml gives a submitter the
+authority of every party it submits as. So an operator who can submit as the
+guardian reaches the asset directly, and you are back to a convention.
+`testSubmittingAsTheGuardianDefeatsIt` performs exactly that and shows the
+counter never moves.
+
+**This is a control when the guardian is operated by someone who is not the
+actor, and a convention otherwise.** Segregation of duties does the work; the
+code only makes it enforceable. Say that to an auditor before they say it to
+you.
+
+One thing that came free: because the guardian is a signatory of every
+`Attempt`, the operator can no longer archive an open attempt alone. What was
+a detectable deletion is now a prevented one.
+
 ## What it does not do
 
 - **An attempt that never touches the journal leaves nothing behind.** The
@@ -174,7 +220,7 @@ daml build
 
 Then add the DAR as a `data-dependencies` entry in your own `daml.yaml`.
 
-Thirty seven scripts cover it: eight on the record, fourteen on the journal and fifteen on two-phase attempts. The
+Forty four scripts cover it: eight on the record, thirteen on the journal, seventeen on two-phase attempts and six on enforcement. The
 ones that matter are a lending protocol and a collateral engine using it with
 no concept of a payee, an auditor who sees every record while a stranger sees
 none, `testAWithheldRefusalIsDetectable`, and `testTheAuditorCannotSeeWhatWasAllowed`. `python3 tests/daml_tests.py` from the
