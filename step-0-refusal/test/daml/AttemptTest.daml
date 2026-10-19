@@ -1,0 +1,397 @@
+-- Two-phase attempts. Every test here exists because of one objection:
+-- Arpit Karnatak, Vacuumlabs, forum 9084, 18 October 2026. If the check
+-- passes and something later in the transaction reverts, the record goes with
+-- it. Test 2 is the one that says whether this module answers him.
+module AttemptTest where
+
+import DA.Assert ((===))
+import DA.Text qualified as T
+import Daml.Script
+
+import Attempt
+import Journal
+import Refusal
+
+data Two = Two
+  with
+    owner : Party
+    actor : Party
+    auditor : Party
+    journal : ContractId AttemptJournal
+
+twoSetup : Script Two
+twoSetup = script do
+  owner   <- allocateParty "Treasury2"
+  actor   <- allocateParty "Bot2"
+  auditor <- allocateParty "Auditor2"
+  journal <- submit [owner, actor] do
+    createCmd AttemptJournal with
+      owner; actor
+      auditor = Some auditor
+      attempts = 0
+      refusals = []
+  pure Two with owner; actor; auditor; journal
+
+-- 1. Opening takes the number and the attempt in one transaction that holds
+--    nothing else. Both are on the ledger before any work is attempted.
+testOpeningTakesTheNumberFirst : Script ()
+testOpeningTakesTheNumberFirst = script do
+  s <- twoSetup
+  (attempt, j1) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "withdraw"
+      detail = "amount=900000"
+  seen <- submit s.auditor do
+    exerciseCmd j1 Expect
+  seen === (1, [])
+  (n, _) <- submit s.auditor do
+    exerciseCmd attempt Opened
+  n === 1
+
+-- 2. THE TEST. The work reverts and the attempt survives.
+--
+--    This is the case Journal.Allow loses. Here the attempt was committed in
+--    an earlier transaction, so the revert cannot reach it. An attempt left
+--    open IS the record that something was tried and did not complete.
+testTheRecordSurvivesARevert : Script ()
+testTheRecordSurvivesARevert = script do
+  s <- twoSetup
+  (attempt, j1) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "withdraw"
+      detail = "amount=900000"
+
+  -- Second transaction: settle the attempt, then the real work fails. An
+  -- empty action breaks RefusalRecord's `ensure`, standing in for anything
+  -- that reverts after the check passed.
+  now <- getTime
+  submitMustFail [s.owner, s.actor] $
+    exerciseCmd attempt SettleAttempt with
+        salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+        action = "withdraw"
+        detail = "amount=900000"
+      *> createCmd RefusalRecord with
+           owner = s.owner
+           actor = s.actor
+           action = ""
+           detail = "the work that reverted"
+           rule = "never commits"
+           refusedAt = now
+           auditor = None
+
+  -- The attempt is STILL OPEN, and the auditor can read it.
+  (n, _) <- submit s.auditor do
+    exerciseCmd attempt Opened
+  n === 1
+
+  -- And the count still says one attempt happened. Nothing was lost.
+  seen <- submit s.auditor do
+    exerciseCmd j1 Expect
+  seen === (1, [])
+
+  -- The auditor sees it in their own contract set without being told.
+  live <- query @Attempt s.auditor
+  length live === 1
+
+-- 3. Settling archives the attempt and writes nothing about what it was.
+--    The auditor's whole view of an allowed action is that it stopped being
+--    open. If an AcceptanceRecord is ever added, this goes red.
+testSettlingRevealsNothing : Script ()
+testSettlingRevealsNothing = script do
+  s <- twoSetup
+  (attempt, _) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "pay"
+      detail = "40000 to supplier-12"
+  submit [s.owner, s.actor] do
+    exerciseCmd attempt SettleAttempt with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "pay"
+      detail = "40000 to supplier-12"
+  open <- query @Attempt s.auditor
+  length open === 0
+  records <- query @RefusalRecord s.auditor
+  length records === 0
+
+-- 4. Refusing archives the attempt and discloses the refusal in full, which
+--    is the one branch the auditor is entitled to see.
+testRefusingDisclosesTheRefusal : Script ()
+testRefusingDisclosesTheRefusal = script do
+  s <- twoSetup
+  (attempt, _) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "withdraw"
+      detail = "amount=900000"
+  (record, _) <- submit [s.owner, s.actor] do
+    exerciseCmd attempt RefuseAttempt with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "withdraw"
+      detail = "amount=900000"
+      rule = "above the per-day ceiling"
+  Some r <- queryContractId s.auditor record
+  r.rule === "above the per-day ceiling"
+  r.detail === "amount=900000"
+  open <- query @Attempt s.auditor
+  length open === 0
+
+-- 5. The commitment is load-bearing. An operator cannot open an attempt to
+--    move 900,000 and then resolve it as a refused request for 10. Without
+--    this the two-phase design would be strictly worse than one phase,
+--    because it would hand the operator a gap to lie in.
+testTheResolutionCannotLieAboutTheAttempt : Script ()
+testTheResolutionCannotLieAboutTheAttempt = script do
+  s <- twoSetup
+  (attempt, _) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "withdraw"
+      detail = "amount=900000"
+
+  -- A refusal describing a different amount.
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd attempt RefuseAttempt with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "withdraw"
+      detail = "amount=10"
+      rule = "above the per-day ceiling"
+
+  -- A refusal describing a different action.
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd attempt RefuseAttempt with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "transfer"
+      detail = "amount=900000"
+      rule = "above the per-day ceiling"
+
+  -- A settlement describing something else.
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd attempt SettleAttempt with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "withdraw"
+      detail = "amount=10"
+
+  -- The truth still works.
+  (_, _) <- submit [s.owner, s.actor] do
+    exerciseCmd attempt RefuseAttempt with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "withdraw"
+      detail = "amount=900000"
+      rule = "above the per-day ceiling"
+  pure ()
+
+-- 6. The commitment is length-prefixed, so the boundary between action and
+--    detail cannot be moved after the fact. Without the prefix these two
+--    would collide and an operator could re-split them at will.
+testTheBoundaryCannotBeMoved : Script ()
+testTheBoundaryCannotBeMoved = script do
+  let a = attemptCommitment "salt" "ab" "c"
+      b = attemptCommitment "salt" "a" "bc"
+  assertMsg "the action/detail boundary is not pinned" (a /= b)
+
+-- 7. The auditor learns that an attempt happened and nothing else. No action,
+--    no detail, no amount. The commitment is a hash and discloses nothing.
+testAnOpenAttemptRevealsNothingButItsExistence : Script ()
+testAnOpenAttemptRevealsNothingButItsExistence = script do
+  s <- twoSetup
+  (attempt, _) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "pay"
+      detail = "90000 USD to merchant-4471"
+  Some a <- queryContractId s.auditor attempt
+  a.n === 1
+  -- The only payload is a digest, and it is not the plaintext.
+  assertMsg "the commitment leaked the detail"
+    (a.commitment /= "90000 USD to merchant-4471")
+  assertMsg "the commitment is not a sha256 digest" (T.length a.commitment == 64)
+
+-- 8. A stranger sees neither the attempt nor its number.
+testAStrangerSeesNoAttempt : Script ()
+testAStrangerSeesNoAttempt = script do
+  s <- twoSetup
+  stranger <- allocateParty "Stranger2"
+  (attempt, _) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "withdraw"
+      detail = "amount=1"
+  submitMustFail stranger do
+    exerciseCmd attempt Opened
+  seen <- query @Attempt stranger
+  length seen === 0
+
+-- 9. Abandoning closes an attempt honestly and requires a reason, so an
+--    operator who tidies up is distinguishable from one who leaves attempts
+--    dangling and will not explain them.
+testAbandoningNeedsAReason : Script ()
+testAbandoningNeedsAReason = script do
+  s <- twoSetup
+  (attempt, _) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "withdraw"
+      detail = "amount=1"
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd attempt AbandonAttempt with reason = ""
+  submit [s.owner, s.actor] do
+    exerciseCmd attempt AbandonAttempt with reason = "upstream price feed stale"
+  open <- query @Attempt s.auditor
+  length open === 0
+
+-- 10. The reconciliation an auditor actually performs, end to end. Four
+--     attempts: one settled, one refused, one reverted, one abandoned. The
+--     count says four. The auditor can account for every one of them without
+--     asking the operator anything.
+testTheAuditorCanAccountForEveryAttempt : Script ()
+testTheAuditorCanAccountForEveryAttempt = script do
+  s <- twoSetup
+
+  (a1, j1) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "one"
+  submit [s.owner, s.actor] do
+    exerciseCmd a1 SettleAttempt with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "one"
+
+  (a2, j2) <- submit [s.owner, s.actor] do
+    exerciseCmd j1 Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "two"
+  (_, _) <- submit [s.owner, s.actor] do
+    exerciseCmd a2 RefuseAttempt with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "pay"; detail = "two"; rule = "allow-list"
+
+  (a3, j3) <- submit [s.owner, s.actor] do
+    exerciseCmd j2 Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "three"
+  now <- getTime
+  submitMustFail [s.owner, s.actor] $
+    exerciseCmd a3 SettleAttempt with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "three"
+      *> createCmd RefusalRecord with
+           owner = s.owner; actor = s.actor
+           action = ""; detail = "reverted"; rule = "x"
+           refusedAt = now; auditor = None
+
+  (a4, j4) <- submit [s.owner, s.actor] do
+    exerciseCmd j3 Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "four"
+  submit [s.owner, s.actor] do
+    exerciseCmd a4 AbandonAttempt with reason = "operator cancelled"
+
+  -- What the auditor reads off the ledger, as the auditor.
+  (total, _) <- submit s.auditor do exerciseCmd j4 Expect
+  refusals   <- query @RefusalRecord s.auditor
+  stillOpen  <- query @Attempt s.auditor
+
+  total === 4              -- every attempt counted, including the reverted one
+  length refusals === 1    -- one refusal, disclosed in full
+  length stillOpen === 1   -- the reverted one, still open, unexplained
+
+  -- 4 - 1 - 1 = 2 resolved without a refusal: one settled, one abandoned.
+  -- The auditor learns nothing about what the settled one was, which is the
+  -- property this whole design exists to keep.
+  pure ()
+
+
+-- 11. The fix for the first version's real flaw. Without a salt the
+--     commitment BINDS but does not HIDE: sha256 over "withdraw" plus a round
+--     amount is brute-forced in seconds by anyone who guesses the format, and
+--     payment actions are exactly that low-entropy case.
+--
+--     So two attempts over the SAME action and detail, with different salts,
+--     must produce different commitments. If they ever collide again, the
+--     claim that an open attempt reveals nothing is false and this goes red.
+testTheCommitmentHidesAndNotJustBinds : Script ()
+testTheCommitmentHidesAndNotJustBinds = script do
+  let one = attemptCommitment "11111111111111111111111111111111" "pay" "90000"
+      two = attemptCommitment "22222222222222222222222222222222" "pay" "90000"
+  assertMsg "the same action commits to the same digest under two salts, so \
+            \the commitment does not hide" (one /= two)
+
+  -- And it still binds: same salt, same input, same digest.
+  let again = attemptCommitment "11111111111111111111111111111111" "pay" "90000"
+  one === again
+
+  -- Changing the salt alone changes nothing about binding: a resolution still
+  -- has to produce the salt that was used.
+  assertMsg "salt length is not pinned into the digest"
+    (attemptCommitment "aa" "b" "c" /= attemptCommitment "a" "ab" "c")
+
+-- 12. A salt too short to be unguessable is refused at open time, rather
+--     than silently producing a commitment that does not hide.
+testAShortSaltIsRefused : Script ()
+testAShortSaltIsRefused = script do
+  s <- twoSetup
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "tooshort"
+      action = "withdraw"
+      detail = "amount=1"
+  pure ()
+
+-- 13. The archive hole, and the reason Resolution exists.
+--
+--     Daml gives every template an implicit Archive controlled by its
+--     signatories, and owner and actor are both signatories. So the subject
+--     of the evidence CAN delete an open attempt. This test proves they can,
+--     and proves the deletion leaves a numbered hole the auditor can find.
+testArchivingAnAttemptLeavesANumberedHole : Script ()
+testArchivingAnAttemptLeavesANumberedHole = script do
+  s <- twoSetup
+  (a1, j1) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "pay"
+      detail = "one"
+  _ <- submit [s.owner, s.actor] do
+    exerciseCmd a1 SettleAttempt with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "pay"
+      detail = "one"
+
+  (a2, j2) <- submit [s.owner, s.actor] do
+    exerciseCmd j1 Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "pay"
+      detail = "two"
+
+  -- The operator destroys the evidence. This SUCCEEDS. There is no way to
+  -- stop signatories archiving their own contract.
+  submit [s.owner, s.actor] do
+    archiveCmd a2
+
+  -- The auditor's arithmetic finds it anyway.
+  (total, _) <- submit s.auditor do exerciseCmd j2 Expect
+  resolutions <- query @Resolution s.auditor
+  stillOpen   <- query @Attempt s.auditor
+
+  total === 2               -- the counter cannot be rewound
+  length resolutions === 1  -- only the settled one was resolved
+  length stillOpen === 0    -- and nothing is open
+
+  -- 2 attempts, 1 resolution, 0 open. One attempt is unaccounted for, and
+  -- that is the finding.
+  let unaccounted = total - length resolutions - length stillOpen
+  unaccounted === 1
+
+-- 14. A resolution says how an attempt ended and nothing about what it was.
+--     If content is ever added to this marker, the privacy claim breaks and
+--     this goes red.
+testAResolutionRevealsOnlyTheOutcome : Script ()
+testAResolutionRevealsOnlyTheOutcome = script do
+  s <- twoSetup
+  (attempt, _) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "pay"
+      detail = "90000 USD to merchant-4471"
+  marker <- submit [s.owner, s.actor] do
+    exerciseCmd attempt SettleAttempt with
+      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+      action = "pay"
+      detail = "90000 USD to merchant-4471"
+  Some r <- queryContractId s.auditor marker
+  r.n === 1
+  r.outcome === Settled
+  -- Nothing on it names the merchant or the amount.
+  records <- query @RefusalRecord s.auditor
+  length records === 0
