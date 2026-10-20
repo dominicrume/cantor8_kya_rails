@@ -37,7 +37,7 @@ zero it says zero.*
 |---|---|
 | **42 test suites**, all green | one command rebuilds and runs everything |
 | **82 mutations** | each breaks something real and requires a *named* test to go red. None blind, none stale |
-| **147 Daml scripts** | across two packages |
+| **156 Daml scripts** | across two packages |
 | **32 spending fences**, each proven load-bearing | delete any one and a named test fails |
 | **142 commits** in 29 days | |
 

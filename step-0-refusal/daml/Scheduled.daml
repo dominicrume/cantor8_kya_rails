@@ -1,0 +1,119 @@
+-- | Scheduled and recurring actions, with the ledger enforcing the clock.
+--
+-- Asked on forum.canton.network/t/9314 on 17 October 2026: end-of-day close,
+-- monthly interest, maturity settlement. Nothing in Daml initiates anything,
+-- so something off-ledger has to fire. The question is what stops it firing
+-- at the wrong time.
+--
+-- THE SPLIT. Liveness is off-ledger: your cron, Temporal, Airflow, whatever.
+-- Correctness is on-ledger: the contract refuses to run outside its window.
+-- Then the scheduler can fire early, twice, or at 3am on a Sunday, and the
+-- worst case is a rejected transaction rather than an early payment.
+--
+-- WHY NOT `getTime`. The obvious version is `now <- getTime` and compare.
+-- In Daml 3 that pins the transaction's ledger time, which constrains
+-- preparation AND submission to within `ledgerTimeRecordTimeTolerance`, one
+-- minute by default. Prepare offline, sign, submit two minutes later, and it
+-- is rejected for a reason that has nothing to do with your schedule.
+--
+-- `DA.Assert`'s deadline helpers do the same comparison without pinning:
+-- "they do not constrain the time bound between transaction preparation and
+-- submission". For external signing that is the difference between working
+-- and not.
+module Scheduled where
+
+import DA.Assert (assertDeadlineExceeded, assertWithinDeadline)
+import DA.Time (RelTime, addRelTime)
+
+-- | A one-time action that cannot run before its due time.
+--
+-- Maturity settlement is this: the contract exists from day one, your
+-- scheduler pokes it, and the ledger decides whether it is time.
+template DueOnce
+  with
+    owner : Party
+    runner : Party
+      -- ^ Whatever your scheduler submits as.
+    what : Text
+      -- ^ Your words for the action. This module does not interpret it.
+    dueAt : Time
+      -- ^ Not before this. Enforced here, not in the scheduler.
+    expiresAt : Optional Time
+      -- ^ Optional upper bound. `None` means it stays runnable forever,
+      -- which for settlement is usually wrong: a job that silently runs
+      -- three weeks late is worse than one that fails.
+  where
+    signatory owner, runner
+
+    ensure what /= ""
+
+    choice Run : ()
+      controller runner
+      do
+        assertDeadlineExceeded ("not due yet: " <> what) dueAt
+        case expiresAt of
+          Some limit -> assertWithinDeadline ("window closed: " <> what) limit
+          None -> pure ()
+
+    -- | Cancel it before it runs, with a reason on the record.
+    choice Cancel : ()
+      with reason : Text
+      controller owner
+      do
+        assertMsg "a cancellation needs a reason" (reason /= "")
+        pure ()
+
+-- | A recurring action that reschedules itself.
+--
+-- Monthly interest is this. The contract carries its own next due time, and
+-- running it mints the next one. So the schedule lives on the ledger rather
+-- than in a cron file somebody can edit without review, and an auditor can
+-- read when the next run is due.
+--
+-- `runsLeft` bounds it. An unbounded recurring payment that nobody
+-- remembers is how a treasury drains quietly.
+template DueEvery
+  with
+    owner : Party
+    runner : Party
+    what : Text
+    nextAt : Time
+    period : RelTime
+    runsLeft : Int
+      -- ^ Counts down. At zero the schedule ends rather than recreating.
+    grace : Optional RelTime
+      -- ^ How late a run may be before the ledger refuses it. `None` means
+      -- any lateness is acceptable, which is rarely what a cap or an
+      -- interest schedule means.
+  where
+    signatory owner, runner
+
+    ensure what /= "" && runsLeft >= 0
+
+    -- | Run this occurrence and schedule the next. Returns `None` when the
+    -- schedule has finished, so the caller cannot accidentally keep one
+    -- alive past its count.
+    choice RunNext : Optional (ContractId DueEvery)
+      controller runner
+      do
+        assertMsg ("schedule already finished: " <> what) (runsLeft > 0)
+        assertDeadlineExceeded ("not due yet: " <> what) nextAt
+        case grace of
+          Some window ->
+            assertWithinDeadline ("run is too late: " <> what)
+              (addRelTime nextAt window)
+          None -> pure ()
+        if runsLeft <= 1
+          then pure None
+          else do
+            next <- create this with
+              nextAt = addRelTime nextAt period
+              runsLeft = runsLeft - 1
+            pure (Some next)
+
+    choice EndSchedule : ()
+      with reason : Text
+      controller owner
+      do
+        assertMsg "ending a schedule needs a reason" (reason /= "")
+        pure ()

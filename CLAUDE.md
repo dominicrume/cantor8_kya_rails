@@ -72,6 +72,24 @@ Hard rules for any AI touching this code:
   minutes can see the shape of the project. The second holds the questions to
   ask the people who run this ecosystem, written down BEFORE the conversation.
   Both exist because the team that won the hackathon had them and this did not.
+- NOTHING IS POSTED THAT IS NOT BUILT. Every reply, forum post, proposal
+  comment and outreach message reports something finished, tested and
+  pushed. Not a plan, not a design, not a half-fix with the remainder
+  described. If it is not built, the post waits until it is.
+  This was written after a reply to a named engineer went through three
+  drafts in a day because the design kept changing underneath it, and after
+  a developer asked in her own words for "sample implementations" and was
+  sent four paragraphs of documentation quotes with no code in them. She
+  asked for code. The answer was to go and write the module, test it,
+  mutation-test it, and then reply with something she could paste.
+  The order is: build, test, break it on purpose to prove the tests are
+  real, run the full sweep, push, and only then write the message. A post
+  about work in progress invites a conversation. A post about finished work
+  invites a user.
+  The limit of what was built is still stated, because a limit discovered by
+  the reader costs more than one declared by the author. But it is stated as
+  a property of a finished thing, not as an excuse for an unfinished one.
+
 - Before any release, verify rather than assume: build from committed code and
   never the working tree, list every file that would go public, scan the built
   artefacts for secrets WITH A POSITIVE CONTROL proving the scan reads them,

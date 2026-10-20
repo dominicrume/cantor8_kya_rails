@@ -6,6 +6,16 @@
 Her use cases are EOD trade close, monthly interest payments, and maturity
 settlement. All three are regulated, repeating financial processes.
 
+## What the first draft got wrong
+
+She wrote "Any guidance or **sample implementations** would be appreciated"
+and the first draft sent her four paragraphs of documentation quotes with no
+code in them. She asked for code.
+
+So `Scheduled.daml` was built, tested and mutation-tested before this reply
+was rewritten. Nine scripts: early, late, double-fire, the count running out,
+and the authority split. Deleting either time check turns a named test red.
+
 ## Why answer this one
 
 She asked four direct technical questions and nobody has answered any of them
@@ -29,75 +39,98 @@ observation. Nothing is from memory.
 
 ## THE POST
 
-Archana, taking your four in order.
+Archana, short answers then working code.
 
-**1. Built-in scheduler: no.** The docs are explicit about why:
-
-> "Daml code has no independent thread of execution. Contracts on the ledger
-> are passive records of synchronized data and rights specifying who can
-> advance the shared workflows. These workflows remain static until advanced
-> by external components. Any action on the ledger must be initiated by
-> external components."
-
+**1. No built-in scheduler.** Nothing on the ledger initiates anything:
+"Daml code has no independent thread of execution... Any action on the ledger
+must be initiated by external components."
 https://docs.canton.network/appdev/deep-dives/app-architecture-design
 
-Canton does have a cron scheduler on the admin API, but it drives pruning, not
-command submission. Worth knowing before somebody points you at it.
+Canton's admin API does have a cron scheduler. It drives pruning, not command
+submission.
 
-**2. Daml Triggers: deprecated, and not in 3.x.** The 2.10 docs say:
+**2. Triggers are deprecated and not in 3.x.** `sdk/triggers` is present at
+tag `v2.10.6` and absent at `v3.4.11`, at the 3.5 snapshots and on `main`.
+They were event-reactive anyway, never time-based, so they would not have
+solved this.
 
-> "Daml Triggers are deprecated and are not supported in the next major
-> release of Daml Enterprise."
+**3 and 4. External scheduler, and the choice barely matters.** Put liveness
+off-ledger and correctness on-ledger: your cron pokes the contract, the
+contract refuses to run outside its window. Then a scheduler that fires early,
+twice, or a week late costs you a rejected transaction rather than an early
+payment.
 
-And they are gone from the tree. `sdk/triggers` is present at tag `v2.10.6`
-and absent at `v3.4.11`, at the 3.5 snapshots and on `main`. The current docs
-site has no triggers page anywhere. I could not find a release note announcing
-the removal, so that part is an observation rather than a quote.
+Here is the pattern, built and tested rather than sketched.
 
-Either way they would not have helped here. Triggers reacted to ledger events.
-There was never a time-based one.
+Maturity and end-of-day:
 
-**3. Recommended pattern: your own backend, polling PQS.** Same architecture
-page:
+    template DueOnce
+      with
+        owner : Party
+        runner : Party
+        what : Text
+        dueAt : Time
+        expiresAt : Optional Time
+      where
+        signatory owner, runner
 
-> "PQS is the recommended path for automation and integration components to
-> access ledger data."
+        choice Run : ()
+          controller runner
+          do
+            assertDeadlineExceeded ("not due yet: " <> what) dueAt
+            case expiresAt of
+              Some limit -> assertWithinDeadline ("window closed: " <> what) limit
+              None -> pure ()
+            -- your work here
 
-> "it is recommended to modularize it into retriable tasks"
+Monthly interest, rescheduling itself:
 
-> "The entire code block that processes the task should be retried, not just
-> the ledger command submission within the block."
+    template DueEvery
+      with
+        owner : Party
+        runner : Party
+        what : Text
+        nextAt : Time
+        period : RelTime
+        runsLeft : Int
+      where
+        signatory owner, runner
 
-So: scheduler fires, query PQS for what is due, submit through the Ledger API,
-and retry the whole block so a retry sees current state. I could not find an
-official sample, only that prose.
+        choice RunNext : Optional (ContractId DueEvery)
+          controller runner
+          do
+            assertMsg "schedule finished" (runsLeft > 0)
+            assertDeadlineExceeded ("not due yet: " <> what) nextAt
+            -- your work here
+            if runsLeft <= 1
+              then pure None
+              else do
+                next <- create this with
+                  nextAt = addRelTime nextAt period
+                  runsLeft = runsLeft - 1
+                pure (Some next)
 
-**4. External scheduler: yes, and the choice barely matters.** Cron, Quartz,
-Temporal and Airflow all work. What matters is idempotency, because the job
-will fire twice eventually.
+Three things that buys you. `Run` consumes the contract, so a double-firing
+scheduler gets one payment. The schedule lives on the ledger rather than in a
+cron file somebody can edit without review. And `runsLeft` bounds it, because
+an unbounded recurring payment nobody remembers is how a treasury drains
+quietly.
 
-**One gotcha that will cost you if you miss it.** Do not gate the choice with
-`getTime`. In 3.x calling it pins the ledger time, which constrains
-preparation and submission to within the tolerance, 1 minute by default. Use
-the deadline helpers instead:
-
-- `assertWithinDeadline` and `assertDeadlineExceeded` in `DA.Assert`
-- `isLedgerTimeGE` with `isLedgerTimeLT` in `DA.Time` for a window
-
-The docs say these "do not constrain the time bound between transaction
-preparation and submission."
-
+**The gotcha that will cost you if you miss it.** Do not gate on `getTime`.
+In 3.x it pins the transaction's ledger time, which constrains preparation
+AND submission to within `ledgerTimeRecordTimeTolerance`, one minute by
+default. Prepare offline, sign, submit two minutes later, and it is rejected
+for a reason that has nothing to do with your schedule. The `DA.Assert`
+deadline helpers do the same comparison without pinning, and the docs say so:
+"they do not constrain the time bound between transaction preparation and
+submission."
 https://docs.canton.network/appdev/modules/m3-working-with-time
 
-**And one thing worth deciding early rather than in an audit.** When the
-scheduler fires outside the window, the assertion aborts the transaction and
-nothing commits. So when someone asks next month whether the interest run
-happened on the 1st, the ledger holds no record that it was attempted and
-refused. For EOD and interest that is an audit question rather than a
-scheduling one. Either keep a good off-ledger log or make the refusal commit
-as its own contract. Both are defensible. Pick deliberately.
+Full module and nine tests, MIT, no dependencies past the standard library:
+https://github.com/dominicrume/cantor8_kya_rails/tree/main/step-0-refusal
 
-Vacuumlabs have a Dev Fund proposal for delegated automation with cron and
-on-chain checks before execution, which may be worth watching:
-https://forum.canton.network/t/9084. It is a proposal seeking a champion, not
-shipped code.
+One last thing for your cases specifically. When the scheduler fires outside
+the window the transaction aborts, so the ledger holds no record it was
+attempted. Next month, when somebody asks whether the interest run happened on
+the 1st, the answer is a line in a Kubernetes log. The same package records
+refused runs as contracts for exactly that reason.
