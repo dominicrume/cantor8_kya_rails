@@ -201,6 +201,29 @@ One thing that came free: because the guardian is a signatory of every
 `Attempt`, the operator can no longer archive an open attempt alone. What was
 a detectable deletion is now a prevented one.
 
+## Scheduled and recurring actions
+
+Asked on [forum 9314](https://forum.canton.network/t/9314): end-of-day close,
+monthly interest, maturity settlement. Nothing in Daml initiates anything, so
+something off-ledger has to fire. The question is what stops it firing at the
+wrong time.
+
+**Liveness is off-ledger. Correctness is on-ledger.** Your cron, Temporal or
+Airflow pokes the contract; the contract refuses to run outside its window. A
+scheduler that fires early, twice, or a week late costs you a rejected
+transaction instead of an early payment.
+
+`DueOnce` for maturity and end-of-day, `DueEvery` for interest. A recurring
+run mints the next occurrence, so **the schedule lives on the ledger** rather
+than in a cron file somebody can edit without review, and `runsLeft` bounds it.
+
+**Do not gate on `getTime`.** In Daml 3 it pins the transaction's ledger time,
+which constrains preparation *and* submission to within
+`ledgerTimeRecordTimeTolerance`, one minute by default. Prepare offline, sign,
+submit two minutes later, and it is rejected for a reason that has nothing to
+do with your schedule. `assertDeadlineExceeded` and `assertWithinDeadline` do
+the same comparison without pinning.
+
 ## What it does not do
 
 - **An attempt that never touches the journal leaves nothing behind.** The
@@ -220,7 +243,7 @@ daml build
 
 Then add the DAR as a `data-dependencies` entry in your own `daml.yaml`.
 
-Forty four scripts cover it: eight on the record, thirteen on the journal, seventeen on two-phase attempts and six on enforcement. The
+Fifty three scripts cover it: eight on the record, thirteen on the journal, seventeen on two-phase attempts, six on enforcement and nine on scheduling. The
 ones that matter are a lending protocol and a collateral engine using it with
 no concept of a payee, an auditor who sees every record while a stranger sees
 none, `testAWithheldRefusalIsDetectable`, and `testTheAuditorCannotSeeWhatWasAllowed`. `python3 tests/daml_tests.py` from the

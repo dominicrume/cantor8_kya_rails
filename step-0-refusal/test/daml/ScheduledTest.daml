@@ -1,0 +1,195 @@
+-- Scheduled and recurring actions. The point of every test here is that the
+-- LEDGER refuses a run at the wrong time, so a scheduler firing early, late
+-- or twice costs you a rejected transaction instead of an early payment.
+module ScheduledTest where
+
+import DA.Assert ((===))
+import DA.Time
+import Daml.Script
+
+import Scheduled
+
+data S = S with
+    owner : Party
+    runner : Party
+
+parties : Script S
+parties = script do
+  o <- allocateParty "Fund"
+  r <- allocateParty "Scheduler"
+  pure S with owner = o; runner = r
+
+-- 1. Maturity settlement. Too early is refused by the ledger, not by the
+--    scheduler, which is the whole point: the scheduler is not trusted.
+testOneTimeRunsOnlyAfterItsDueTime : Script ()
+testOneTimeRunsOnlyAfterItsDueTime = script do
+  s <- parties
+  now <- getTime
+  let due = addRelTime now (hours 24)
+  cid <- submit [s.owner, s.runner] do
+    createCmd DueOnce with
+      owner = s.owner; runner = s.runner
+      what = "settle at maturity"
+      dueAt = due
+      expiresAt = None
+
+  -- The scheduler fires a day early. Refused.
+  submitMustFail s.runner do exerciseCmd cid Run
+
+  -- Time passes. Now it runs.
+  setTime (addRelTime due (minutes 1))
+  submit s.runner do exerciseCmd cid Run
+
+-- 2. And it cannot run twice, because Run consumes it. A scheduler that
+--    double-fires gets one payment, not two.
+testOneTimeCannotRunTwice : Script ()
+testOneTimeCannotRunTwice = script do
+  s <- parties
+  now <- getTime
+  cid <- submit [s.owner, s.runner] do
+    createCmd DueOnce with
+      owner = s.owner; runner = s.runner
+      what = "settle"
+      dueAt = addRelTime now (hours 1)
+      expiresAt = None
+  setTime (addRelTime now (hours 2))
+  submit s.runner do exerciseCmd cid Run
+  submitMustFail s.runner do exerciseCmd cid Run
+
+-- 3. An end-of-day close that missed its window is refused rather than run
+--    three weeks late. A job that silently runs late is worse than one that
+--    fails, because nobody finds out.
+testAMissedWindowIsRefused : Script ()
+testAMissedWindowIsRefused = script do
+  s <- parties
+  now <- getTime
+  let due = addRelTime now (hours 1)
+  cid <- submit [s.owner, s.runner] do
+    createCmd DueOnce with
+      owner = s.owner; runner = s.runner
+      what = "close all open trades at EOD"
+      dueAt = due
+      expiresAt = Some (addRelTime due (hours 2))
+
+  -- Four hours late. The window shut.
+  setTime (addRelTime due (hours 4))
+  submitMustFail s.runner do exerciseCmd cid Run
+
+-- 4. Monthly interest. Running it mints the next occurrence, so the schedule
+--    lives on the ledger rather than in a cron file somebody can edit
+--    without review.
+testRecurringReschedulesItself : Script ()
+testRecurringReschedulesItself = script do
+  s <- parties
+  now <- getTime
+  let first = addRelTime now (days 1)
+  cid <- submit [s.owner, s.runner] do
+    createCmd DueEvery with
+      owner = s.owner; runner = s.runner
+      what = "monthly interest"
+      nextAt = first
+      period = days 30
+      runsLeft = 3
+      grace = None
+
+  submitMustFail s.runner do exerciseCmd cid RunNext
+
+  setTime (addRelTime first (minutes 1))
+  Some second <- submit s.runner do exerciseCmd cid RunNext
+
+  -- The next one is 30 days out and the count came down.
+  Some c2 <- queryContractId s.owner second
+  c2.runsLeft === 2
+  c2.nextAt === addRelTime first (days 30)
+
+  -- And it is not due yet either.
+  submitMustFail s.runner do exerciseCmd second RunNext
+
+-- 5. The count is a real bound. A recurring payment nobody remembers is how
+--    a treasury drains quietly, so the schedule ends itself.
+testRecurringStopsAtItsCount : Script ()
+testRecurringStopsAtItsCount = script do
+  s <- parties
+  now <- getTime
+  let first = addRelTime now (days 1)
+  cid <- submit [s.owner, s.runner] do
+    createCmd DueEvery with
+      owner = s.owner; runner = s.runner
+      what = "two payments only"
+      nextAt = first
+      period = days 30
+      runsLeft = 2
+      grace = None
+
+  setTime (addRelTime first (minutes 1))
+  Some second <- submit s.runner do exerciseCmd cid RunNext
+
+  setTime (addRelTime first (days 31))
+  last <- submit s.runner do exerciseCmd second RunNext
+  last === None
+
+  -- Nothing is left to run.
+  remaining <- query @DueEvery s.owner
+  length remaining === 0
+
+-- 6. A late recurring run is refused once a grace window is set, so a
+--    scheduler that was down for a week cannot quietly catch up by paying
+--    everything at once.
+testALateRecurringRunIsRefused : Script ()
+testALateRecurringRunIsRefused = script do
+  s <- parties
+  now <- getTime
+  let first = addRelTime now (days 1)
+  cid <- submit [s.owner, s.runner] do
+    createCmd DueEvery with
+      owner = s.owner; runner = s.runner
+      what = "interest with a grace window"
+      nextAt = first
+      period = days 30
+      runsLeft = 5
+      grace = Some (hours 6)
+
+  setTime (addRelTime first (days 2))
+  submitMustFail s.runner do exerciseCmd cid RunNext
+
+-- 7. Only the runner can run it, and only the owner can cancel or end it.
+--    A schedule either side can tear down alone is not a schedule.
+testAuthorityIsSplit : Script ()
+testAuthorityIsSplit = script do
+  s <- parties
+  stranger <- allocateParty "Stranger"
+  now <- getTime
+  cid <- submit [s.owner, s.runner] do
+    createCmd DueOnce with
+      owner = s.owner; runner = s.runner
+      what = "settle"
+      dueAt = addRelTime now (hours 1)
+      expiresAt = None
+  setTime (addRelTime now (hours 2))
+
+  submitMustFail stranger do exerciseCmd cid Run
+  submitMustFail s.owner do exerciseCmd cid Run          -- owner is not the runner
+  submitMustFail s.runner do exerciseCmd cid Cancel with reason = "no"
+  submitMustFail s.owner do exerciseCmd cid Cancel with reason = ""
+  submit s.owner do exerciseCmd cid Cancel with reason = "trade was unwound"
+
+-- 8. The schedule is readable. An auditor or an operator can see when the
+--    next run is due without asking the scheduler, which is the thing a cron
+--    file cannot offer.
+testTheNextRunIsReadableFromTheLedger : Script ()
+testTheNextRunIsReadableFromTheLedger = script do
+  s <- parties
+  now <- getTime
+  let first = addRelTime now (days 1)
+  _ <- submit [s.owner, s.runner] do
+    createCmd DueEvery with
+      owner = s.owner; runner = s.runner
+      what = "monthly interest"
+      nextAt = first
+      period = days 30
+      runsLeft = 12
+      grace = Some (hours 6)
+  [(_, c)] <- query @DueEvery s.owner
+  c.nextAt === first
+  c.runsLeft === 12
+  c.what === "monthly interest"
