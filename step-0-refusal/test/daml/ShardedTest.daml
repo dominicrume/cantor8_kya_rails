@@ -1,0 +1,262 @@
+-- Sharded journals. Test 1 is the whole point: it demonstrates the
+-- serialisation PREDGE named on forum 9114, and then demonstrates it gone.
+-- Everything after it checks that nothing was traded away to get there.
+module ShardedTest where
+
+import DA.Assert ((===))
+import Daml.Script
+
+import Attempt
+import Guarded hiding (owner, guardian)
+import Journal
+import Refusal
+import Sharded
+import TestAssets
+
+data Sh = Sh with
+    owner : Party
+    actor : Party
+    guardian : Party
+    auditor : Party
+    set : ContractId JournalSet
+    shards : [ContractId JournalShard]
+
+aSalt : Text
+aSalt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
+
+-- Open a set with n shards, all signed by the auditor.
+openSet : Int -> Script Sh
+openSet n = script do
+  o <- allocateParty "TreasuryS"
+  a <- allocateParty "BotS"
+  g <- allocateParty "ComplianceS"
+  d <- allocateParty "AuditorS"
+  s <- submit [o, a, g, d] do
+    createCmd JournalSet with
+      owner = o; actor = a; guardian = g
+      auditor = Some d
+      shardCount = n
+  cids <- forA [0 .. n - 1] $ \i ->
+    submit [o, a, g, d] do
+      createCmd JournalShard with
+        owner = o; actor = a; guardian = g
+        auditor = Some d
+        shard = i
+        attempts = 0
+        refusals = []
+  pure Sh with
+    owner = o; actor = a; guardian = g; auditor = d
+    set = s; shards = cids
+
+-- 1. THE MEASUREMENT.
+--
+--    Daml Script runs sequentially, so it cannot show wall-clock parallelism.
+--    What it can show is the DEPENDENCY, which is what contention actually
+--    is: with one journal, the second attempt cannot be prepared until the
+--    first has produced a new contract id, because the first consumed the
+--    one it would have used.
+--
+--    So: hold the ORIGINAL contract id and use it twice.
+--
+--    One journal: the second use fails. Every attempt for a pair is a link in
+--    a chain and the chain has one lane.
+--    Two shards: both original ids work, because they are two contracts.
+--    Two lanes.
+testOneJournalSerialisesAndTwoShardsDoNot : Script ()
+testOneJournalSerialisesAndTwoShardsDoNot = script do
+  -- One journal.
+  o <- allocateParty "Treasury1"
+  a <- allocateParty "Bot1"
+  g <- allocateParty "Compliance1x"
+  d <- allocateParty "Auditor1x"
+  j <- submit [o, a, g, d] do
+    createCmd AttemptJournal with
+      owner = o; actor = a; guardian = g
+      auditor = Some d
+      attempts = 0
+      refusals = []
+
+  _ <- submit [o, a] do exerciseCmd j Allow with action = "pay"
+
+  -- The second attempt cannot use the id it was given. It must wait for the
+  -- first to finish and hand it a new one. THAT is the contention.
+  submitMustFail [o, a] do exerciseCmd j Allow with action = "pay"
+
+  -- Two shards, same pair of parties.
+  s <- openSet 2
+  let [sh0, sh1] = s.shards
+
+  -- Both use the ids they were given. Neither waits for the other.
+  _ <- submit [s.owner, s.actor] do exerciseCmd sh0 AllowOn with action = "pay"
+  _ <- submit [s.owner, s.actor] do exerciseCmd sh1 AllowOn with action = "pay"
+
+  -- And the count is still right: two attempts across two shards.
+  --
+  -- Note the original shard ids are now archived too, which is the same
+  -- mechanism. The difference is that it cost one lane rather than all of
+  -- them: shard 0 being consumed never blocked shard 1.
+  live <- query @JournalShard s.auditor
+  let totals = [(c.shard, c.attempts, c.refusals) | (_, c) <- live]
+  shardedTotal totals === 2
+
+-- 2. The count is complete across shards. The auditor sums and gets the
+--    same number a single journal would have produced.
+testTheCountIsCompleteAcrossShards : Script ()
+testTheCountIsCompleteAcrossShards = script do
+  s <- openSet 3
+  let [a0, a1, a2] = s.shards
+  b0 <- submit [s.owner, s.actor] do exerciseCmd a0 AllowOn with action = "x"
+  _  <- submit [s.owner, s.actor] do exerciseCmd b0 AllowOn with action = "x"
+  _  <- submit [s.owner, s.actor] do exerciseCmd a1 AllowOn with action = "x"
+  (_, c2) <- submit [s.owner, s.actor] do
+    exerciseCmd a2 RefuseOn with
+      action = "pay"; detail = "amount=900000"; rule = "above the cap"
+  _ <- submit [s.owner, s.actor] do exerciseCmd c2 AllowOn with action = "x"
+
+  live <- query @JournalShard s.auditor
+  let totals = [(c.shard, c.attempts, c.refusals) | (_, c) <- live]
+  declared <- submit s.auditor do exerciseCmd s.set ExpectShards
+
+  declared === 3
+  shardedTotal totals === 5
+  missingShards declared totals === []
+  shardedPositions totals === [(2, 1)]
+
+-- 3. A hidden shard is the one new way to lie that sharding creates, and the
+--    declared count is the only thing that catches it.
+--
+--    With one journal there is nothing to hide. With three shards an operator
+--    who shows two hands the auditor a smaller total that is internally
+--    consistent and looks fine.
+testAHiddenShardIsCaught : Script ()
+testAHiddenShardIsCaught = script do
+  s <- openSet 3
+  let [a0, a1, a2] = s.shards
+  _ <- submit [s.owner, s.actor] do exerciseCmd a0 AllowOn with action = "x"
+  _ <- submit [s.owner, s.actor] do exerciseCmd a1 AllowOn with action = "x"
+  _ <- submit [s.owner, s.actor] do exerciseCmd a2 AllowOn with action = "x"
+
+  declared <- submit s.auditor do exerciseCmd s.set ExpectShards
+  live <- query @JournalShard s.auditor
+  let full = [(c.shard, c.attempts, c.refusals) | (_, c) <- live]
+
+  -- Everything disclosed: nothing missing, total 3.
+  missingShards declared full === []
+  shardedTotal full === 3
+
+  -- Shard 1 withheld: the total is 2 and looks perfectly consistent on its
+  -- own. The declared count names the missing one.
+  let partial = filter (\(sh, _, _) -> sh /= 1) full
+  shardedTotal partial === 2
+  missingShards declared partial === [1]
+
+-- 4. An extra shard cannot be created behind the auditor's back, for the same
+--    reason a second journal cannot: they are a signatory.
+testAnExtraShardNeedsTheAuditor : Script ()
+testAnExtraShardNeedsTheAuditor = script do
+  s <- openSet 2
+  submitMustFail [s.owner, s.actor, s.guardian] do
+    createCmd JournalShard with
+      owner = s.owner; actor = s.actor; guardian = s.guardian
+      auditor = Some s.auditor
+      shard = 2
+      attempts = 0
+      refusals = []
+  live <- query @JournalShard s.auditor
+  length live === 2
+
+-- 5. A shard outside the declared range is detected rather than silently
+--    counted. An operator cannot park real traffic on shard 7 of a 3-shard
+--    set where missingShards would never look for it.
+testAShardOutsideTheRangeIsFound : Script ()
+testAShardOutsideTheRangeIsFound = script do
+  s <- openSet 3
+  -- With the auditor's signature it can be created, which is correct: done
+  -- in the open it is a decision. It is still out of range and says so.
+  _ <- submit [s.owner, s.actor, s.guardian, s.auditor] do
+    createCmd JournalShard with
+      owner = s.owner; actor = s.actor; guardian = s.guardian
+      auditor = Some s.auditor
+      shard = 7
+      attempts = 0
+      refusals = []
+  declared <- submit s.auditor do exerciseCmd s.set ExpectShards
+  live <- query @JournalShard s.auditor
+  let totals = [(c.shard, c.attempts, c.refusals) | (_, c) <- live]
+  outOfRange declared totals === [7]
+  -- And it does not disturb the completeness check for the real shards.
+  missingShards declared totals === []
+
+-- 6. A withheld refusal is still nameable, exactly as before. The position is
+--    a pair now, and that is the only difference.
+testAWithheldRefusalIsStillNameable : Script ()
+testAWithheldRefusalIsStillNameable = script do
+  s <- openSet 2
+  let [a0, a1] = s.shards
+  (_, b0) <- submit [s.owner, s.actor] do
+    exerciseCmd a0 RefuseOn with
+      action = "pay"; detail = "one"; rule = "cap"
+  _ <- submit [s.owner, s.actor] do
+    exerciseCmd b0 RefuseOn with
+      action = "pay"; detail = "two"; rule = "allow-list"
+  _ <- submit [s.owner, s.actor] do
+    exerciseCmd a1 RefuseOn with
+      action = "pay"; detail = "three"; rule = "cap"
+
+  live <- query @JournalShard s.auditor
+  let totals = [(c.shard, c.attempts, c.refusals) | (_, c) <- live]
+
+  -- Three refusals: two on shard 0, one on shard 1. Positions are pairs now
+  -- and nothing has been lost by sharding.
+  shardedTotal totals === 3
+  shardedPositions totals === [(0, 1), (0, 2), (1, 1)]
+
+  -- The auditor holds three refusal records and can place every one of them.
+  records <- query @RefusalRecord s.auditor
+  length records === 3
+
+  -- Withhold the one on shard 1 and the auditor still names it, because the
+  -- shard's own list says position 1 was refused.
+  let disclosed = [(0, 1), (0, 2)]
+  filter (`notElem` disclosed) (shardedPositions totals) === [(1, 1)]
+
+-- 7. The guard is untouched by sharding. An asset still cannot move outside a
+--    journal entry, because that property lives on the asset and not on the
+--    counter.
+testTheGuardStillHoldsThroughAShard : Script ()
+testTheGuardStillHoldsThroughAShard = script do
+  s <- openSet 2
+  let [a0, _] = s.shards
+  wallet <- submit [s.owner, s.guardian] do
+    createCmd Wallet with holder = s.owner; guard = s.guardian; balance = 100.0
+
+  (attempt, _) <- submit [s.owner, s.actor] do
+    exerciseCmd a0 OpenOn with
+      salt = aSalt; action = "withdraw"; detail = "amount=1"
+  _ <- submit [s.owner, s.actor] do
+    exerciseCmd attempt SettleAttempt with
+      salt = aSalt; action = "withdraw"; detail = "amount=1"
+      target = toInterfaceContractId @Journalled wallet
+  [(_, w)] <- query @Wallet s.owner
+  w.balance === 99.0
+
+  -- And the bypass still fails.
+  wallet2 <- submit [s.owner, s.guardian] do
+    createCmd Wallet with holder = s.owner; guard = s.guardian; balance = 50.0
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd (toInterfaceContractId @Journalled wallet2) Perform
+
+-- 8. A set must declare at least one shard, so "sharded with zero shards" is
+--    not a way to have a journal nobody can reconcile.
+testASetNeedsAtLeastOneShard : Script ()
+testASetNeedsAtLeastOneShard = script do
+  o <- allocateParty "TreasuryZ"
+  a <- allocateParty "BotZ"
+  g <- allocateParty "ComplianceZ"
+  d <- allocateParty "AuditorZ"
+  submitMustFail [o, a, g, d] do
+    createCmd JournalSet with
+      owner = o; actor = a; guardian = g
+      auditor = Some d
+      shardCount = 0
+  pure ()

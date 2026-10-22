@@ -30,7 +30,7 @@ The work and the count commit in the same transaction, so skipping the count
 means skipping the work. That is the part you described, reached from the other
 side.
 
-Two things I could not do. Daml 3 removed contract keys, so I cannot stop
+Two things I could not do. the LF 2.1 target has no contract keys, and the ones that returned in 2.3 are non-unique, so I cannot stop
 someone opening a second journal. The auditor sees both, which is detection and
 not prevention. And nothing forces an app to use the journal at all.
 

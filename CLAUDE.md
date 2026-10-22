@@ -90,6 +90,31 @@ Hard rules for any AI touching this code:
   the reader costs more than one declared by the author. But it is stated as
   a property of a finished thing, not as an excuse for an unfinished one.
 
+- CREATIVE, COLLABORATIVE, SHORT. Three rules, in that order, on every
+  message that leaves this machine.
+  CREATIVE means solve the problem rather than describe it. When something
+  cannot be done the way it is being attempted, the answer is a different
+  mechanism, not a paragraph explaining the obstacle. Contract keys could not
+  enforce uniqueness, so the auditor went on the signatory line. One counter
+  serialised every attempt, so there are N counters now. The obstacle is
+  where the work starts.
+  COLLABORATIVE means the other person is a colleague, not an audience.
+  Credit them by name and date. Build what they suggested before replying.
+  Never follow a correction with a lesson: somebody who hands you a fact has
+  earned a report on what you did with it, not a fact handed back as payment.
+  Never presume what they know, and never write "in case this is useful to
+  you" when you mean "look what I know".
+  SHORT means about 100 words. A reply matches the length of what it answers.
+  Four words get four lines. A four-question post gets four answers. Nothing
+  is padded with context the reader already has, and no message explains its
+  own cleverness.
+  Written after a 900-word reply to a 90-word post, and after a claim that
+  sharding answered a Digital Asset engineer's batching criticism. It does
+  not. Batching groups operations into one transaction; contention is one
+  contract being consumed. Adjacent is not the same, and stretching one into
+  the other to make a sentence land is the overclaim habit wearing new
+  clothes.
+
 - Before any release, verify rather than assume: build from committed code and
   never the working tree, list every file that would go public, scan the built
   artefacts for secrets WITH A POSITIVE CONTROL proving the scan reads them,

@@ -180,7 +180,7 @@ unfinished record is the evidence.
 
 PREDGE replied four days ago with a single line. I had written in three
 separate files that you cannot stop somebody opening a second journal,
-because Daml 3 removed contract keys. Put the auditor on the signatory line
+because I thought Daml 3 had no contract keys. Put the auditor on the signatory line
 rather than the observer line, they said, because a create needs every
 signatory. That was the whole answer. One line, and I had given up on it.
 
@@ -241,7 +241,7 @@ has never entered the queue. PR #860.
 And I have never had a DevNet credential, so all 157 tests run offline only.
 If anyone knows who issues those, a name would do.
 
-One real question while I am here. Daml-LF 2.1 removed contract keys. For
+One real question while I am here. the LF 2.1 target has no contract keys, and the ones that returned in LF 2.3 are non-unique. For
 uniqueness I ended up putting a second party on the signatory line, since a
 create needs every signatory. Is that what everyone else does, or is there a
 better idiom I have missed?

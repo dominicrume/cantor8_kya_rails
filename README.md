@@ -70,7 +70,7 @@ enforced only by a test that would pass without it:
 
 ```
 $ python3 tests/mutation.py
-baseline: 157 scripts green
+baseline: 165 scripts green
   ok    charge would exceed the cap          -> testOverCapRefusedByTheCapAssertion goes red
   ok    payee is not on the allow-list       -> testPayoutRedirectionRefused goes red
   ...  32 of 32
@@ -158,7 +158,7 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **157 / 157** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
+| Attack suite green | **165 / 165** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.1.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
 | The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |
@@ -399,7 +399,7 @@ python3 tests/store_smoke.py     # the quote outlives the process; history is ta
 python3 tests/anchor_smoke.py    # the agent anchors the chain it wrote, or says it did not
 python3 tests/standalone_smoke.py # the handed-out file is self-contained and current
 python3 tests/complexity_lint.py # no function over the ceiling without a written reason
-python3 tests/daml_tests.py                               # 157 scripts, rebuilt from source
+python3 tests/daml_tests.py                               # 165 scripts, rebuilt from source
 ```
 
 ---

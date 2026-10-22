@@ -17,7 +17,7 @@ Read it top to bottom. The weakest claims are at the bottom on purpose.
 |---|---|---|
 | The spending rules are enforced in Daml, not in Python | 32 fences across 5 contracts | `python3 tests/fence_lint.py` |
 | Every fence is load-bearing | 82 mutations, each requires a **named** test to go red | `python3 tests/mutation_suite.py` |
-| The ledger behaves under attack | 157 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
+| The ledger behaves under attack | 165 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
 | A refusal commits as a contract and moves no money | `TryCharge` / `ChargeRefused` in `KyaMandate.daml` | `testRefusalIsOnLedgerAndNothingMoved` |
 | The format is implemented three times and they agree | 20 conformance vectors, Python + JavaScript + Go | `python3 tests/conformance.py`, `node tests/conformance.js`, `cd impl/go && go run .` |
 | A disclosure cannot have an entry removed | SPEC 6b | `python3 tests/disclosure_smoke.py` |
@@ -29,6 +29,9 @@ Read it top to bottom. The weakest claims are at the bottom on purpose.
 | An open attempt does not leak what was attempted | the salt is held off-ledger, so the digest hides as well as binds | `testTheCommitmentHidesAndNotJustBinds` |
 | **Destroying the evidence requires the guardian** | the guardian is a signatory of every `Attempt`, so owner and actor together cannot archive one. Every legitimate ending also mints a `Resolution` marker | `testArchivingAnAttemptLeavesANumberedHole` |
 | **An asset cannot move outside the journal** | the guardian is a signatory of the asset, and its authority exists only inside an attempt resolution. Enforced by Daml's authorization model, not by convention | `testTheAssetCannotMoveOutsideTheJournal` |
+| **One journal serialises every attempt; N shards do not** | `testOneJournalSerialisesAndTwoShardsDoNot` holds the original contract id and uses it twice: one journal refuses, two shards allow both | `daml test --files daml/ShardedTest.daml` |
+| Sharding costs none of the four properties | completeness, nameable refusals, single-journal uniqueness and the guard each keep a test | same file |
+| A hidden shard is caught | `JournalSet` declares the count, `missingShards` names the gap | `testAHiddenShardIsCaught` |
 | A scheduled action cannot run early, late or twice | `DueOnce` and `DueEvery`, with the ledger enforcing the window rather than the scheduler. 9 scripts | `daml test --files daml/ScheduledTest.daml` in `step-0-refusal/test` |
 | The limit of that enforcement is stated and tested | a submitter holding BOTH actor and guardian authority bypasses it. This is a control under segregation of duties and a convention without it | `testSubmittingAsTheGuardianDefeatsIt` | `daml test --files daml/JournalTest.daml` in `step-0-refusal/test` |
 | The whole suite is green | 43/43 | `python3 tools/dashboard.py` |
@@ -73,5 +76,5 @@ would not survive being checked:
   `Journal.daml` reaches it **on the ledger and only on the path it covers**: an
   auditor observing `AttemptJournal` reads the attempt count directly and can
   name a withheld position. It cannot prevent a second journal, because
-  Daml-LF 2.1 has no contract keys, and it cannot see an attempt that bypassed
+  contract keys exist from LF 2.3 but are non-unique, and it cannot see an attempt that bypassed
   it. `testAnUnjournalledAttemptIsStillInvisible` holds that line.

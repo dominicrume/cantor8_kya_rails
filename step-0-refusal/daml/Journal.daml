@@ -51,10 +51,26 @@
 -- fact: the work and the increment cannot come apart. Skipping the increment
 -- means skipping the work.
 --
--- NO CONTRACT KEY, and this is a Daml 3 fact rather than a preference. Daml-LF
--- 2.1 removed contract keys: `daml build` on this package rejects a `key`
--- clause outright with "this feature is not currently supported". So there is
--- no way to make the ledger refuse a SECOND journal for the same pair.
+-- NO CONTRACT KEY, and the reason is narrower than this file used to claim.
+--
+-- Corrected 22 October 2026 after Tariq Bashir said "Contract Keys are back"
+-- in the Canton Foundation #sig-security channel. He is right, and the old
+-- note here was out of date.
+--
+-- Contract keys returned in Daml-LF 2.3, shipped in Canton 3.5.1 on 27 May
+-- 2026, requiring protocol version 35. This package targets LF 2.1, where
+-- `daml build` still rejects a `key` clause with "this feature is not
+-- currently supported", so they are genuinely unavailable HERE.
+--
+-- But the stronger point is that a key would not help even after upgrading.
+-- The 3.5.1 release notes say so plainly: "The keys are not unique, meaning
+-- multiple contracts may share the same key" and "Negative lookups are not
+-- validated". Key uniqueness is incompatible with Canton's multi-synchronizer
+-- design and is not coming back. So a key cannot refuse a second journal on
+-- any version.
+--
+-- Which means the fix below is not a workaround for a missing feature. It is
+-- the answer.
 --
 -- Uniqueness is therefore DETECTED and not prevented, which is the same
 -- footing as everything else here. The auditor is an observer of every journal

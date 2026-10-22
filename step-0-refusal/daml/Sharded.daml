@@ -1,0 +1,187 @@
+-- | Sharded journals: the same evidence, without serialising the business.
+--
+-- THE PROBLEM, named by PREDGE on forum.canton.network/t/9114 on 21 October
+-- 2026 and left unmeasured:
+--
+--   "The cost is contention, every attempt for one owner and actor
+--    serialises on that one contract."
+--
+-- It is the unanswered half of a criticism Digital Asset made of a different
+-- proposal in the same week: "lots of scalability concerns around batching
+-- that seem not touched upon."
+--
+-- Every design in that conversation has it. `AttemptJournal` is consumed and
+-- recreated by every attempt, so two attempts for the same pair cannot
+-- proceed at once: the second needs a contract id the first has not produced
+-- yet. A treasury doing two hundred payments an hour cannot have an evidence
+-- layer that permits one payment at a time.
+--
+-- An audit trail that serialises the business is not an audit trail. It is a
+-- rate limiter with good intentions.
+--
+-- THE FIX, and it is not clever. N shards instead of one journal. An attempt
+-- picks a shard, so N attempts touch N different contracts and none of them
+-- waits for another. The auditor adds the shards up.
+--
+-- THE PART THAT IS ACTUALLY HARD. Sharding is trivial. Keeping every property
+-- true across N contracts instead of one is not, and a design that buys
+-- throughput by giving up evidence has bought nothing. All four survive, and
+-- each has a test:
+--
+--   the count is complete           -> the auditor sums shards and knows N
+--   a withheld refusal is nameable  -> positions are (shard, n), still exact
+--   a second journal is impossible  -> the auditor signs the set and the shards
+--   the guard still holds           -> untouched; it lives on the asset
+--
+-- WHAT A SHARD COSTS. The position of an attempt is now a pair rather than a
+-- single number, so "attempt 47" becomes "shard 2, attempt 11". Nothing is
+-- lost, but a reader has to hold two numbers. And the auditor must check they
+-- can see every shard the set declares, which is one extra comparison and the
+-- reason `JournalSet` exists at all.
+--
+-- HOW MANY SHARDS. More shards is more parallelism and more bookkeeping. The
+-- right number is the peak concurrent attempts for one owner and actor, which
+-- is an application question this module deliberately does not answer.
+module Sharded where
+
+import DA.Text qualified as DA.Text
+import DA.List (sort)
+
+import Attempt
+import Guarded
+import Refusal
+
+-- | Declares how many shards exist, so the auditor knows what a complete set
+-- looks like.
+--
+-- Without this, an operator could hide a shard and the auditor would sum what
+-- they could see and get a smaller, entirely consistent-looking number. The
+-- count of shards is the thing that has to be fixed in advance, for the same
+-- reason the auditor is named in advance.
+template JournalSet
+  with
+    owner : Party
+    actor : Party
+    guardian : Party
+    auditor : Optional Party
+      -- ^ A SIGNATORY, as on every other contract here. A second set cannot
+      -- be opened without them, and neither can an extra shard.
+    shardCount : Int
+      -- ^ Fixed when the set is opened. Changing it means opening a new set,
+      -- which the auditor signs and therefore sees.
+  where
+    signatory [owner, actor, guardian] <> optional [] (\a -> [a]) auditor
+
+    ensure shardCount >= 1
+
+    -- | What the auditor must be able to see. Non-consuming, so asking does
+    -- not disturb the thing being asked about.
+    nonconsuming choice ExpectShards : Int
+      controller optional owner identity auditor
+      do pure shardCount
+
+-- | One shard. Identical in behaviour to `AttemptJournal`, with an index.
+--
+-- Two attempts on two shards touch two different contracts, so neither waits
+-- for the other. That is the whole of the performance claim and it is not
+-- subtle.
+template JournalShard
+  with
+    owner : Party
+    actor : Party
+    guardian : Party
+    auditor : Optional Party
+    shard : Int
+      -- ^ 0 to shardCount - 1. Carried on the contract so a disclosed shard
+      -- identifies itself and cannot be passed off as a different one.
+    attempts : Int
+    refusals : [Int]
+      -- ^ Positions WITHIN this shard. Global position is the pair
+      -- (shard, n), which is what `shardedPositions` reassembles.
+  where
+    signatory [owner, actor, guardian] <> optional [] (\a -> [a]) auditor
+
+    ensure shard >= 0 && attempts >= 0 && length refusals <= attempts
+
+    -- | Take the number and open an attempt, in a transaction holding nothing
+    -- else. Same two-phase guarantee as the unsharded journal.
+    choice OpenOn : (ContractId Attempt, ContractId JournalShard)
+      with
+        salt : Text
+        action : Text
+        detail : Text
+      controller owner, actor
+      do
+        assertMsg "an attempt needs a salt, or the commitment does not hide"
+          (DA.Text.length salt >= 32)
+        now <- getTime
+        let n = attempts + 1
+        attempt <- create Attempt with
+          owner; actor; guardian; auditor; n
+          commitment = attemptCommitment salt action detail
+          openedAt = now
+        shard' <- create this with attempts = n
+        pure (attempt, shard')
+
+    -- | One-phase refusal, for work that cannot revert after the check.
+    choice RefuseOn : (ContractId RefusalRecord, ContractId JournalShard)
+      with
+        action : Text
+        detail : Text
+        rule : Text
+      controller owner, actor
+      do
+        now <- getTime
+        let n = attempts + 1
+        record <- create RefusalRecord with
+          owner; actor; action; detail; rule
+          refusedAt = now
+          auditor
+        shard' <- create this with
+          attempts = n
+          refusals = refusals <> [n]
+        pure (record, shard')
+
+    -- | One-phase allow. Writes nothing about what it was.
+    choice AllowOn : ContractId JournalShard
+      with
+        action : Text
+      controller owner, actor
+      do create this with attempts = attempts + 1
+
+    nonconsuming choice ExpectOn : (Int, Int, [Int])
+      controller optional owner identity auditor
+      do pure (shard, attempts, refusals)
+
+-- | The auditor's arithmetic, in one place so both sides compute it the same.
+
+-- | Total attempts across a set of shards. Sum, nothing more.
+shardedTotal : [(Int, Int, [Int])] -> Int
+shardedTotal readings = sum [a | (_, a, _) <- readings]
+
+-- | Which shards the set declares but the auditor cannot see.
+--
+-- This is the check sharding makes necessary. One journal needs no such test,
+-- because there is nothing to be missing. With N shards an operator who hides
+-- one hands the auditor a smaller total that is internally consistent, and
+-- only the declared count catches it.
+missingShards : Int -> [(Int, Int, [Int])] -> [Int]
+missingShards declared readings =
+  let seen = sort [s | (s, _, _) <- readings]
+  in filter (`notElem` seen) [0 .. declared - 1]
+
+-- | Every refused position in the set, as (shard, position) pairs.
+--
+-- Nothing is lost by sharding. A position is simply a pair now.
+shardedPositions : [(Int, Int, [Int])] -> [(Int, Int)]
+shardedPositions readings =
+  sort [(s, n) | (s, _, ns) <- readings, n <- ns]
+
+-- | A shard is out of range for the set that declares it.
+--
+-- An operator cannot create shard 7 of a 3-shard set and have the auditor
+-- quietly include it, nor sit a real shard outside the range the set declares
+-- so that `missingShards` cannot miss it.
+outOfRange : Int -> [(Int, Int, [Int])] -> [Int]
+outOfRange declared readings =
+  sort [s | (s, _, _) <- readings, s < 0 || s >= declared]

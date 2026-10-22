@@ -49,7 +49,7 @@ In priority order. The list is long and alphabetical, so scroll for the last two
 |---|---|
 | `#sig-regulatory-compliance` | **The one that matters.** This SIG was auto-assigned to PR #860. Nikos Andrikogiannopoulos of Metrika sits here and is not Digital Asset, so he is less petitioned. SIGs "recommend proposals to appropriate members of the Tech & Ops Committee", and that sentence is the entire route to a champion. |
 | `#sig-security` | Edward Newman (Digital Asset CISO), Richard Domikis (MPCH), Stanislav German-Evtushenko (SBI). Newman is the one who actually answers security questions on the forum, and he has said publicly he is not aware of any Canton security certification plans, so the area is thin and attention is available. |
-| `#sig-daml-tooling` | You ship a standalone Daml package and you just hit a real Daml 3 constraint: Daml-LF 2.1 removed contract keys. That is a question worth asking here, and asking a good question is how you stop being a stranger. |
+| `#sig-daml-tooling` | You ship a standalone Daml package and hit a real Daml 3 constraint: contract keys returned in LF 2.3 but are explicitly non-unique, so they cannot enforce uniqueness. That is a question worth asking here, and a good question is how you stop being a stranger. |
 | `#sig-dapp-integration` | Your measured gap is adoption, not engineering. Zero outside implementations. This is the room where integration conversations happen, and Vacuumlabs' delegated automation is an integration conversation. |
 
 **Do not tick more than four.** Fifteen channels makes you a lurker in fifteen

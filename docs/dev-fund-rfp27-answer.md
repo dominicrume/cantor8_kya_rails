@@ -206,7 +206,7 @@ Not a roadmap. Built, pushed and mutation-tested today:
 | **The asset cannot move outside the journal** | `testTheAssetCannotMoveOutsideTheJournal` |
 | The bypass that defeats it, performed | `testSubmittingAsTheGuardianDefeatsIt` |
 
-157 Daml scripts across two packages. Every authorisation check is
+165 Daml scripts across two packages. Every authorisation check is
 mutation-tested: deleting it turns a named test red.
 
 **What has never happened:** none of it has run on DevNet, because no
