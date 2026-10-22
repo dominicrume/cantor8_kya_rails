@@ -1,8 +1,7 @@
 name: Daml fence assurance
 description: >-
-  Mutation-test the authorisation fences in a Daml package and emit a sealed,
-  hash-chained record of what was checked and what was found — verifiable by
-  anyone with nothing installed.
+  Delete each authorisation check in a Daml package, re-run your tests, and
+  find the ones nobody tests.
 author: Rume Dominic
 
 branding:
