@@ -11,6 +11,62 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ---
 
+## [1.2.0] — 2026-10-22
+
+### Added
+
+- **`disclose` — hand over the refusals without handing over the book.** A
+  stablecoin issuer can give a counterparty every refusal a control produced
+  and none of the payments that went through. `disclose(chain)`,
+  `refusals_only(chain)` and `check_disclosure(doc)`, with
+  `what_this_reveals(doc)` stating in plain words what a reader learns and
+  what they do not. Disclosure spec **1.3**.
+- **`outcome_digest` — SPEC 6c, non-equivocation.** Each entry's position and
+  outcome gets its own digest, same shape as a seal:
+  `digest[i] = sha256(canonical({"n": n, "outcome": outcome}) + digest[i-1])`.
+  Withhold a refusal, relabel it accepted, and the digest stops matching.
+- **`assurance` — derived by the verifier, never read from a field.**
+  `SELF_ATTESTED`, `ANCHORED`, `LEDGER_RECORDED`. A producer cannot write its
+  own assurance level into a document and have a reader believe it.
+
+### What this version does NOT claim
+
+Named here because the opposite was claimed for four hours on 10 October,
+before the heading was corrected.
+
+**`outcome_digest` is not completeness.** It proves non-equivocation and
+append-only ordering. A producer who never writes an entry computes the
+digest over the shorter list and it verifies perfectly. Write-time omission
+is unreachable by any commitment scheme, because the producer chooses what to
+commit to.
+
+arXiv:2609.32495 ("Hearsay", 26 September 2026) demonstrates this
+independently: 28 omissions injected into deployed agent harnesses, caught in
+full by an append-only log kept **outside** the harness, and **caught not at
+all by a hash chain over the harness's own record**. That is this package with
+no anchor, described exactly. The digest is worth having only once it is
+pinned somewhere the producer does not control.
+
+The ledger half of that answer lives in `step-0-refusal` in the repository and
+is Daml, not Python. It does not ship in this package and never has.
+
+### Fixed
+
+- **`py.typed` promised types that `mypy --strict` would not accept.** The
+  marker said the annotations were a contract; the annotations did not hold up
+  under strict checking. Now they do, and CI checks it, so the promise is
+  enforced rather than asserted.
+
+### Unchanged on purpose
+
+The canonical form and the seal. `canonical()` is still sorted keys with
+`","` and `":"` separators, ASCII-escaped, and
+`seal = sha256(canonical(body) + prev)`. **Receipts written by 1.0.0 verify
+under 1.2.0 and always will.** A change here would be a major version,
+because receipts are meant to outlive the code that wrote them.
+
+---
+
 ## [1.1.0] — 2026-09-10
 
 ### Added
