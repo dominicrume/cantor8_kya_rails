@@ -44,7 +44,7 @@ outputs:
     description: How many left every test passing.
     value: ${{ steps.assure.outputs.uncovered }}
   head:
-    description: The head seal of the record — names this run, and only this run.
+    description: The head seal of the record. Names this run and only this run.
     value: ${{ steps.assure.outputs.head }}
   record:
     description: Path to the sealed record.
