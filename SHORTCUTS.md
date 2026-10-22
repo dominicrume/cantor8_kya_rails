@@ -48,3 +48,24 @@ commitment computed off-ledger and passed in would move the one load-bearing
 computation out of the thing enforcing it.
 
 Added 19 October 2026.
+
+## A vetted template can never gain or lose a contract key
+
+Canton 3.5.1 release notes, Smart Contract Upgrades, verbatim:
+
+> "It is forbidden to add or remove a key definition from a template in a
+> later version of that template."
+> "This is enforced at package vetting time."
+
+`kya-rails-mandate 1.1.0` is vetted on DevNet. **No later version of it can
+ever add a key to an existing template.** Canton refuses the package at
+vetting, not at runtime. Adding a key means a new template name in a new
+package lineage, which is a different thing wearing the same name.
+
+Related and almost as sharp: changing `--target` from 2.1 to 2.3 changes the
+package id on its own, and the release notes say that "should be accompanied
+by a version change".
+
+Recorded 22 October 2026, after a correction in `#sig-security` sent us to
+read the 3.5.1 notes properly. Worth knowing before anyone proposes an
+upgrade to pick up keys, because the answer is that it cannot be an upgrade.

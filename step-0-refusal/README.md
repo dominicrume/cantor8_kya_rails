@@ -107,9 +107,12 @@ numerator too is unusable by a regulated firm. This sits between those.
 
 Two things about it that are limits and not features:
 
-- **A second journal is prevented, not merely detected.** Daml-LF 2.1 removed
-  contract keys, and this file previously concluded that uniqueness could
-  therefore only be shown to the auditor after the fact.
+- **A second journal is prevented, not merely detected.** This file used to
+  say contract keys were gone from Daml 3 and that uniqueness could therefore
+  only be shown to the auditor after the fact. Both halves were wrong. Keys
+  returned in Daml-LF 2.3 (Canton 3.5.1, 27 May 2026, protocol version 35),
+  and they are explicitly non-unique with unvalidated negative lookups, so a
+  key could not refuse a second journal on any version.
 
   **That was wrong, and PREDGE corrected it on
   [forum 9114](https://forum.canton.network/t/9114) on 21 October 2026.** A
@@ -237,6 +240,39 @@ submit two minutes later, and it is rejected for a reason that has nothing to
 do with your schedule. `assertDeadlineExceeded` and `assertWithinDeadline` do
 the same comparison without pinning.
 
+## Sharding, for when one counter is too slow
+
+PREDGE named the cost on [forum 9114](https://forum.canton.network/t/9114):
+*"every attempt for one owner and actor serialises on that one contract."*
+True, and fatal at volume. A treasury doing two hundred payments an hour
+cannot have an evidence layer that permits one payment at a time.
+
+`Sharded.daml` replaces one journal with **N shards**. An attempt picks a
+shard, so N attempts touch N different contracts and none waits for another.
+
+`testOneJournalSerialisesAndTwoShardsDoNot` measures it rather than asserting
+it. Daml Script cannot show wall-clock parallelism, but it shows the thing
+contention actually is, which is the dependency: hold the original contract
+id and use it twice. With one journal the second use **fails**, because the
+first consumed it. With two shards both original ids work.
+
+**All four properties survive**, and each has its own test:
+
+| | |
+|---|---|
+| The count is complete | the auditor sums shards and `JournalSet` declares how many |
+| A withheld refusal is nameable | positions become `(shard, n)` pairs, still exact |
+| A second journal is impossible | the auditor signs the set and every shard |
+| The guard still holds | untouched; it lives on the asset, not the counter |
+
+**Sharding creates exactly one new way to lie**, and it needs the one new
+check. An operator who shows two shards of three hands the auditor a smaller
+total that is internally consistent and looks fine. `JournalSet.shardCount`
+is why that fails: `missingShards` names the one that was withheld.
+`testAHiddenShardIsCaught` does exactly that.
+
+A position is a pair now rather than a number. That is the whole cost.
+
 ## What it does not do
 
 - **An attempt that never touches the journal leaves nothing behind.** The
@@ -256,7 +292,7 @@ daml build
 
 Then add the DAR as a `data-dependencies` entry in your own `daml.yaml`.
 
-Fifty four scripts cover it: eight on the record, thirteen on the journal, seventeen on two-phase attempts, six on enforcement and nine on scheduling. The
+Sixty two scripts cover it: eight on the record, fifteen on the journal, fifteen on two-phase attempts, seven on enforcement, nine on scheduling and eight on sharding. The
 ones that matter are a lending protocol and a collateral engine using it with
 no concept of a payee, an auditor who sees every record while a stranger sees
 none, `testAWithheldRefusalIsDetectable`, and `testTheAuditorCannotSeeWhatWasAllowed`. `python3 tests/daml_tests.py` from the

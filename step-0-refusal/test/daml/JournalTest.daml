@@ -191,9 +191,12 @@ testNoAuditorMeansNoDisclosure = script do
 
 -- 8. A second journal for the same pair is PREVENTED, not merely detected.
 --
---    This file previously gave up here. The note said Daml-LF 2.1 removed
---    contract keys, so there was no way to refuse a second journal, and the
---    best available was showing it to the auditor.
+--    This file previously gave up here, and for a reason that was wrong
+--    twice over. The note said Daml-LF 2.1 removed contract keys so a second
+--    journal could only be shown to the auditor. Keys returned in LF 2.3
+--    (Canton 3.5.1, 27 May 2026), and they are explicitly non-unique with
+--    unvalidated negative lookups, so they could not have refused one
+--    anyway.
 --
 --    PREDGE corrected that on forum.canton.network/t/9114 on 21 October 2026:
 --    a create needs the authority of EVERY signatory, so putting the auditor
