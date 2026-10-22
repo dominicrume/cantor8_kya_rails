@@ -102,7 +102,7 @@ says no; neither costs you anything.
 
 - three merged pull requests into the Canton Developer Hub
 - eight fixes to the Cantor8 toolkit, four issues and four pull requests
-- a Daml package with 156 test scripts where deleting any spending rule turns a
+- a Daml package with 157 test scripts where deleting any spending rule turns a
   named test red
 - a filed Dev Fund proposal, open, under RFP 27
 

@@ -120,8 +120,22 @@ template AttemptJournal
       -- authority flows into `Open` and onto the `Attempt` it creates.
       -- See Guarded.daml for what this does and what it does not do.
     auditor : Optional Party
-      -- ^ Named once, in advance. This party reads the DENOMINATOR. `None`
-      -- discloses to nobody, and that is the default, same as Refusal.
+      -- ^ Named once, in advance. This party reads the DENOMINATOR, and is a
+      -- SIGNATORY rather than an observer. `None` discloses to nobody and
+      -- gives up the uniqueness guarantee below.
+      --
+      -- PREDGE pointed this out on forum.canton.network/t/9114 on 21 October
+      -- 2026, and it was the answer to a gap this file had already given up
+      -- on. The previous note here said Daml-LF 2.1 removed contract keys so
+      -- a second journal could only be DETECTED. Wrong. A create needs the
+      -- authority of every signatory, so with the auditor on that line
+      -- nobody can open a second journal without them. Prevention, with no
+      -- keys.
+      --
+      -- It costs nothing at runtime. A choice that recreates this contract
+      -- carries its signatories' authority already, so the auditor does not
+      -- have to be online for an attempt. They are needed only to open a
+      -- journal in the first place, which is the one moment you want them.
     attempts : Int
       -- ^ Every attempt that has passed through, allowed or refused. The
       -- number the auditor divides by.
@@ -132,9 +146,9 @@ template AttemptJournal
       -- be withheld. A withheld reason then leaves a position with no record
       -- against it, which is exactly the detection this module exists for.
   where
-    signatory owner, actor, guardian
-
-    observer optional [] (\a -> [a]) auditor
+    -- The auditor is on the signatory line above, so no separate observer
+    -- clause is needed: a signatory is already a stakeholder and sees it.
+    signatory [owner, actor, guardian] <> optional [] (\a -> [a]) auditor
 
     -- A fresh journal starts at zero with nothing refused, and no later state
     -- can have fewer attempts than refusals.

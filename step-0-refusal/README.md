@@ -107,11 +107,24 @@ numerator too is unusable by a regulated firm. This sits between those.
 
 Two things about it that are limits and not features:
 
-- **There is no contract key.** Daml-LF 2.1 removed them, and `daml build`
-  rejects a `key` clause outright. So the ledger cannot refuse a second journal
-  for the same pair. What it does instead is show the auditor, who observes
-  every journal naming them: an operator who opens a second one has created the
-  evidence against themselves. Detection, not prevention.
+- **A second journal is prevented, not merely detected.** Daml-LF 2.1 removed
+  contract keys, and this file previously concluded that uniqueness could
+  therefore only be shown to the auditor after the fact.
+
+  **That was wrong, and PREDGE corrected it on
+  [forum 9114](https://forum.canton.network/t/9114) on 21 October 2026.** A
+  create needs the authority of every signatory, so the auditor goes on the
+  signatory line rather than the observer line and a second journal cannot be
+  opened without them. No keys required.
+
+  It costs nothing at runtime: a choice that recreates the journal already
+  carries its signatories' authority, so the auditor need not be online for an
+  attempt. They are needed only to open a journal, which is the one moment you
+  want them involved. `testASecondJournalIsPrevented`.
+
+  The guarantee is exactly as strong as naming an auditor. With `None` there is
+  no third signatory and a second journal can be opened freely, which
+  `testWithNoAuditorASecondJournalIsStillPossible` holds.
 - **This module cannot force an application to route through it.** An
   application with a second, unjournalled path to the same asset has a hole,
   and no module it imports can see that. What changes is where the hole has to
@@ -243,7 +256,7 @@ daml build
 
 Then add the DAR as a `data-dependencies` entry in your own `daml.yaml`.
 
-Fifty three scripts cover it: eight on the record, thirteen on the journal, seventeen on two-phase attempts, six on enforcement and nine on scheduling. The
+Fifty four scripts cover it: eight on the record, thirteen on the journal, seventeen on two-phase attempts, six on enforcement and nine on scheduling. The
 ones that matter are a lending protocol and a collateral engine using it with
 no concept of a payee, an auditor who sees every record while a stranger sees
 none, `testAWithheldRefusalIsDetectable`, and `testTheAuditorCannotSeeWhatWasAllowed`. `python3 tests/daml_tests.py` from the
