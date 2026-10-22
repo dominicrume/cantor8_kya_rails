@@ -16,6 +16,36 @@ Hard rules for any AI touching this code:
   debugging a push printed a live GitHub token into the transcript on
   2026-09-13. Every secret scanner in this repository reads FILES, so none of
   them could have caught it.
+- A SECRET IN MEANS TAINTED OUT. The rule above names commands known to
+  print a credential. That list is not the danger. The danger is a command
+  you believed was safe whose OUTPUT turns out to contain the secret.
+  So: whenever a credential is passed INTO a command, its output is tainted
+  until proven otherwise, and it is never printed. Not the body, not the
+  verbose log, not the error. Print the HTTP status, a boolean, a length, or
+  a named response header. Nothing else.
+  Use `python3 tools/authed.py <source> <url> [headers...]`, which discards
+  the body with `curl -o /dev/null` BEFORE it can be seen rather than
+  fetching it and filtering after, because a filter can be forgotten and a
+  discard cannot. If a field is genuinely needed from a response body, add a
+  named extractor to that tool that returns a boolean or a length, never the
+  value.
+  Three specific traps, all real:
+  * **Token exchanges hand the credential back.** `ghcr.io/token` returns the
+    base64 of the PAT you sent it as its bearer token. A request that looks
+    like a permissions check returns the secret.
+  * **`--verbose`, `--debug` and `-v` on anything authenticated** print the
+    Authorization header.
+  * **Error messages quote the request.** A failing authenticated call often
+    echoes what it sent.
+  Written 23 October 2026. A diagnostic against ghcr.io's token endpoint
+  printed a live classic PAT into a transcript, hours after a rule forbidding
+  exactly that was read. The command was not on the forbidden list because
+  the forbidden list was the wrong abstraction: the test is not WHICH command
+  it is, it is whether a secret went in.
+  When it happens anyway, say so immediately, name the credential, and tell
+  the owner to revoke it before anything else. A leaked secret reported in
+  the same minute is an incident. One noticed later is a breach.
+
 - The organisers' toolkit lives at ~/hackathon-toolkit. Read it, call it, never edit it.
 - NOTHING IS PUBLISHED to PyPI, npm, GitHub Pages or any public index unless the
   exact package name and version has been stated and approved in that message.
