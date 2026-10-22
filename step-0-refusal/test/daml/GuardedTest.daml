@@ -30,7 +30,7 @@ env = script do
   a <- allocateParty "Bot3"
   g <- allocateParty "Compliance"
   d <- allocateParty "Auditor3"
-  j <- submit [o, a, g] do
+  j <- submit [o, a, g, d] do
     createCmd AttemptJournal with
       owner = o
       actor = a

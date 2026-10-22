@@ -17,11 +17,12 @@ Read it top to bottom. The weakest claims are at the bottom on purpose.
 |---|---|---|
 | The spending rules are enforced in Daml, not in Python | 32 fences across 5 contracts | `python3 tests/fence_lint.py` |
 | Every fence is load-bearing | 82 mutations, each requires a **named** test to go red | `python3 tests/mutation_suite.py` |
-| The ledger behaves under attack | 156 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
+| The ledger behaves under attack | 157 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
 | A refusal commits as a contract and moves no money | `TryCharge` / `ChargeRefused` in `KyaMandate.daml` | `testRefusalIsOnLedgerAndNothingMoved` |
 | The format is implemented three times and they agree | 20 conformance vectors, Python + JavaScript + Go | `python3 tests/conformance.py`, `node tests/conformance.js`, `cd impl/go && go run .` |
 | A disclosure cannot have an entry removed | SPEC 6b | `python3 tests/disclosure_smoke.py` |
 | A withheld refusal cannot be relabelled accepted | SPEC 6c outcome digest | `python3 tests/completeness_smoke.py` |
+| **A second journal cannot be opened behind the auditor's back** | the auditor is a SIGNATORY, not an observer, so a create needs their authority. No contract keys required | `testASecondJournalIsPrevented` |
 | An auditor can name a **withheld** refusal from the ledger alone | `AttemptJournal` count plus `missingRefusals`, 14 scripts |
 | **A record survives the work reverting** | Two-phase `Attempt`: opened in its own transaction, consumed by the work. An attempt left open is the evidence. 15 scripts | `daml test --files daml/AttemptTest.daml` in `step-0-refusal/test` |
 | A resolution cannot lie about what the attempt was | **salted** sha256 commitment, length-prefixed | `testTheResolutionCannotLieAboutTheAttempt` |

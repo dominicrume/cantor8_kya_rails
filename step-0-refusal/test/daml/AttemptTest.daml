@@ -29,7 +29,7 @@ twoSetup = script do
   a <- allocateParty "Bot2"
   g <- allocateParty "Compliance2"
   d <- allocateParty "Auditor2"
-  j <- submit [o, a, g] do
+  j <- submit [o, a, g, d] do
     createCmd AttemptJournal with
       owner = o
       actor = a

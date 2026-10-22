@@ -26,7 +26,7 @@ setup = script do
   a <- allocateParty "RebalanceBot"
   g <- allocateParty "Compliance1"
   d <- allocateParty "Auditor"
-  j <- submit [o, a, g] do
+  j <- submit [o, a, g, d] do
     createCmd AttemptJournal with
       owner = o
       actor = a
@@ -189,22 +189,29 @@ testNoAuditorMeansNoDisclosure = script do
   records <- query @RefusalRecord nosy
   length records === 0
 
--- 8. A second journal for the same pair is the obvious way to defeat this:
---     run attempts through a fresh counter and leave the first one looking
---     clean. Daml-LF 2.1 has no contract keys, so the ledger cannot refuse
---     it. What it can do is show the auditor, who observes every journal
---     naming them. Detection, not prevention, and stated as such.
-testASecondJournalIsVisibleToTheAuditor : Script ()
-testASecondJournalIsVisibleToTheAuditor = script do
+-- 8. A second journal for the same pair is PREVENTED, not merely detected.
+--
+--    This file previously gave up here. The note said Daml-LF 2.1 removed
+--    contract keys, so there was no way to refuse a second journal, and the
+--    best available was showing it to the auditor.
+--
+--    PREDGE corrected that on forum.canton.network/t/9114 on 21 October 2026:
+--    a create needs the authority of EVERY signatory, so putting the auditor
+--    on the signatory line makes a second journal impossible to open without
+--    them. No keys required.
+--
+--    It costs nothing at runtime, because a choice that recreates the journal
+--    already carries its signatories' authority. The auditor is needed only
+--    to open one, which is the single moment you want them involved.
+testASecondJournalIsPrevented : Script ()
+testASecondJournalIsPrevented = script do
   s <- setup
   _ <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Allow with action = "withdraw"
 
-  -- The operator opens a second journal. This SUCCEEDS: Daml-LF 2.1 has no
-  -- contract keys, so nothing refuses it. Note it now needs the guardian as
-  -- well, which means a second journal cannot be opened behind compliance's
-  -- back either.
-  _ <- submit [s.owner, s.actor, s.guardian] do
+  -- The operator tries to open a second journal behind the auditor's back.
+  -- This now FAILS. Before 21 October it succeeded.
+  submitMustFail [s.owner, s.actor, s.guardian] do
     createCmd AttemptJournal with
       owner = s.owner
       actor = s.actor
@@ -213,10 +220,54 @@ testASecondJournalIsVisibleToTheAuditor = script do
       attempts = 0
       refusals = []
 
-  -- And the auditor sees both, unprompted, in their own contract set. Two
-  -- live journals for one pair is the finding; the auditor does not need the
-  -- operator to admit it.
+  -- Naming a DIFFERENT auditor does not help either: that journal simply is
+  -- not one this auditor is on, and the one they are on still shows the
+  -- real count.
+  rival <- allocateParty "RivalAuditor"
+  submitMustFail [s.owner, s.actor, s.guardian] do
+    createCmd AttemptJournal with
+      owner = s.owner
+      actor = s.actor
+      guardian = s.guardian
+      auditor = Some rival
+      attempts = 0
+      refusals = []
+
+  -- With the auditor it succeeds, which is correct: a second journal opened
+  -- in the open, with the auditor's authority, is a decision rather than a
+  -- concealment.
+  _ <- submit [s.owner, s.actor, s.guardian, s.auditor] do
+    createCmd AttemptJournal with
+      owner = s.owner
+      actor = s.actor
+      guardian = s.guardian
+      auditor = Some s.auditor
+      attempts = 0
+      refusals = []
   live <- query @AttemptJournal s.auditor
+  length live === 2
+
+-- 8b. The guarantee is exactly as strong as naming an auditor. With `None`
+--     there is no third signatory and a second journal can be opened freely.
+--     Tested so the limit cannot be forgotten.
+testWithNoAuditorASecondJournalIsStillPossible : Script ()
+testWithNoAuditorASecondJournalIsStillPossible = script do
+  owner <- allocateParty "FundNA"
+  actor <- allocateParty "BotNA"
+  guardian <- allocateParty "GNA"
+  _ <- submit [owner, actor, guardian] do
+    createCmd AttemptJournal with
+      owner; actor; guardian
+      auditor = None
+      attempts = 0
+      refusals = []
+  _ <- submit [owner, actor, guardian] do
+    createCmd AttemptJournal with
+      owner; actor; guardian
+      auditor = None
+      attempts = 0
+      refusals = []
+  live <- query @AttemptJournal owner
   length live === 2
 
 -- 9. The count is monotonic because every attempt consumes the journal. The
