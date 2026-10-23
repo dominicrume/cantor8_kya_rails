@@ -16,6 +16,30 @@ Hard rules for any AI touching this code:
   debugging a push printed a live GitHub token into the transcript on
   2026-09-13. Every secret scanner in this repository reads FILES, so none of
   them could have caught it.
+- NEVER REPORT A DEFECT IN SOMEBODY ELSE'S SOFTWARE UNTIL THE COMPARISON IS
+  CONTROLLED. "It works with curl and fails with their tool, same credential,
+  same URL" sounds like proof and is not. curl took the credential from the
+  command line. The tool took it from a config file whose semantics had been
+  misread. The inputs were never the same, so the comparison proved nothing.
+  Before filing: reproduce the failure with THEIR tool from a clean
+  environment, and make the working case use the same input path as the
+  failing one. If the two cases differ in how the input reaches the code,
+  that difference IS the hypothesis and it is yours to eliminate first.
+  Written 23 October 2026, after an issue was filed against digital-asset/dpm
+  claiming its credential handling was broken. It was not. The local
+  ~/.docker/config.json carried "credsStore": "desktop" alongside a
+  hand-written auths entry, and every OCI client correctly delegates to the
+  native helper and ignores auths when credsStore is set. Docker Desktop was
+  not running, the helper returned nothing, the request went out
+  unauthenticated, and ghcr.io answers anonymous requests to private
+  repositories with 403 rather than 401. Six debugging rounds, a workaround
+  written, a public issue filed and a pull request nearly opened, all on a
+  comparison that had no control in it.
+  The cost of being wrong here is asymmetric. A defect report that turns out
+  to be your own misconfiguration is spent in somebody else's repository,
+  under your own name, permanently. Correct it in the open the moment it is
+  known, say plainly that they were right, and close it.
+
 - A SECRET IN MEANS TAINTED OUT. The rule above names commands known to
   print a credential. That list is not the danger. The danger is a command
   you believed was safe whose OUTPUT turns out to contain the secret.

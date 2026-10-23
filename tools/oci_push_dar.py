@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Push a Daml DAR to an OCI registry in the exact shape `dpm publish dar` makes.
 
-Written because dpm 1.0.21 cannot authenticate to ghcr.io (digital-asset/dpm#329):
-it reads the credential, logs "using custom auth", and then the token exchange
-returns 403 where the same credential returns 200 from curl. The artefact is
-still worth having, so this builds the same thing by hand.
+Written while debugging what looked like a dpm authentication bug and was not.
+dpm 1.0.21 works. The local ~/.docker/config.json carried credsStore alongside
+a hand-written auths entry, and every OCI client correctly ignores auths when
+credsStore is set, so the request went out unauthenticated and ghcr answered
+403. See digital-asset/dpm#329, filed in error and corrected.
+
+Keeping this anyway. The artefacts it produced are published and correct, it
+documents the on-the-wire shape of a DAR artifact in one readable file, and
+it is useful wherever dpm is not available.
 
 Every structural choice below was read out of dpm's own source rather than
 guessed, because an artefact in the wrong shape is one nobody can consume.
