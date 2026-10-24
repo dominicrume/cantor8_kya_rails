@@ -193,15 +193,36 @@ def daml_script_count():
     # BOTH packages. canton-refusal-record is separate on purpose, and a count
     # that reads only the mandate is a count of the wrong thing: the README
     # said 111 and this said 103 the moment the second package existed.
+    #
+    # IN DEPENDENCY ORDER, and the order is load-bearing. step-0-refusal
+    # data-depends on interface/.daml/dist/canton-journal-interface-1.0.0.dar,
+    # so on a clean checkout that package cannot build until the interface has.
+    # This used to skip the interface and ignore `daml build`'s exit code, so
+    # on CI the build failed, `daml test` found nothing, the total came back
+    # 103 instead of 165, and the message blamed the README:
+    #
+    #     FAIL daml scripts: README says 165, the file has 103
+    #
+    # The README was right. Three commits were spent on a number that was
+    # never wrong, because a swallowed exit code was reported as a bad claim.
+    # A build that fails now returns -1 and says so.
     total = 0
-    for pkg in (os.path.join(ROOT, "step-1-mandate"),
-                os.path.join(ROOT, "step-0-refusal")):
-        subprocess.run(  # nosec B603 B607 - literal argv
+    for pkg in ("step-1-mandate",
+                os.path.join("step-0-refusal", "interface"),
+                "step-0-refusal"):
+        built = subprocess.run(  # nosec B603 B607 - literal argv
             ["daml", "build", "--no-legacy-assistant-warning"],
-            cwd=pkg, capture_output=True)
+            cwd=os.path.join(ROOT, pkg), capture_output=True, text=True)
+        if built.returncode != 0:
+            print("    daml build failed in %s:" % pkg)
+            print("      " + (built.stderr or built.stdout).strip()[-300:])
+            return -1
+        test_dir = os.path.join(ROOT, pkg, "test")
+        if not os.path.isdir(test_dir):
+            continue          # the interface package has no test package
         p = subprocess.run(  # nosec B603 B607 - literal argv
             ["daml", "test", "--no-legacy-assistant-warning"],
-            cwd=os.path.join(pkg, "test"), capture_output=True, text=True)
+            cwd=test_dir, capture_output=True, text=True)
         total += (p.stdout + p.stderr).count(": ok,")
     return total
 

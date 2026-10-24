@@ -39,43 +39,71 @@ FENCES = ("assertMsg", "ensure")
 
 
 def token():
-    """From the environment, or from `gh`, or not at all."""
+    """From the environment, or not at all.
+
+    There used to be a third source here: `gh auth token`, which CLAUDE.md
+    forbids by name because it prints a credential to stdout. It survived
+    because tests/security_lint.py searched for the text "gh auth token" while
+    this file spelled it ["gh", "auth", "token"]. Found 24 October 2026, once
+    that scan was taught to read argv lists. With no environment token,
+    `gh_api` below is used instead, and gh keeps the credential inside its own
+    process where this one never sees it.
+    """
     for name in ("GITHUB_TOKEN", "GH_TOKEN"):
         if os.environ.get(name):
             return os.environ[name]
-    try:
-        out = subprocess.run(["gh", "auth", "token"],  # nosec B603 B607 - literal argv
-                             capture_output=True, text=True, timeout=20)
-        if out.returncode == 0 and out.stdout.strip():
-            return out.stdout.strip()
-    except (OSError, subprocess.TimeoutExpired):
-        pass
     return ""
+
+
+def gh_api(path):
+    """One API call made BY gh, so the credential never enters this process."""
+    try:
+        out = subprocess.run(["gh", "api", path],  # nosec B603 B607 - literal argv
+                             capture_output=True, text=True, timeout=45)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return {"_error": str(e)[:90]}
+    if out.returncode != 0:
+        return {"_error": "gh api exit %d" % out.returncode}
+    try:
+        return json.loads(out.stdout)
+    except ValueError as e:
+        return {"_error": str(e)[:90]}
 
 
 def get(path, tok, tries=3):
     """One API call. Rate limits are answered by waiting, not by failing --
     a scan that dies halfway leaves a half-truth, which is worse than a slow
     scan."""
+    if not tok:
+        # gh is authenticated and this process is not, so prefer it. Falls
+        # through to the anonymous request below if gh is absent or errors.
+        via_gh = gh_api(path)
+        if "_error" not in via_gh:
+            return via_gh
     req = urllib.request.Request(API + path, headers={
         "Accept": "application/vnd.github+json",
         "User-Agent": "kya-rails-ecosystem-scan",
         **({"Authorization": "Bearer " + tok} if tok else {})})
     for attempt in range(tries):
-        try:
-            with urllib.request.urlopen(req, timeout=45) as r:  # nosec B310 - https, fixed host
-                return json.loads(r.read().decode())
-        except urllib.error.HTTPError as e:
-            if e.code in (403, 429) and attempt < tries - 1:
-                time.sleep(20 * (attempt + 1))     # secondary rate limit
-                continue
-            return {"_error": "%s %s" % (e.code, e.reason)}
-        except (urllib.error.URLError, OSError, ValueError) as e:
-            if attempt < tries - 1:
-                time.sleep(5)
-                continue
-            return {"_error": str(e)[:90]}
+        data, delay = _one_attempt(req, attempt)
+        if delay is None or not delay or attempt == tries - 1:
+            return data
+        time.sleep(delay)
     return {"_error": "gave up"}
+
+
+def _one_attempt(req, attempt):
+    """One request. Returns (result, delay): None means it worked, 0 means do
+    not retry, and a number is how long to wait before retrying."""
+    try:
+        with urllib.request.urlopen(req, timeout=45) as r:  # nosec B310 - https, fixed host
+            return json.loads(r.read().decode()), None
+    except urllib.error.HTTPError as e:
+        # 403 and 429 are the secondary rate limit, which waiting fixes.
+        retry_in = 20 * (attempt + 1) if e.code in (403, 429) else 0
+        return {"_error": "%s %s" % (e.code, e.reason)}, retry_in
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        return {"_error": str(e)[:90]}, 5
 
 
 def repos_of(org, tok):
