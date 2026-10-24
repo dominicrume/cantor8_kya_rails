@@ -90,6 +90,24 @@ LEAKY = [("git credential-", "prints the stored password for a host"),
 ALLOWED_NEARBY = ("never run", "forbid", "prints the", "do not run", "leaky")
 
 
+def as_argv(line):
+    """The same line with Python list punctuation removed.
+
+    `subprocess.run(["gh", "auth", "token"])` runs the forbidden command while
+    containing none of its text, so a literal substring search reads it as
+    clean. Stripping quotes, commas and brackets collapses the argv form back
+    onto the shell form, and one rule then catches both.
+
+    Added 24 October 2026. tools/authed.py and tools/ecosystem_scan.py both ran
+    `gh auth token` in list form. The rule was in LEAKY the whole time and this
+    scan read both files on every run. It matched on text; the breach was in
+    punctuation.
+    """
+    for ch in "\"',[]()":
+        line = line.replace(ch, " ")
+    return " ".join(line.split())
+
+
 def leaks_in(path):
     """Every line of one file that runs a credential-printing command."""
     try:
@@ -101,10 +119,12 @@ def leaks_in(path):
         window = " ".join(lines[max(0, i - 5):i + 6]).lower()
         if any(a in window for a in ALLOWED_NEARBY):
             continue
+        flat = as_argv(line)
         for cmd, why in LEAKY:
-            if cmd in line:
+            if cmd in line or cmd in flat:
                 out.append("%s:%d: %s (%s)"
                            % (os.path.relpath(path, ROOT), i + 1, cmd, why))
+                break
     return out
 
 
@@ -116,13 +136,21 @@ def scan_finds_a_planted_one():
     LEAKY was emptied, so the scan has to demonstrate it can say yes.
     """
     d = tempfile.mkdtemp()
-    probe = os.path.join(d, "planted.sh")
-    with open(probe, "w") as f:
-        f.write("#!/bin/sh\ngh auth token > /tmp/x\n")
-    found = bool(leaks_in(probe))
-    os.remove(probe)
+    planted = {
+        "planted.sh": "#!/bin/sh\ngh auth token > /tmp/x\n",
+        # The second form is the one that got through. A control for the shell
+        # form alone passed every run while two files ran the argv form.
+        "planted.py": 'subprocess.run(["gh", "auth", "token"])\n',
+    }
+    found = []
+    for name, body in planted.items():
+        probe = os.path.join(d, name)
+        with open(probe, "w") as f:
+            f.write(body)
+        found.append(bool(leaks_in(probe)))
+        os.remove(probe)
     os.rmdir(d)
-    return found
+    return all(found)
 
 
 def scannable():
