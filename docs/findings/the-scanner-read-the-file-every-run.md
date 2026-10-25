@@ -2,6 +2,10 @@
 
 *24 October 2026. Every claim here is one command. The commands are at the bottom.*
 
+**Published at <https://claude.ai/artifact/YBDHViaBjViimPERGH9Cva>.**
+This file is the source. A post that exists only here is not published, which
+is the mistake that produced this line.
+
 On 13 September an assistant debugging a failed push printed a live GitHub
 token into my terminal. I wrote a rule that day. It says: never run a command
 whose output is a credential, and it forbids `gh auth token` by name.
