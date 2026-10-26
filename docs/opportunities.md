@@ -1,7 +1,7 @@
 # Every opportunity, and what each is actually waiting on
 
 *Checked 26 September 2026. Numbers from the GitHub, PyPI and CoinGecko APIs,
-not from memory. CC at $0.135.*
+not from memory. Re-measured 26 October 2026: CC at $0.0990.*
 
 ## Income to date
 
@@ -22,8 +22,8 @@ Things that exist and cannot be taken away.
 
 | | what it is | evidence |
 |---|---|---|
-| **A published format** | `knowyouragenticai-receipts` on PyPI, 1.1.0 live, 1.2.0 built and verified | 189 downloads/month |
-| **A dissertation tool** | `ai-code-quality-auditor` on PyPI, now 0.5.1, first published 31 May | 311 downloads/month, the better used of the two |
+| **A published format** | `knowyouragenticai-receipts` on PyPI, 1.1.0 live, 1.2.0 built and verified | 246/month raw; 17% of all-time downloads carry an OS, so most of that is mirrors. `curl -s https://pypistats.org/api/packages/knowyouragenticai-receipts/system` |
+| **A dissertation tool** | `ai-code-quality-auditor` on PyPI, now 0.5.1, first published 31 May | 388/month raw; 19% carry an OS. Still the better used of the two, on the same measure |
 | **A reusable Daml package** | `canton-refusal-record` 1.0.0, one module, no dependencies beyond the standard library | 8 scripts, incl. a lending protocol and a collateral engine |
 | **A spec with three implementations** | Python, JavaScript, Go agreeing on 20 conformance vectors | a format three people implement is closer to a standard than a library |
 | **Three merged pull requests** | Canton Developer Hub #156, #160, #168, into a repository not owned here | this is the Dev Fund's own integration milestone, met |

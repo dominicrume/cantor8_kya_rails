@@ -15,7 +15,7 @@ The assumption going in was that they built more. **They did not.**
 | 1st place, `aswin-giridhar/canton8-hackathon-2026` | **29 August** | 34 |
 | 2nd place, `workonthestreets/lattice-scan` | **29 August** | 21 |
 | `khalydmaina/sentry` (HackCanton S3, same idea) | 29 September | 36 |
-| **this repository** | **16 October** | **100+** |
+| **this repository** | **26 October** | **193** |
 
 Both winning teams stopped on hackathon day. They built a twelve-hour project
 and presented it better. The gap was never depth.

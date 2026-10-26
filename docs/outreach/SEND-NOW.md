@@ -251,12 +251,26 @@ better idiom I have missed?
 
 ## 7. Amanda Martin. Thirty seconds, and worth it.
 
-**Reply to her 17 October email.** She is COO of the Canton Foundation, she
-granted the channels, and nobody thanks operations people.
+**Reply to her 17 October email.** She is COO of the Canton Foundation and she
+granted the channels.
+
+CORRECTED 26 October 2026. This draft used to open "both channels came
+through, thank you". They did not. The two that matter were never on the
+dropdown and were never asked for, and DO-THIS.md still carries the unticked
+box proving it. A thank-you for something that did not happen is the one way
+to lose an operations person permanently.
+
+She is also `hythloda`, the most active account in canton-dev-fund by a wide
+margin and the one who calls every `/vote`. Do NOT ask her for a champion:
+six external contributors have asked publicly for one in that repository and
+all six PRs were closed `needs-champion`. She operates the process after a
+champion exists. Ask her only for the thing she actually controls.
 
 ```
-Amanda, both channels came through, thank you. I am in
-#sig-regulatory-compliance and #sig-security now.
+Amanda, thank you for the channels on 17 October.
+
+Two were not on the form: #sig-regulatory-compliance and #sig-security.
+Could you add them?
 
 For what it is worth, the work has moved a long way in the week since the
 dinner. Two people on the forum found real flaws in my design and both are
