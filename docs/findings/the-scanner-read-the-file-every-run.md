@@ -2,9 +2,13 @@
 
 *24 October 2026. Every claim here is one command. The commands are at the bottom.*
 
-**Published at <https://claude.ai/artifact/YBDHViaBjViimPERGH9Cva>.**
-This file is the source. A post that exists only here is not published, which
-is the mistake that produced this line.
+**Published at
+<https://dominicrume.github.io/cantor8_kya_rails/writing/defeated-by-punctuation.html>.**
+
+That is a plain URL on the public web, served by GitHub Pages out of `docs/`,
+with no account and no sharing setting between a reader and the page. It was
+first put behind a share toggle on another service, which is not publishing:
+a link most people cannot open is a draft with extra steps.
 
 On 13 September an assistant debugging a failed push printed a live GitHub
 token into my terminal. I wrote a rule that day. It says: never run a command

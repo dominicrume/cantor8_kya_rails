@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Defeated by punctuation</title>
+<meta name="description" content="My credential scanner had the right rule and read the right files on every run. Two of those files were running the one command the rule forbids.">
+<meta name="author" content="Rume Dominic">
+<link rel="canonical" href="https://dominicrume.github.io/cantor8_kya_rails/writing/defeated-by-punctuation.html">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Defeated by punctuation">
+<meta property="og:description" content="My credential scanner had the right rule and read the right files on every run. Two of those files were running the one command the rule forbids.">
+<meta property="og:url" content="https://dominicrume.github.io/cantor8_kya_rails/writing/defeated-by-punctuation.html">
+<meta property="og:site_name" content="Know Your AgenticAI">
+<meta property="article:published_time" content="2026-10-25">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Defeated by punctuation">
+<meta name="twitter:description" content="A control in the wrong shape is worse than no control. It charges you full price for confidence and delivers none.">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128274;</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;700&family=Inter+Tight:wght@500;600;800&display=swap">
+<style>
+  :root{
+    --paper:#FBFAF7; --panel:#FFFFFF; --ink:#16181A; --dim:#5A6167; --faint:#949BA1;
+    --rule:#E4E1DA;
+    --pass:#1F7A4C; --fail:#B33A2B; --fail-bg:#B33A2B0F; --mark:#C9A227;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#111315; --panel:#181B1E; --ink:#E9ECEE; --dim:#9AA2A9; --faint:#6B7278;
+      --rule:#262A2E;
+      --pass:#5FBF8B; --fail:#E07868; --fail-bg:#E0786814; --mark:#D9B44A;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#111315; --panel:#181B1E; --ink:#E9ECEE; --dim:#9AA2A9; --faint:#6B7278;
+    --rule:#262A2E;
+    --pass:#5FBF8B; --fail:#E07868; --fail-bg:#E0786814; --mark:#D9B44A;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);
+       font-family:Newsreader,Georgia,"Times New Roman",serif;
+       font-size:18px;line-height:1.68;-webkit-font-smoothing:antialiased;margin:0}
+  .sheet{max-width:40rem;margin:0 auto;padding:clamp(2rem,6vw,4.5rem) clamp(1.1rem,5vw,2rem) 6rem}
+  h1{font-family:"Inter Tight",system-ui,sans-serif;font-weight:800;
+     font-size:clamp(2.1rem,7vw,3.2rem);line-height:1.03;letter-spacing:-.03em;
+     margin:0 0 1rem;text-wrap:balance}
+  .standfirst{font-size:1.2rem;color:var(--dim);margin:0 0 .9rem}
+  .byline{font-family:"Inter Tight",sans-serif;font-size:12.5px;letter-spacing:.08em;
+          text-transform:uppercase;color:var(--faint);margin:0 0 2.5rem;
+          padding-bottom:1.4rem;border-bottom:1px solid var(--rule)}
+  h2{font-family:"Inter Tight",sans-serif;font-weight:600;font-size:1.4rem;
+     letter-spacing:-.015em;margin:2.8rem 0 .8rem;text-wrap:balance}
+  p{margin:0 0 1.15rem}
+  strong{font-weight:600}
+  a{color:inherit;text-decoration:underline;text-underline-offset:3px;
+    text-decoration-color:var(--rule)}
+  a:hover{text-decoration-color:var(--mark)}
+  a:focus-visible{outline:2px solid var(--mark);outline-offset:3px;border-radius:2px}
+  code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.84em;
+       background:var(--panel);border:1px solid var(--rule);border-radius:3px;
+       padding:.08em .32em}
+  pre{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px;
+      line-height:1.75;background:var(--panel);border:1px solid var(--rule);
+      border-left:2px solid var(--mark);border-radius:4px;
+      padding:.9rem 1.1rem;overflow-x:auto;margin:0 0 1.15rem}
+  pre code{background:none;border:0;padding:0;font-size:inherit}
+  .r{color:var(--fail)} .d{color:var(--faint)}
+  .lede-num{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);
+            border-radius:6px;overflow:hidden;margin:0 0 2rem;
+            grid-template-columns:repeat(auto-fit,minmax(7.5rem,1fr))}
+  .lede-num div{background:var(--panel);padding:.85rem 1rem}
+  .lede-num b{display:block;font-family:"Inter Tight",sans-serif;font-weight:800;
+              font-size:1.5rem;letter-spacing:-.02em;line-height:1.1;
+              font-variant-numeric:tabular-nums}
+  .lede-num span{font-size:12.5px;color:var(--dim);font-family:"Inter Tight",sans-serif}
+  blockquote{margin:0 0 1.15rem;padding:.1rem 0 .1rem 1.15rem;
+             border-left:2px solid var(--mark);color:var(--dim);font-style:italic}
+  .box{background:var(--panel);border:1px solid var(--rule);border-radius:6px;
+       padding:1rem 1.2rem;margin:0 0 1.15rem;font-size:16px}
+  .box.bad{border-left:2px solid var(--fail);background:var(--fail-bg)}
+  .box p:last-child{margin-bottom:0}
+  .box b{font-family:"Inter Tight",sans-serif}
+  ol.plain{margin:0 0 1.15rem;padding-left:1.3rem}
+  ol.plain li{margin-bottom:.55rem}
+  .scroll{overflow-x:auto;margin:0 0 1.15rem}
+  table{width:100%;border-collapse:collapse;font-size:15px;
+        font-family:"Inter Tight",sans-serif}
+  th{text-align:left;font-weight:600;font-size:11.5px;letter-spacing:.09em;
+     text-transform:uppercase;color:var(--faint);padding:.6rem .8rem;
+     border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:.6rem .8rem;border-bottom:1px solid var(--rule);color:var(--dim)}
+  tr:last-child td{border-bottom:0}
+  td:first-child{color:var(--ink);font-weight:500}
+  footer{margin-top:3rem;padding-top:1.4rem;border-top:1px solid var(--rule);
+         color:var(--faint);font-size:14px;line-height:1.7;
+         font-family:"Inter Tight",sans-serif}
+  @media (prefers-reduced-motion:no-preference){a{transition:text-decoration-color .15s}}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<h1>Defeated by punctuation</h1>
+<p class="standfirst">My scanner had the right rule, read the right files, every
+run, for days. Two of those files were running the one command the rule forbids.</p>
+<p class="byline">Rume Dominic &middot; Know Your AgenticAI &middot; 25 October 2026</p>
+
+<div class="lede-num">
+  <div><b>2</b><span>files breaking the rule</span></div>
+  <div><b>0</b><span>times the scan noticed</span></div>
+  <div><b>4</b><span>lines to fix it</span></div>
+</div>
+
+<p>On 13 September an assistant debugging a failed push printed a live GitHub
+token into my terminal. I wrote a rule that day. It says: never run a command
+whose output is a credential, and it forbids <code>gh auth token</code> by name.</p>
+
+<p>Then I wrote a scanner to enforce the rule. It reads every tracked file on
+every run. It has a positive control, because a scanner that finds nothing in a
+clean repository looks exactly like a scanner that finds nothing at all.</p>
+
+<p>This week I found two files in my own repository running the forbidden
+command. One of them was the tool I had written to keep credentials out of the
+terminal in the first place.</p>
+
+<p>The scanner had read both of them, every run, for days. It passed every time.</p>
+
+<h2>The line it could not see</h2>
+
+<p>Here it is. Do not run this.</p>
+
+<pre><code>subprocess.run(["gh", "auth", "token"], capture_output=True)</code></pre>
+
+<p>The scanner searched for the forbidden command as plain text. That line does
+not contain it. It contains <code>gh</code>, then a quote, a comma, a space, then
+<code>auth</code>.</p>
+
+<div class="box bad">
+<p>The rule was right. The scanner was right. The file was read on every run.
+<b>The match was defeated by punctuation.</b></p>
+</div>
+
+<h2>Why the positive control did not save me</h2>
+
+<p>I had done the thing you are supposed to do. The scan plants a known-bad file
+and proves it can see a violation, so that a clean result means something. Mine
+planted the forbidden command the way a shell script would write it.</p>
+
+<p>It matched. So the scan reported that it could detect a real breach, and I
+believed it.</p>
+
+<p>But a control only proves the scan catches breaches <strong>shaped like the
+control</strong>. Mine was shaped like a shell script. The breach was shaped like
+a Python argument list. For as long as both existed, the control passed and the
+breach sat two directories away.</p>
+
+<p>The fix is four lines. Strip list punctuation, then match against both forms.</p>
+
+<pre><code>def as_argv(line):
+    for ch in "\"',[]()":
+        line = line.replace(ch, " ")
+    return " ".join(line.split())</code></pre>
+
+<p>Then plant <em>both</em> shapes in the control, not one.</p>
+
+<p>I checked the fix the only way worth checking a test. I deleted it and
+confirmed the control went red:</p>
+
+<pre><code>  <span class="r">FAIL</span> the scan cannot find a planted one, so 'clean' means nothing</code></pre>
+
+<p>Then I put it back. The repaired scan immediately found a second violation I
+did not know about, in a file older than the one I was chasing.</p>
+
+<h2>The second failure was worse, because it blamed the wrong thing</h2>
+
+<p>A different check in the same repository counts the Daml test scripts and
+compares the total against the number printed in my README. For two days it
+failed in continuous integration with this:</p>
+
+<pre><code>  <span class="r">FAIL</span> daml scripts: README says 165, the file has 103</code></pre>
+
+<p>That reads like a stale claim in my documentation. I have a rule against those
+too. So I opened the README to correct it.</p>
+
+<p>The README was right.</p>
+
+<p>The check builds two Daml packages and counts the scripts in each. One of them
+takes a data dependency on an interface package that the check never built, and
+it ignored what <code>daml build</code> returned. On a clean checkout the build
+failed, the test run found nothing, the total came back 103 instead of 165, and
+the check presented that to me as dishonesty in my own writing.</p>
+
+<div class="box bad">
+<p><b>A swallowed exit code was reported as a false claim.</b> Three commits went
+into a number that was never wrong.</p>
+</div>
+
+<p>It now builds in dependency order, and a failed build returns <code>-1</code>
+and prints the compiler error. The failure message went from naming an innocent
+file to naming the actual fault. That is the whole improvement, and it is worth
+more than the number being right.</p>
+
+<h2>The pattern</h2>
+
+<p>Three checks, all written deliberately, all with a stated purpose, all wrong
+in the same way: <strong>each one reported confidently about something it had not
+actually looked at.</strong></p>
+
+<div class="scroll">
+<table>
+<thead><tr><th>Check</th><th>Reported on</th><th>Where the fault was</th></tr></thead>
+<tbody>
+<tr><td>Credential scanner</td><td>text</td><td>punctuation</td></tr>
+<tr><td>Script counter</td><td>a documented claim</td><td>a swallowed exit code</td></tr>
+<tr><td>Build dashboard</td><td>a test result</td><td>a concurrent process</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The third was the same day. My build dashboard reported <em>40 of 41
+green</em> while a mutation run was live in another process with files
+deliberately broken on disk. Three different totals in one hour, none of them
+measured on a quiet tree. On a quiet tree it is 43 of 43.</p>
+
+<p>What these share is not a bug. It is that the thing doing the checking was
+never checked in the form the failure would actually arrive in.</p>
+
+<h2>The question I ask a test now</h2>
+
+<p>Not &ldquo;does it pass&rdquo;. Not even &ldquo;does it fail when I break the
+code&rdquo;, which is better and still not enough.</p>
+
+<blockquote>What shape will the real breach have, and have I ever planted that
+shape?</blockquote>
+
+<p>A control in the wrong shape is worse than having none, because it buys
+confidence at full price and delivers nothing. I had one for six weeks and it
+reported success the entire time.</p>
+
+<h2>Three things to try today</h2>
+
+<ol class="plain">
+<li><strong>Grep your repository for your own forbidden commands, then grep for
+them again with the quotes and commas removed.</strong> If the second search
+finds something the first did not, your scanner has the hole mine had.</li>
+<li><strong>Find a check that reads another tool's output and see whether it
+reads that tool's exit code.</strong> A tool that failed and a tool that found
+nothing produce the same empty output.</li>
+<li><strong>Run your suite twice, once with nothing else touching the working
+tree.</strong> If the two runs disagree, every number you have quoted from it is
+unmeasured.</li>
+</ol>
+
+<h2>Check all of it yourself</h2>
+
+<p>Everything above is in one public repository, pushed before this was written.</p>
+
+<pre><code>git clone https://github.com/dominicrume/cantor8_kya_rails
+cd cantor8_kya_rails
+
+<span class="d"># the scanner, with both control shapes</span>
+python3 tests/security_lint.py
+
+<span class="d"># break the fix on purpose; the control must go red</span>
+python3 - &lt;&lt;'EOF'
+p = "tests/security_lint.py"
+s = open(p).read().replace("if cmd in line or cmd in flat:", "if cmd in line:")
+open(p, "w").write(s)
+EOF
+python3 tests/security_lint.py
+git checkout -- tests/security_lint.py
+
+<span class="d"># the counter, from a clean state, in dependency order</span>
+rm -rf step-0-refusal/interface/.daml/dist step-0-refusal/.daml/dist
+python3 tests/balance_lint.py        <span class="d"># 165, not 103</span>
+
+<span class="d"># the whole sweep, on a quiet tree</span>
+python3 tools/dashboard.py           <span class="d"># 43/43</span></code></pre>
+
+<p>The commit is
+<a href="https://github.com/dominicrume/cantor8_kya_rails/commit/f3b693a">f3b693a</a>.
+Its message says what was wrong, in the open, with the reason, because a
+correction found by a reader costs more than one declared by the author.</p>
+
+<h2>The limit of this</h2>
+
+<p>None of it has run on Canton DevNet. I do not have a credential yet. These are
+local checks over Daml packages and Python, and that is all they are. Weigh them
+as a design until that changes.</p>
+
+<p>What is on a public registry is the Daml work they guard, and that part is
+reproducible. Both published packages rebuild byte for byte from committed
+source, and the digests match what a stranger pulls anonymously:</p>
+
+<pre><code>canton-journal-interface-1.0.0.dar  255139 bytes
+  sha256 97ce4baaf2505493903974a7d591cce380180e97ad402cd43bd6b4066fb83a4d
+
+canton-refusal-record-1.0.0.dar     396449 bytes
+  sha256 a72a61918f6c75d7f839439d6338ee8ce8a738864a702cab40d81882b3a69df8</code></pre>
+
+<p>Pull either from
+<code>ghcr.io/dominicrume/canton-journal-interface:1.0.0</code> or take them from
+<a href="https://github.com/dominicrume/cantor8_kya_rails/releases/tag/daml-v1.0.0">the
+release</a>. There is no <code>latest</code> tag, on purpose.</p>
+
+<p>To make one of your own assets unmovable without a ledger record of the
+attempt, you need the first of those two files and nothing else. One word on your
+signatory line, one interface instance:</p>
+
+<pre><code>template Wallet
+  with holder : Party; guard : Party; balance : Decimal
+  where
+    signatory holder, guard          <span class="d">-- the whole fix</span>
+
+    interface instance Journalled for Wallet where
+      view = JournalledView with owner = holder; guardian = guard
+      perform = do ...               <span class="d">-- your work, untouched</span></code></pre>
+
+<p>The honest caveat on that: it is a control when the guard party is operated by
+somebody who is not the actor, and a convention when one person submits as both.
+A test in the repository performs that bypass and shows the counter never moves.</p>
+
+<footer>
+Rume Dominic (O&rsquo;Rume Dominic Uririe) &middot; Aston University &middot;
+<a href="https://github.com/dominicrume/cantor8_kya_rails">github.com/dominicrume/cantor8_kya_rails</a><br>
+Every figure here is reproducible from a clean clone with a documented command.
+Corrections welcome. This is the second post about my own tooling being wrong,
+and the count is a running total rather than a closed one.
+</footer>
+
+</div>
+</body>
+</html>
