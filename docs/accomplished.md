@@ -10,8 +10,8 @@ zero it says zero.*
 
 | | what | evidence |
 |---|---|---|
-| **A published format** | `knowyouragenticai-receipts`, live on PyPI since 6 September | 2 releases, 189 downloads a month |
-| **A published tool** | `ai-code-quality-auditor`, live since 31 May, now at 0.5.1 | 6 releases, 311 downloads a month |
+| **A published format** | `knowyouragenticai-receipts`, live on PyPI since 6 September | 2 releases. 246/month raw at 26 Oct 2026, mostly mirrors |
+| **A published tool** | `ai-code-quality-auditor`, live since 31 May, now at 0.5.1 | 6 releases. 388/month raw at 26 Oct 2026, mostly mirrors |
 | **A reusable Daml package** | `canton-refusal-record` 1.0.0: one module, no dependencies beyond the standard library | 8 scripts, incl. a lending protocol and a collateral engine that have no concept of a payee |
 | **A written specification** | `SPEC.md` with 20 conformance vectors | three independent implementations, Python, JavaScript and Go, agree on all 20 |
 | **A verifier that needs nothing** | drop a file on a web page, no wallet, no install, no network | works offline |
