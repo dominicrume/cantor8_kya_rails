@@ -254,11 +254,16 @@ better idiom I have missed?
 **Reply to her 17 October email.** She is COO of the Canton Foundation and she
 granted the channels.
 
-CORRECTED 26 October 2026. This draft used to open "both channels came
-through, thank you". They did not. The two that matter were never on the
-dropdown and were never asked for, and DO-THIS.md still carries the unticked
-box proving it. A thank-you for something that did not happen is the one way
-to lose an operations person permanently.
+CORRECTED TWICE on 26 October 2026, and the second correction undid the
+first. An assistant read the unticked box in DO-THIS.md, concluded the two
+channels had never been granted, and rewrote this draft to ask for them. A
+screenshot of the Slack sidebar then showed sig-regulatory-compliance and
+sig-security both present under External connections. They were granted. The
+box was stale, not the world.
+
+The lesson is the repository's own rule, applied to the repository itself:
+a checklist is a record of what somebody last wrote down, not a measurement.
+DO-THIS.md is not an API. Before acting on a box in it, look at the thing.
 
 She is also `hythloda`, the most active account in canton-dev-fund by a wide
 margin and the one who calls every `/vote`. Do NOT ask her for a champion:
@@ -267,10 +272,8 @@ all six PRs were closed `needs-champion`. She operates the process after a
 champion exists. Ask her only for the thing she actually controls.
 
 ```
-Amanda, thank you for the channels on 17 October.
-
-Two were not on the form: #sig-regulatory-compliance and #sig-security.
-Could you add them?
+Amanda, thank you for the channels. I am in #sig-regulatory-compliance
+and #sig-security now and reading rather than posting.
 
 For what it is worth, the work has moved a long way in the week since the
 dinner. Two people on the forum found real flaws in my design and both are

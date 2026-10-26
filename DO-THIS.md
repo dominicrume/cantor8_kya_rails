@@ -79,7 +79,11 @@ Pedro Neves (Community and Governance) did the Slack add at 22:11 on 17 Oct.
 `#sig-security`. Neither was on the dropdown. Reply to Amanda's own email and
 ask for them, since she handled it and invited questions.
 
-- [ ] Asked Amanda for the two missing channels
+- [x] **Granted, confirmed 26 October 2026 from the Slack sidebar.**
+      `sig-regulatory-compliance` and `sig-security` are both under
+      External connections, alongside `sig-attestor-pools-daos-multisig`.
+      This box sat unticked for nine days after the thing had happened,
+      and an assistant acted on the box instead of on Slack.
 
 ---
 
