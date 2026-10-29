@@ -135,20 +135,59 @@ state of the queue.
 
 ## Who actually champions
 
-From the same 45:
+Measured over all 602 proposals in the repository on 29 October 2026, not a
+sample. Re-derive it in one command:
 
-| champion | proposals |
+```sh
+python3 tools/champions.py
+```
+
+Two different things are called "champion" and conflating them is how this
+section was wrong before. The old version of it counted a sample of 45 and
+reported Digital Asset at 5.
+
+**ASSIGNED by the Foundation**, the administrative record, 27 people in all:
+
+| who | proposals |
 |---|---:|
-| **Digital Asset** | **5** — Wayne Collier (×2), Itai Segall, Curtis Hrischuk |
-| Canton Foundation | 4 — incl. `hythloda` (Amanda Martin) |
-| IntellectEU | 3 |
-| Zenith | 1 — Heslin Kim |
+| `shaul-da` (Shaul Kfir) | **29** |
+| `jonathan-ieu` (Jonathan Mayeur) | 15 |
+| `Denend` | 11 |
+| `srikanth-bitdynamics` | 11 |
+| `hythloda` (Amanda Martin) | 8 |
+| `Jatinp26` | 7 |
+| `hrischuk-da` (Curtis Hrischuk) | 7 |
+| `waynecollier-da` (Wayne Collier) | 5 |
 
-**Digital Asset champions more than anyone.** They are also the owner of
-`daml-finance` — 71 authorisation fences, which this repository is mutation
-testing now. The organisation most likely to champion is the organisation
-whose flagship library we are about to hand a findings record to. That is not
-a coincidence to exploit; it is a reason the order of operations matters.
+**VOLUNTEERED in a comment**, across the newest 160 proposals, five people in
+total, ever:
+
+| who | proposal |
+|---|---|
+| `zeroknowledger` (Yiannis Varelas, co-author of CIP-0129) | #866 |
+| `beezybarg` | #788 |
+| `LucasnFCS` | #855 |
+| `akshaysinha100` | #740 |
+| `Jatinp26` | #672 |
+
+Five, out of 160. Volunteering is rare and it is the thing that moves a
+proposal: #866 got "Happy to champion this." on 9 October and a vote called
+on it seven days later.
+
+**Two of the three RFP 27 proposals have a volunteer champion. #860 does not.**
+#866 has Yiannis Varelas, #788 has `beezybarg`, and ours has nobody. That is
+the gap, stated as a number.
+
+The scan carries a positive control: it asserts that it can find Yiannis
+Varelas on #866, and fails loudly if it cannot. The first version read only
+the newest 40 proposals, missed #866 at 77 back, and reported "nobody" with a
+clean exit. A scan that cannot find a case you already know about is not a
+scan, and an empty table is not a finding.
+
+The same mistake, in the other direction, produced a wrong correction here on
+29 October: a re-count that read only the newest 100 of 602 proposals returned
+3 for Jonathan Mayeur, and the original 15 was declared doubtful. The 15 was
+right. The re-count was the error.
 
 ## What follows
 
