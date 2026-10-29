@@ -152,6 +152,22 @@ refused.
 
 ## Rationale
 
+**With thanks to the people who shaped this.** This specification exists
+because two people answered a question in public and gave their work away.
+
+Federico Rodriguez (Community Tech Partner, @Federico_Rodriguez) replied on
+11 September 2026 and set the direction. He pointed out that an application's
+own receipts cannot prove an omission, however well they are chained, and
+proposed modelling a refusal as a committed Canton transaction instead. The
+central idea of this CIP is his.
+
+PREDGE (@PREDGE) replied on 21 October 2026 and made it enforceable, by moving
+the auditor from the observer line to the signatory line. That change is the
+difference between a control that notices and a control that holds.
+
+Both replies are in the open, at
+https://forum.canton.network/t/how-do-you-prove-your-app-didnt-do-something/9114
+
 **Why a contract rather than a new Ledger API service.** A contract is already
 carried by every adapter, respects Canton's sub-transaction privacy, and
 inherits the existing authorization model. A new service would require
@@ -162,10 +178,12 @@ problem.
 that makes journalling non-optional. Earlier drafts relied on the application
 choosing to call the journal, which is a convention and not a control.
 
-**Why the auditor is a signatory and not an observer.** Contributed by a
-community reviewer on 21 October 2026, on
-forum.canton.network/t/9114. Under the observer design a second journal could
-only be detected. With the auditor as a signatory it cannot be created.
+**Why the auditor is a signatory and not an observer.** In PREDGE's words, on
+21 October 2026: "if the auditor is a signatory on the journal, not only an
+observer ... nobody can create another one without the auditor's authority,
+since a create needs every signatory." Under the observer design a second
+journal could only be detected after the fact. With the auditor as a signatory
+it cannot be created at all.
 
 **Why the claim is narrow.** This is a complete record of refusals that were
 decided. It is not a complete log of everything attempted. If a check passes
