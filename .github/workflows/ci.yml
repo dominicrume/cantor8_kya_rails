@@ -221,6 +221,16 @@ jobs:
             grep -A3 'External template choices' /tmp/daml-test.log; exit 1
           fi
 
+      - name: both Daml packages, built and tested from source
+        # step-0-refusal was never built or tested here. Only step-1-mandate
+        # was, so 62 of the 165 scripts -- every one of them in the package
+        # that is published to ghcr and named as the CIP's reference
+        # implementation -- ran nowhere but on a laptop. tests/daml_tests.py
+        # already built and tested BOTH packages in dependency order; it
+        # simply was not called. The README listed it under "all of which run
+        # in CI" while it did not.
+        run: python3 tests/daml_tests.py
+
       - name: the float adds up, and every number the README shows is still true
         # Lives in THIS job, not the conformance one, because
         # daml_script_count() counts scripts by RUNNING them and returns -1

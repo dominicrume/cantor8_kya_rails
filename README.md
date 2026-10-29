@@ -391,11 +391,7 @@ node    tests/conformance.js     # seal format, JavaScript
 cd impl/go && go run .           # seal format, Go
 python3 tests/fence_lint.py      # every spending rule is present in its contract
 python3 tests/mutation.py        # delete each Daml fence, prove a test goes red
-python3 tests/mutation_py.py     # same, for every refusal in the webhook adapters
-python3 tests/meta_smoke.py      # attack the WhatsApp webhook adapter
-python3 tests/meta_wire_smoke.py # and again over a real socket, through the server
-python3 tests/breet_wire_smoke.py # the deposit webhook, and its IP allowlist
-python3 tests/store_smoke.py     # the quote outlives the process; history is tamper-evident
+python3 tests/mutation_py.py     # same, for every refusal the sealed journal raises
 python3 tests/anchor_smoke.py    # the agent anchors the chain it wrote, or says it did not
 python3 tests/standalone_smoke.py # the handed-out file is self-contained and current
 python3 tests/complexity_lint.py # no function over the ceiling without a written reason
