@@ -71,13 +71,25 @@ if build.returncode != 0:
 # taking our mandate with it, so "the Daml suite passes" has to include it or
 # that claim is about the wrong package.
 REFUSAL = os.path.join(ROOT, "step-0-refusal")
-b = subprocess.run(  # nosec B603 B607 - literal argv, no shell
-    ["daml", "build", "--no-legacy-assistant-warning"],
-    cwd=REFUSAL, capture_output=True, text=True)
-if b.returncode != 0:
-    print("  FAIL canton-refusal-record does not compile")
-    print((b.stdout + b.stderr)[-600:])
-    sys.exit(1)
+
+# IN DEPENDENCY ORDER. canton-refusal-record takes canton-journal-interface as
+# a data-dependency and `daml build` does not build it for you: it opens
+# interface/.daml/dist/*.dar and fails if nobody put one there. On a laptop
+# that file is usually lying around from an earlier build, so this ran green
+# here and red on a clean CI checkout with
+#   damlc: interface/.daml/dist/canton-journal-interface-1.0.0.dar:
+#   openBinaryFile: does not exist
+# which is the same build-order bug tests/balance_lint.py had, found the same
+# way, one commit later. A suite that only passes on a machine that has built
+# before is testing the machine.
+for pkg in (os.path.join(REFUSAL, "interface"), REFUSAL):
+    b = subprocess.run(  # nosec B603 B607 - literal argv, no shell
+        ["daml", "build", "--no-legacy-assistant-warning"],
+        cwd=pkg, capture_output=True, text=True)
+    if b.returncode != 0:
+        print("  FAIL %s does not compile" % os.path.basename(pkg))
+        print((b.stdout + b.stderr)[-600:])
+        sys.exit(1)
 
 r = subprocess.run(  # nosec B603 B607 - literal argv, no shell
     ["daml", "test", "--no-legacy-assistant-warning"],
