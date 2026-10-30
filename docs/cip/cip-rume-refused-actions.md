@@ -5,7 +5,7 @@
 * Layer: Applications
   Title: A ledger record for refused actions
   Author: O'Rume Dominic Uririe
-* Discussions-To: < cip-discuss topic link, added when the thread exists >
+* Discussions-To: https://lists.sync.global/g/cip-discuss/topic/cip_tbd_a_ledger_record_for/122004432
 * Comments-Summary: No comments yet
   Status: Draft
   Type: Standards Track
@@ -245,4 +245,5 @@ rather than discovered later.
 
 ## Post-History
 
-To be added once the cip-discuss topic exists.
+* 2026-10-29: introduced to cip-discuss as message #909.
+  https://lists.sync.global/g/cip-discuss/topic/cip_tbd_a_ledger_record_for/122004432
