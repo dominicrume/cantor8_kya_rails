@@ -1,6 +1,7 @@
 # Status: what is proven, what is mocked, what is pending
 
-*Last measured 2026-10-17. Regenerate the numbers with `python3 tools/dashboard.py`.*
+*Last measured 2026-10-30. Regenerate the numbers with `python3 tools/dashboard.py`,
+and the champion figures with `python3 tools/champions.py`.*
 
 This file exists because the team that won the Cantor8 hackathon had one and
 this repository did not. Theirs separated proven from mocked from pending at a
@@ -12,6 +13,15 @@ Read it top to bottom. The weakest claims are at the bottom on purpose.
 ---
 
 ## PROVEN — measured, reproducible, and checkable by a stranger
+
+**2026-10-30.** The CIP draft was introduced to cip-discuss as message #909:
+<https://lists.sync.global/g/cip-discuss/topic/cip_tbd_a_ledger_record_for/122004432>.
+`step-0-refusal` is now built and tested in CI, which it never was before, so
+62 of the 165 scripts stopped running only on a laptop. `tools/champions.py`
+replaces a remembered number with a measured one and fails loudly when it
+cannot find a champion it already knows about. `docs/rfp-27-overlap.md`
+assesses all three RFP 27 proposals, this one included, with the interest
+declared in its first line.
 
 | What | Evidence | How to check it yourself |
 |---|---|---|
@@ -53,8 +63,8 @@ Read it top to bottom. The weakest claims are at the bottom on purpose.
 |---|---|---|
 | **Never run on a real ledger.** `TryCharge` has never executed on DevNet | Every claim about on-ledger refusal is a design, not a fact. Both hackathon winners had real-ledger numbers and this does not | `C8_CLIENT_SECRET`. Asked 2026-08-31 in toolkit PR #10, and again on Telegram. The command is written and dry-run tested: `tools/prove_refusal_on_devnet.py` |
 | **Nobody outside has produced a chain** | 0 stars, 0 forks, 0 outside implementations. 84 real downloads a month excluding mirrors | Distribution, not engineering |
-| **The Dev Fund proposal has no champion** | `PR #860` reads `Needs Champion`. The repo's review process says a proposal does not enter review without one. Two rivals under the same RFP have champions and went to a vote on 2026-10-16 | A Tech and Ops Committee member |
-| **The proposal is filed in the wrong folder** | It declares RFP 27 alignment but sits in `/proposals/`, which the repo's own README reserves for work that does *not* respond to an RFP. The rival that got a vote filed under `/rfps/` | A one-file move on the PR branch |
+| **The Dev Fund proposal has no champion** | Measured on 2026-10-30 across all 602 proposals: five people have ever volunteered to champion one in the newest 160, and #860 is not among them. #866 got "Happy to champion this." from Yiannis Varelas on 9 October and a vote called seven days later. #788 has `beezybarg`. Two of the three proposals under RFP 27 have one and this does not | Nobody has been asked. `python3 tools/champions.py` |
+| **#860 declares six RFPs** | Its labels are rfp-11, rfp-12, rfp-22, rfp-26, rfp-27 and regulatory-compliance. #866 declares one primary and one secondary, and names its champion in the document's own header. A proposal that answers six calls reads as a proposal that answers none | A decision about scope, not a code change |
 | **`outcomes` is not anchored anywhere** | SPEC 6c says plainly that the digest proves nothing until it is pinned to an origin the producer does not control | A ledger, which needs the credential |
 | **No revenue.** Nothing has been invoiced or received | | |
 
