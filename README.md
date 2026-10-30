@@ -9,6 +9,17 @@ An application decides what an automated execution may do. This records what it 
 refused**, sealed so a counterparty can check it without trusting whoever ran
 the node.
 
+**If you came here from a link about refused actions**, the three things worth
+your time are the CIP draft, the thread it came from, and the note checking it
+against what already exists:
+
+* [The CIP draft](docs/cip/cip-rume-refused-actions.md), introduced to
+  cip-discuss on 29 October 2026 as message #909
+* [The forum thread it grew out of](https://forum.canton.network/t/how-do-you-prove-your-app-didnt-do-something/9114),
+  where Federico Rodriguez and PREDGE each gave away the idea that made it work
+* [What RFP 27 already covers](docs/rfp-27-overlap.md), all three open
+  proposals including this one, interest declared in the first line
+
 Every log records what your application did. The question an auditor, a counterparty
 or a regulator actually asks is the other one: *what did it try, and what
 stopped it?* An ordinary log cannot answer that, because the operator who
