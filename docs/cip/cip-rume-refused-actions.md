@@ -19,11 +19,11 @@
 A Canton application records what it did. It has no standard way to record
 what it was stopped from doing, and the two are not the same evidence.
 
-When a Daml check refuses an action, the transaction aborts. Nothing is
-committed, so nothing appears on the Update service and nothing reaches any
-monitor reading it. The rejection is delivered to the command completion
-service, which only the submitting application can read, so the party whose
-conduct is in question is also the only party holding the record of it.
+When a Daml check refuses an action, the transaction aborts during
+interpretation at the submitting participant, before any message is sent, so no
+other node is involved at all. The rejection is delivered to the command
+completion service, which only the submitting application can read, so the party
+whose conduct is in question is also the only party holding the record of it.
 
 This CIP specifies a small interface and two templates that make a refusal an
 ordinary ledger contract, so that it is carried by the same stream, the same
@@ -50,9 +50,15 @@ currently answer the second at all.
 
 The gap is structural rather than a missing feature:
 
-1. **A refused action produces no update.** `assertMsg` and `ensure` abort the
-   transaction. There is no event, so there is nothing for the Update service
-   to deliver.
+1. **A refused action produces no update, and involves no other node.**
+   `assertMsg` and `ensure` abort during interpretation at the submitting
+   participant. Canton's Transaction Lifecycle reference names this case under
+   Failure Modes: the engine "rejects the command (e.g., contract not found,
+   authorization failure, assertion violation)", "the command is rejected
+   synchronously before any messages are sent", and "no other nodes are
+   involved". No confirmation request is sent, so there is no mediator verdict
+   and nothing for the Update service to deliver.
+   https://docs.canton.network/overview/reference/transaction-lifecycle
 2. **The completion stream is not independent evidence.** A rejection appears
    on the command completion service, visible to the submitting application.
    The party being audited is the only party who can see it, which is the
@@ -61,6 +67,18 @@ The gap is structural rather than a missing feature:
    written by the application is written by the party the evidence concerns.
    A hash chain over that log makes editing it detectable and omission from it
    undetectable, because the producer chooses what to commit to.
+
+4. **What is already visible is a different stage.** A rejection that reaches
+   the mediator is independently observable. Each confirming participant
+   re-interprets the views it hosts and sends a local verdict; the reject codes
+   separate the ordinary from the hostile, the latter raised as an
+   `AlarmErrorCode`
+   (`community/base/src/main/scala/com/digitalasset/canton/protocol/LocalRejectError.scala`).
+   The mediator stores the verdicts with views blinded, and Splice Scan has
+   published accepted and rejected verdicts on `/v0/events` since Splice
+   0.4.21. None of that reaches a refusal decided inside the submitter's own
+   interpretation, which is where every application-level policy check lives,
+   and which by the reference above never becomes a confirmation request.
 
 This is observable today in deployed work. The open-source Canton ingestion
 adapter published under Dev Fund milestone #302 calls
@@ -109,6 +127,21 @@ so the ledger refuses the action rather than discouraging it.
 Implementations MUST verify that the guardian named in the view really is a
 signatory of the implementing contract. A view that names a guardian which is
 not on the signatory line looks guarded and is not.
+
+Implementations MUST also ensure the implementing template exposes no choice
+that can effect the guarded work, or consume the guarded contract, without the
+guardian's authority. A guardian on the signatory line does not gate a choice
+the owner controls: controllers authorize the exercise, and a consuming choice
+archives its own contract on the controller's authority, because signatory
+authority is required to create rather than to archive this way. Auditing every
+choice on the template and on its other interfaces is part of conforming, not
+an optional review afterwards.
+
+The reference implementation makes that requirement checkable rather than
+stated. `testAnOwnerControlledChoiceStillBypassesTheJournal` builds an asset
+that satisfies every other guarantee here, the guardian genuinely on its
+signatory line and the interface route refused without that authority, and then
+moves it outside the journal through one ordinary owner-controlled choice.
 
 ### 2. The attempt counter
 
@@ -167,6 +200,36 @@ difference between a control that notices and a control that holds.
 
 Both replies are in the open, at
 https://forum.canton.network/t/how-do-you-prove-your-app-didnt-do-something/9114
+
+Georgi Radev (Community Tech Partner, @radevG) replied on 27 October 2026 and
+found what was missing. In his words: "A guard signatory alone does not gate
+owner-controlled choices", and "audit every choice on the asset and its
+interfaces". An earlier draft of this specification required only that the
+guardian be a signatory, which is necessary and is not sufficient. The second
+requirement in the Specification above is his, and the test that proves it was
+written after reading his reply.
+
+Leonid (@leonidr) replied on 30 October 2026 and corrected the scope of the
+claim. An earlier draft said a refusal reaches no monitor at all. That is true
+of a refusal decided in the submitter's own interpretation and untrue of one
+that reaches the mediator, and he set out the difference: the confirmation step,
+the two kinds of reject code, the stored verdicts and `/v0/events`. The fourth
+point in the Motivation above exists because of that reply, and the claim is
+narrower and checkable where it used to be broad.
+
+**What Canton already does with a count and no reason.** Scan's `/v0/events`
+carries `verdict_result`, the submitting parties and participant, and the
+confirming quorums per view. It carries no reject reason: there is no such field
+in the schema. So at the confirmation layer Canton already publishes that a
+rejection happened, to whoever reads Scan, without publishing what was refused.
+That is the same asymmetry this specification builds for the interpretation
+layer, arrived at independently and first. It is also why the asymmetry should
+not be argued for here at length: the protocol settled the question.
+
+The difference is durability. The Scan Bulk Data reference states that verdict
+data "is ephemeral and routinely pruned within the mediator", and that Scan
+cannot recreate pruned data. A refusal record is an ordinary contract and lasts
+as long as the ledger does.
 
 **Why a contract rather than a new Ledger API service.** A contract is already
 carried by every adapter, respects Canton's sub-transaction privacy, and
@@ -229,9 +292,11 @@ Also available from
 https://github.com/dominicrume/cantor8_kya_rails/releases/tag/daml-v1.0.0
 
 Daml SDK 3.4.11, target Daml-LF 2.1, MIT, no dependency beyond `daml-prim` and
-`daml-stdlib`. 165 Daml test scripts across the two packages, including
-`testASecondJournalIsPrevented` and its stated boundary
-`testWithNoAuditorASecondJournalIsStillPossible`.
+`daml-stdlib`. 166 Daml test scripts across the two packages, including
+`testASecondJournalIsPrevented`, its stated boundary
+`testWithNoAuditorASecondJournalIsStillPossible`, and
+`testAnOwnerControlledChoiceStillBypassesTheJournal`, which demonstrates the
+second conformance requirement above by violating it.
 
 A consumer-side counter for adapter output is at
 `tools/refusal_detector.py` in the same repository: Python standard library
@@ -245,5 +310,11 @@ rather than discovered later.
 
 ## Post-History
 
+* 2026-10-30: corrected after review on the forum. Georgi Radev found that a
+  guardian signatory does not gate an owner-controlled choice, which added the
+  second conformance requirement and a test. Leonid set out the confirmation
+  stage, the stored mediator verdicts and Scan's `/v0/events`, which narrowed
+  an over-broad claim in the Motivation.
+  https://forum.canton.network/t/an-audit-control-that-the-audited-party-can-switch-off-is-not-a-control/9323
 * 2026-10-29: introduced to cip-discuss as message #909.
   https://lists.sync.global/g/cip-discuss/topic/cip_tbd_a_ledger_record_for/122004432

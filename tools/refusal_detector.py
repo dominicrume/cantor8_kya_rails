@@ -3,10 +3,20 @@
 
 WHY THIS EXISTS. A monitor that reads a Canton participant through the Update
 and State services sees committed activity only. A Daml check that refuses an
-action aborts the transaction, so it produces no update at all and never
-reaches the stream. The rejection goes to the command completion service,
-which only the submitting application can read, so it is not independent
-evidence either.
+action aborts during interpretation at the submitting participant, before any
+message is sent, so it produces no update and involves no other node. Canton's
+Transaction Lifecycle reference names an assertion violation under Failure
+Modes: rejected synchronously, no other nodes involved. The rejection goes to
+the command completion service, which only the submitting application can read,
+so it is not independent evidence either.
+
+WHAT THIS IS NOT ABOUT. A rejection that reaches the mediator IS independently
+observable: the confirming participants' local verdicts are stored with views
+blinded, and Splice Scan publishes accepted and rejected verdicts on
+/v0/events. That covers transactions that became a confirmation request. A
+policy refusal never does, which is the whole of the gap this file counts.
+Corrected on 2026-10-30 after Leonid (@leonidr) set out the confirmation stage
+on the forum; an earlier version of this docstring claimed more than was true.
 
 That leaves a monitor able to score what happened and not what a control
 stopped. The denominator is missing.
