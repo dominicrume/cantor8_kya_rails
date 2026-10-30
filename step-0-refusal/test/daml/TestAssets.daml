@@ -20,6 +20,35 @@ template Wallet
         _ <- create this with balance = balance - 1.0
         pure ()
 
+-- | Guarded properly on the signatory line AND carrying one ordinary
+-- owner-controlled choice, which is what a real asset looks like. Wallet above
+-- has no choices at all, and that minimality is what hid this.
+--
+-- Georgi Radev (Community Tech Partner) pointed out on 27 October 2026 that a
+-- guardian signatory does not gate a choice the owner controls: controllers
+-- authorize the exercise, and a consuming choice archives its own contract on
+-- the controller's authority. Signatory authority is needed to CREATE, not to
+-- archive through a choice. So `Spend` below consumes the asset with no
+-- guardian and no journal entry.
+template SpendableWallet
+  with
+    holder : Party
+    guard : Party
+    balance : Decimal
+  where
+    signatory holder, guard
+
+    interface instance Journalled for SpendableWallet where
+      view = JournalledView with owner = holder; guardian = guard
+      perform = do
+        _ <- create this with balance = balance - 1.0
+        pure ()
+
+    choice Spend : ()
+      with amount : Decimal
+      controller holder
+      do pure ()
+
 -- | Names a guardian in its view but leaves it off the signatory line. Looks
 -- guarded, is not. `assertGuarded` exists to catch exactly this.
 template LooseWallet

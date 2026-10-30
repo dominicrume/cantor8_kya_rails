@@ -184,3 +184,39 @@ testARefusedAttemptNeverTouchesTheAsset = script do
   -- markers instead of reading a list off the journal.
   seen <- submit e.auditor do exerciseCmd j1 Expect
   seen === (1, [])
+
+-- 7. The gap Georgi Radev named on 27 October 2026, proven rather than
+--    accepted: a guardian on the signatory line does NOT gate a choice the
+--    owner controls. Controllers authorize the exercise, and a consuming
+--    choice archives its own contract on the controller's authority alone;
+--    signatory authority is required to create, not to archive this way.
+--
+--    So an asset that passes assertGuarded, names the guardian correctly and
+--    would satisfy every other test in this file still moves outside the
+--    journal if it carries one ordinary owner-controlled choice. Wallet does
+--    not carry one, which is why nothing here caught this before.
+--
+--    This is a specification hole, not a code defect. The fix belongs in the
+--    CIP as a requirement on implementers, and this test is what makes the
+--    requirement checkable.
+testAnOwnerControlledChoiceStillBypassesTheJournal : Script ()
+testAnOwnerControlledChoiceStillBypassesTheJournal = script do
+  e <- env
+  wallet <- submit [e.owner, e.guardian] do
+    createCmd SpendableWallet with
+      holder = e.owner; guard = e.guardian; balance = 100.0
+
+  -- It is guarded by every measure this suite had: the guardian is a
+  -- signatory, and the interface route is refused without their authority.
+  submitMustFail [e.owner, e.actor] do
+    exerciseCmd (toInterfaceContractId @Journalled wallet) Perform
+
+  -- And yet the owner alone consumes it, with no guardian and no attempt.
+  submit [e.owner] do
+    exerciseCmd wallet Spend with amount = 100.0
+
+  -- The asset is gone and the journal never moved.
+  remaining <- query @SpendableWallet e.owner
+  length remaining === 0
+  seen <- submit e.auditor do exerciseCmd e.journal Expect
+  seen === (0, [])
