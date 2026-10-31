@@ -355,7 +355,7 @@ Also available from
 https://github.com/dominicrume/cantor8_kya_rails/releases/tag/daml-v1.0.0
 
 Daml SDK 3.4.11, target Daml-LF 2.1, MIT, no dependency beyond `daml-prim` and
-`daml-stdlib`. 168 Daml test scripts across the two packages, including
+`daml-stdlib`. 169 Daml test scripts across the two packages, including
 `testASecondJournalIsPrevented`, its stated boundary
 `testWithNoAuditorASecondJournalIsStillPossible`, and
 `testAnOwnerControlledChoiceStillBypassesTheJournal`, which demonstrates the
