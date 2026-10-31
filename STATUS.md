@@ -1,6 +1,6 @@
 # Status: what is proven, what is mocked, what is pending
 
-*Last measured 2026-10-30. Regenerate the numbers with `python3 tools/dashboard.py`,
+*Last measured 2026-10-31. Regenerate the numbers with `python3 tools/dashboard.py`,
 and the champion figures with `python3 tools/champions.py`.*
 
 This file exists because the team that won the Cantor8 hackathon had one and
@@ -14,10 +14,26 @@ Read it top to bottom. The weakest claims are at the bottom on purpose.
 
 ## PROVEN — measured, reproducible, and checkable by a stranger
 
+**2026-10-31.** The draft survived its first two reviews, and both of them
+cost it a claim. Georgi Radev (Community Tech Partner) found on 27 October that
+a guardian on the signatory line does not gate a choice the owner controls, so
+the Specification gained a second conformance requirement and
+`testAnOwnerControlledChoiceStillBypassesTheJournal`, which performs the bypass
+and is checked by deleting the choice. Nothing had caught it because the test
+wallet carried no choices at all, and that minimality was doing work the design
+was being credited with. Leonid found on 30 October that the Motivation claimed
+a refusal reaches no monitor at all, which is true only of one decided in the
+submitter's own interpretation; confirmation-stage rejections are stored as
+mediator verdicts and published by Splice Scan on `/v0/events` since Splice
+0.4.21. The premise now cites Canton's Transaction Lifecycle reference rather
+than asserting itself. Checked against `scan.yaml` and `LocalRejectError.scala`
+rather than taken on trust, and `tools/refusal_detector.py` carried the same
+over-broad sentence and is corrected too.
+
 **2026-10-30.** The CIP draft was introduced to cip-discuss as message #909:
 <https://lists.sync.global/g/cip-discuss/topic/cip_tbd_a_ledger_record_for/122004432>.
 `step-0-refusal` is now built and tested in CI, which it never was before, so
-62 of the 165 scripts stopped running only on a laptop. `tools/champions.py`
+62 of the then 165 scripts stopped running only on a laptop. `tools/champions.py`
 replaces a remembered number with a measured one and fails loudly when it
 cannot find a champion it already knows about. `docs/rfp-27-overlap.md`
 assesses all three RFP 27 proposals, this one included, with the interest
@@ -27,7 +43,7 @@ declared in its first line.
 |---|---|---|
 | The spending rules are enforced in Daml, not in Python | 32 fences across 5 contracts | `python3 tests/fence_lint.py` |
 | Every fence is load-bearing | 82 mutations, each requires a **named** test to go red | `python3 tests/mutation_suite.py` |
-| The ledger behaves under attack | 165 Daml test scripts across two packages | `daml test --all` in `step-1-mandate/test` |
+| The ledger behaves under attack | 166 Daml test scripts across two packages, 63 and 103 | `daml test --all` in `step-1-mandate/test` |
 | A refusal commits as a contract and moves no money | `TryCharge` / `ChargeRefused` in `KyaMandate.daml` | `testRefusalIsOnLedgerAndNothingMoved` |
 | The format is implemented three times and they agree | 20 conformance vectors, Python + JavaScript + Go | `python3 tests/conformance.py`, `node tests/conformance.js`, `cd impl/go && go run .` |
 | A disclosure cannot have an entry removed | SPEC 6b | `python3 tests/disclosure_smoke.py` |
@@ -65,6 +81,9 @@ declared in its first line.
 | **Nobody outside has produced a chain** | 0 stars, 0 forks, 0 outside implementations. 84 real downloads a month excluding mirrors | Distribution, not engineering |
 | **The Dev Fund proposal has no champion** | Measured on 2026-10-30 across all 602 proposals: five people have ever volunteered to champion one in the newest 160, and #860 is not among them. #866 got "Happy to champion this." from Yiannis Varelas on 9 October and a vote called seven days later. #788 has `beezybarg`. Two of the three proposals under RFP 27 have one and this does not | Nobody has been asked. `python3 tools/champions.py` |
 | **#860 declares six RFPs** | Its labels are rfp-11, rfp-12, rfp-22, rfp-26, rfp-27 and regulatory-compliance. #866 declares one primary and one secondary, and names its champion in the document's own header. A proposal that answers six calls reads as a proposal that answers none | A decision about scope, not a code change |
+| **The CIP's own `Type` contradicts its abstract** | The header says `Type: Standards Track`, and the abstract says it "changes no protocol behaviour, requires no new Ledger API service, and needs no participant configuration". One of those is wrong and a CIP editor will see it before a sponsor does | An answer from cip-discuss or an editor. Asked nowhere yet |
+| **Two reviewers are owed a reply** | Georgi Radev answered a direct question on 27 October and has had nothing back for four days. Leonid corrected the Motivation on 30 October. Both corrections are built and pushed in `a94f0d7`, so both replies can now report finished work rather than a plan | Nothing. The text is drafted |
+| **cip-discuss message #909 describes a draft that has changed** | The list was shown a draft on 29 October that now has a second conformance requirement and a narrowed Motivation. A reader who checks the file against the message finds a mismatch | Nothing technical |
 | **`outcomes` is not anchored anywhere** | SPEC 6c says plainly that the digest proves nothing until it is pinned to an origin the producer does not control | A ledger, which needs the credential |
 | **No revenue.** Nothing has been invoiced or received | | |
 
