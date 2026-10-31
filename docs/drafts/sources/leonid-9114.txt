@@ -1,0 +1,13 @@
+Leonid (leonidr), forum post 10 on topic 9114, 2026-10-30T01:40:16Z
+https://forum.canton.network/t/how-do-you-prove-your-app-didnt-do-something/9114
+Affiliation per his forum user_fields: company "C7", github.com/C7-Digital
+
+Daml runs more than once. The submitting participant interprets the full transaction. Each confirming participant then re-interprets the views it hosts (the model-conformance check) and sends a local verdict to the mediator.
+
+If the submitter's interpretation fails (a failed assert, fetch or exercise), the transaction never reaches confirmation, and the submitter gets the error from the Ledger API.
+
+The confirmation step protects a stakeholder automatically. If its participant hosts the party with confirmation permission and finds a view that does not conform, the participant rejects it, and the mediator rejects the transaction. Nothing is committed. A non-submitting stakeholder gets no Ledger API event for this. Its participant only logs the rejection.
+
+To detect such attempts, alert on these codes in the participant logs. If an application needs this data through an API, that is a reasonable request: discuss the use case, and consider a CIP to expose it.
+
+The mediator also stores the verdicts, with the views blinded (no payloads). Splice Scan reads the mediator's verdict stream and publishes accepted and rejected verdicts on /v0/events, with the submitting participant, the parties and the confirmers, but without the reject reason.

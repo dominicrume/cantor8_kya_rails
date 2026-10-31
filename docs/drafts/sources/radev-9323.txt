@@ -1,0 +1,12 @@
+Georgi Radev (radevG), Community Tech Partner, forum post 2 on topic 9323
+2026-10-27T11:52:18Z
+https://forum.canton.network/t/an-audit-control-that-the-audited-party-can-switch-off-is-not-a-control/9323
+
+Not if the operator can submit as all asset signatories: implicit Archive bypasses the journal.
+
+Audit every choice on the asset and its interfaces. Controllers authorize exercises; actors plus the contract's signatories authorize consequences. A guard signatory alone does not gate owner-controlled choices. Contract keys (LF 2.3+) don't remove this bypass: exerciseByKey still requires controllers' authority.
+
+External signing and decentralized parties can distribute authority, but signing, namespace governance and confirming quorums must remain outside the actor's unilateral control. Confirmation-only hosting doesn't help if actor-controlled nodes can form that quorum.
+
+These points follow from the documented authorization model.
+I haven't tested your implementation.

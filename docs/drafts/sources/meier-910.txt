@@ -1,0 +1,6 @@
+Simon Meier, cip-discuss message #910, Fri 30 Oct 2026 01:48:37 -0700
+Subject: Re: CIP-TBD: A ledger record for refused actions
+https://lists.sync.global/g/cip-discuss/message/910
+
+Note that creating contracts to store notifications is a storage leak and an anti-pattern. Archiving these contracts costs extra traffic. The better way to signal events is through non-consuming choices.
+As you point out this is an application design pattern that every app provider can decide on independently. So it doesn't require a CIP, as no ecosystem level coordination is needed.

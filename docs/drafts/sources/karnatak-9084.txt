@@ -1,0 +1,10 @@
+Arpit Karnatak (arpitkarnatak_vl), Vacuumlabs, forum post 3 on topic 9084
+2026-10-18T10:09:51Z
+https://forum.canton.network/t/were-building-delegated-automation-on-canton-seeking-feedback-champion/9084
+Dev Fund proposal #627, Delegated Automation Capability
+
+This would be an on-chain check. In addition to our checks (expiration, cooldown, number of runs), we will allow for custom logic like this. So all you'll have to do is add a single line of your check on the DAML template.
+
+We plan to store the logs for all runs offchain since the aborted/failed actions aren't natively stored on-chain, and since there's no standard pattern out there to commit them on-chain, it didn't make sense to implement it within this proposal.
+
+We can commit when a check fails, but then there can be a case when checks pass but something else fails/reverts later on in the transaction, and that will not be committed and cause inconsistencies for what goes onchain, if we use chain as the source of truth.

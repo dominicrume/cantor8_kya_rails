@@ -144,6 +144,19 @@ Hard rules for any AI touching this code:
   the reader costs more than one declared by the author. But it is stated as
   a property of a finished thing, not as an excuse for an unfinished one.
 
+- A BLOCK IN A TERMINAL IS A COMMAND. Rume runs what is printed. Every fenced
+  block is either runnable exactly as it stands, or it carries a plain label
+  above it saying what it is. No placeholders in angle brackets, ever: write a
+  command against files that exist, and if none exist, create one first. Never
+  print program output as a bare block, because output pasted into zsh becomes
+  `permission denied`, `no matches found` and `command not found`.
+  Written 28 October 2026, and again on 31 October after it happened a second
+  time in the same session that added the rule above. The two blocks that
+  broke were `python3 tools/before_posting.py <draft> <source...>`, which zsh
+  reads as a redirect and answers with `parse error near '<'`, and a copy of
+  that tool's own output. The README carried the same placeholder, so anyone
+  copying from the README would have hit it too. It now names real files.
+
 - VERIFY BEFORE IT LEAVES, NOT AFTER. Nothing is posted, sent, commented or
   committed to somebody else's repository until every quote in it has been
   found in the source, every link in it has been opened, and every fact about

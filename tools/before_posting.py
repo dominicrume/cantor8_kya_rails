@@ -66,13 +66,16 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # written for before it is allowed to pass anything. The two cases are the
 # real ones from 31 October 2026.
 CONTROL_DRAFT = """
-Thanks for this. You wrote "a sentence nobody has ever written anywhere" and
-I agree.
+Thanks for this. You wrote "a sentence nobody has ever
+written anywhere at all" and I agree.
 
 Leonid at Digital Asset reviewed it.
 
 See https://github.com/dominicrume/cantor8_kya_rails/blob/main/docs/no-such-file.md
 """
+# The control's quote WRAPS across a line, because the version of this file
+# that did not allow that reported zero quotes in a real draft and passed it.
+# The control carries each failure in the shape it actually arrived in.
 # Note the control says "Leonid", one word, not "Simon Meier", two. The first
 # version of this file used the two-word name and passed, while the real
 # sentence that went wrong on 31 October 2026 named a single first name and
@@ -86,7 +89,14 @@ def git(*args):
     return r.stdout.strip() if r.returncode == 0 else ""
 
 
-QUOTE = re.compile(r'"([^"\n]{20,400})"')
+# A quote may WRAP. The first version of this pattern was r'"([^"\n]{20,400})"'
+# and the newline exclusion made every quote in a hard-wrapped file invisible:
+# run against the four replies on 31 October 2026 it reported zero quotes in a
+# draft that quotes Vacuumlabs across two lines, and passed it. A check that
+# cannot see the thing it checks is worse than no check, because it prints
+# reassurance. Newlines are allowed now and a blank line ends a quote, so one
+# stray quotation mark cannot swallow a page.
+QUOTE = re.compile(r'"([^"]{20,400})"')
 REPO_LINK = re.compile(
     r"https://github\.com/dominicrume/[A-Za-z0-9_.-]+/blob/[A-Za-z0-9_.-]+/([^\s)\]]+)")
 URL = re.compile(r"https?://\S+")
@@ -115,8 +125,11 @@ def check(draft_text, sources, label, verbose=True):
 
     haystack = normalise("\n".join(sources.values()))
 
-    # 1. quotes
-    quotes = [q for q in QUOTE.findall(draft_text) if len(q.split()) > 4]
+    # 1. quotes. A blank line is a paragraph break, never the inside of a
+    # quotation, so it ends one: that keeps an unbalanced quotation mark from
+    # matching across half the draft.
+    quotes = [q for q in QUOTE.findall(draft_text)
+              if len(q.split()) > 4 and "\n\n" not in q]
     say("  quotes of more than four words: %d" % len(quotes))
     for q in quotes:
         if normalise(q) not in haystack:
