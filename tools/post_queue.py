@@ -30,12 +30,20 @@ Python standard library only. The only commands it runs are pbcopy and open,
 both macOS, both with a literal argv.
 """
 
+import json
 import os
+import re
 import subprocess  # nosec B404 - literal argv, shell=False. The only values
                    # passed are paths from QUEUE below and a destination read
                    # from the draft's own first line.
 import sys
 import time
+import urllib.error
+import urllib.request
+
+# The account whose post we are looking for when we go and check.
+AUTHOR = "orumedominic"
+GH_AUTHOR = "dominicrume"
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DRAFTS = os.path.join(ROOT, "docs", "drafts")
@@ -86,6 +94,66 @@ def destination_and_body(path):
 def url_of(destination):
     """The destination line carries a URL and then a human instruction."""
     return destination.split()[0] if destination else None
+
+
+def fetch(url):
+    req = urllib.request.Request(url, headers={"User-Agent": "post-queue"})
+    with urllib.request.urlopen(req, timeout=20) as r:  # nosec B310 - https
+        return r.read().decode("utf-8", "replace")
+
+
+def verify(url):
+    """Go and look. Returns (True, detail), (False, detail) or (None, why).
+
+    WHY THIS EXISTS, and it is the sharpest lesson this repository has taught
+    itself. The first version of this file asked "Enter once it is posted" and
+    wrote the date into the log on that keystroke alone. On 31 October 2026 it
+    recorded two replies as posted. Neither was on the forum. The log was a
+    record written by the party it was about, confirming its own compliance,
+    with nothing independent checking: the precise thing step-0-refusal exists
+    to argue is not evidence. A tool built alongside that argument should not
+    have made that mistake, and the only honest fix is to go and look.
+
+    None means the destination cannot be checked without a credential, and
+    that is reported rather than quietly treated as a pass.
+    """
+    m = re.search(r"forum\.canton\.network/t/(?:[^/]+/)?(\d+)", url)
+    if m:
+        try:
+            d = json.loads(fetch("https://forum.canton.network/t/%s.json"
+                                 % m.group(1)))
+        except (urllib.error.URLError, ValueError) as e:
+            return None, "could not reach the forum: %s" % e
+        posts = d.get("post_stream", {}).get("posts", [])
+        if not posts:
+            return None, "no posts came back"
+        last = posts[-1]
+        if last.get("username") == AUTHOR:
+            return True, "last post is #%s by %s at %s" % (
+                last.get("post_number"), AUTHOR, last.get("created_at", "")[:16])
+        return False, "last post is #%s by %s at %s, not you" % (
+            last.get("post_number"), last.get("username"),
+            last.get("created_at", "")[:16])
+
+    m = re.search(r"github\.com/([^/]+/[^/]+)/pull/(\d+)", url)
+    if m:
+        r = run(["gh", "api", "repos/%s/issues/%s/comments" % m.groups(),
+                 "--jq", ".[-1].user.login"], capture_output=True, text=True)
+        if r.returncode != 0:
+            return None, "gh could not read the pull request"
+        who = r.stdout.strip()
+        if who == GH_AUTHOR:
+            return True, "last comment is by %s" % who
+        return False, "last comment is by %s, not you" % (who or "nobody")
+
+    if "forum.canton.network/c/" in url:
+        return None, ("a new topic in a category, which this cannot check "
+                      "without knowing the topic id. Paste its URL here next "
+                      "time and it will be checkable")
+    if "lists.sync.global" in url:
+        return None, ("a Groups.io list, which returns 402 to automated "
+                      "fetches. Check the RSS feed by eye")
+    return None, "no check is written for this destination"
 
 
 def main():
@@ -186,8 +254,31 @@ def main():
             print()
             continue
 
+        # Do not take the keystroke for the fact. Go and look.
+        print("checking that it is actually there...")
+        ok, detail = verify(url_of(destination) or "")
+        if ok is False:
+            print("NOT THERE: %s" % detail)
+            print("Nothing written to the log, so this draft comes back.")
+            print("If you did post it, the page may not have caught up: run")
+            print("this again in a minute.")
+            print()
+            continue
+        if ok is None:
+            print("CANNOT CHECK: %s" % detail)
+            again = input("Logging it on your word alone. Type 'yes' if it "
+                          "is really posted: ").strip().lower()
+            if again != "yes":
+                print("Not logged, so it comes back.")
+                print()
+                continue
+            note = "  (unverified, on your word)"
+        else:
+            print("CONFIRMED: %s" % detail)
+            note = "  (verified)"
+
         with open(LOG, "a") as f:
-            f.write("%s %s\n" % (time.strftime("%Y-%m-%d"), name))
+            f.write("%s %s%s\n" % (time.strftime("%Y-%m-%d"), name, note))
         posted += 1
         print("Logged. %s" % name)
         print()

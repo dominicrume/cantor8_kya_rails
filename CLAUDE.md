@@ -144,6 +144,27 @@ Hard rules for any AI touching this code:
   the reader costs more than one declared by the author. But it is stated as
   a property of a finished thing, not as an excuse for an unfinished one.
 
+- A RECORD THE ACTOR WRITES ABOUT ITSELF IS NOT EVIDENCE, INCLUDING OURS.
+  Anything that records what we did goes and reads the destination before it
+  writes the line. A keystroke is a claim, not a fact, and the tool that
+  accepts one is the tool that will be wrong.
+  Written 31 October 2026. tools/post_queue.py asked "Enter once it is
+  posted" and wrote the date into docs/drafts/posted.log on that keystroke
+  alone. It recorded two forum replies as posted on the same day. Neither was
+  on the forum, and PREDGE's answer was still unmarked on the thread one of
+  them claimed to have replied to.
+  That is the argument of step-0-refusal happening to its own tooling, in the
+  same week it was being written into a CIP: a record produced by the party
+  it concerns, attesting to its own compliance, with nothing independent
+  checking. The counter said one and the ledger said zero. Every word of the
+  Motivation applies to the thing that was supposed to be helping.
+  It verifies now. A Discourse topic is read back and the last post must be
+  ours. A GitHub pull request is read back the same way. Where a destination
+  genuinely cannot be checked, Groups.io answering 402 and a new topic having
+  no id yet, it says CANNOT CHECK, demands the word "yes" rather than a
+  keystroke, and marks the line unverified in the log. Three states, not two,
+  because a check that cannot run must never look like one that passed.
+
 - A MECHANISM IS NOT A DEFECT. Nothing is opened in somebody else's
   repository unless you can show the thing failing for a user. Proving that
   code behaves a certain way is not the same as proving it is wrong, and a
