@@ -144,6 +144,37 @@ Hard rules for any AI touching this code:
   the reader costs more than one declared by the author. But it is stated as
   a property of a finished thing, not as an excuse for an unfinished one.
 
+- VERIFY BEFORE IT LEAVES, NOT AFTER. Nothing is posted, sent, commented or
+  committed to somebody else's repository until every quote in it has been
+  found in the source, every link in it has been opened, and every fact about
+  a person or an organisation has a URL that was read today. Afterwards is not
+  a verification, it is a hope that happened to come true.
+  Run `python3 tools/before_posting.py <draft> <source...>`. It refuses a
+  draft whose quote is in no source, whose link names a file that is missing,
+  uncommitted or unpushed, or whose affiliation claim carries no URL. For
+  every file of ours that a draft links, it prints when that file last changed
+  against the date of HEAD and how many commits have landed since, and
+  requires the answer to "did any of those change what this file claims" to be
+  said out loud. The tool cannot know. You can.
+  Written 31 October 2026, after two failures in one day. A comment went onto
+  canton-foundation/canton-dev-fund#866, somebody else's funding proposal,
+  quoting a sentence back at its authors and linking a document from this
+  repository. Both were correct. Both were checked AFTER the comment was
+  posted, and only because the owner asked. The linked document was nine
+  commits behind a tree in which three reviewers had just corrected claims in
+  the very file it discusses. It held up. That is luck, and luck is not a
+  method. The same day a draft described a forum poster as working at Digital
+  Asset; he works at C7, and the affiliation had been inferred from the
+  quality of his writing and a file path he quoted.
+  Neither failure was carelessness in the moment. Both were the wrong ORDER,
+  and the wrong order produces a correct message most of the time, which is
+  precisely why it survives until the day it does not.
+  The first version of the tool missed the second failure, because its
+  positive control said "Simon Meier at Digital Asset" while the sentence that
+  went wrong said "Leonid at Digital Asset", and the pattern needed two name
+  words. A control easier than the case it stands for is not a control. It
+  names "Leonid" now.
+
 - CREATIVE, COLLABORATIVE, SHORT. Three rules, in that order, on every
   message that leaves this machine.
   CREATIVE means solve the problem rather than describe it. When something
