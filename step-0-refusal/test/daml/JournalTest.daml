@@ -5,6 +5,7 @@
 -- would stay green through the removal of the thing the module is for.
 module JournalTest where
 
+import DA.Action (foldlA)
 import DA.Assert ((===))
 import Daml.Script
 import Journal
@@ -505,3 +506,61 @@ testASignalledRefusalLooksWithheldOnceEventsAreGone = script do
   length kept === 1
   Some r <- queryContractId o2 record
   r.rule === "dailyCap"
+
+-- THE COST, AS A NUMBER RATHER THAN AN ARGUMENT.
+--
+-- Simon Meier's objection is about cost, and it was answered above with prose.
+-- This runs the same twenty refusals through both mechanisms and counts what
+-- each leaves in the active contract set, so the trade is a figure somebody
+-- can check rather than a paragraph somebody has to believe.
+--
+-- Expected, and asserted below so it cannot drift: recording leaves one
+-- contract per refusal plus the journal, signalling leaves the journal alone.
+-- Both leave the auditor able to state the same count and the same positions.
+testTheCostOfBothMechanisms : Script ()
+testTheCostOfBothMechanisms = script do
+  s <- setup
+
+  -- Twenty refusals, recorded.
+  let n = 20
+  recorded <- foldlA
+    (\j i -> do
+       (_, j') <- submit [s.owner, s.actor] do
+         exerciseCmd j Refuse with
+           action = "withdraw"
+           detail = "amount=" <> show i
+           rule = "dailyCap"
+       pure j')
+    s.journal [1 .. n]
+  records <- query @RefusalRecord s.owner
+  length records === n
+  seenRecorded <- submit s.auditor do exerciseCmd recorded Expect
+
+  -- Twenty refusals, signalled, on a journal of their own.
+  o2 <- allocateParty "Treasury20"
+  a2 <- allocateParty "Bot20"
+  g2 <- allocateParty "Compliance20"
+  d2 <- allocateParty "Auditor20"
+  j0 <- submit [o2, a2, g2, d2] do
+    createCmd AttemptJournal with
+      owner = o2; actor = a2; guardian = g2; auditor = Some d2
+      attempts = 0; refusals = []
+  signalled <- foldlA
+    (\j i -> submit [o2, a2] do
+       exerciseCmd j RefuseSignalled with
+         action = "withdraw"
+         detail = "amount=" <> show i
+         rule = "dailyCap")
+    j0 [1 .. n]
+  none <- query @RefusalRecord o2
+  length none === 0
+  seenSignalled <- submit d2 do exerciseCmd signalled Expect
+
+  -- The auditor's answer is identical. The storage is not.
+  seenRecorded === seenSignalled
+  seenRecorded === (n, [1 .. n])
+
+  -- Stated as the ratio, which is the thing Simon's objection is about:
+  -- recording is O(refusals) contracts, signalling is O(1).
+  length records === n
+  length none === 0
