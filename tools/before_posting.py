@@ -176,7 +176,15 @@ def check(draft_text, sources, label, verbose=True):
                 "AFFILIATION WITH NO SOURCE ON THE LINE: \"%s\" at \"%s\". "
                 "This is the Leonid failure. Put the URL you checked, or cut "
                 "the organisation." % (who, org))
-    say("  affiliation claims carrying a source: %d" % sourced_lines)
+    # "0" on its own was ambiguous here: a reader could not tell whether it
+    # meant no claims were made or claims were made and none were sourced.
+    # The second is a failure and the first is nothing, so they are now
+    # different sentences.
+    if sourced_lines:
+        say("  affiliation claims: %d, each carrying a source on its line"
+            % sourced_lines)
+    else:
+        say("  affiliation claims: none made, so none to source")
 
     return fails
 
@@ -202,9 +210,24 @@ def main(argv):
     print("control: the three known failures are all caught, so the checks run.")
     print()
 
+    copy = "--copy" in argv
+    argv = [a for a in argv if a != "--copy"]
+
     draft_path = argv[1]
     with open(draft_path) as f:
-        draft = f.read()
+        raw = f.read()
+
+    # A draft may name where it goes, on a first line reading
+    # "Post-To: <url>". The tool strips it, so the body printed and copied is
+    # exactly what the recipient sees and the destination never travels with
+    # it. Knowing a draft is safe and not knowing where to put it is still
+    # friction, and friction is where a step gets skipped.
+    destination = None
+    draft = raw
+    if raw.startswith("Post-To:"):
+        first, _, rest = raw.partition("\n")
+        destination = first[len("Post-To:"):].strip()
+        draft = rest.lstrip("\n")
 
     sources = {}
     for p in argv[2:]:
@@ -231,6 +254,20 @@ def main(argv):
     print("The mechanical checks pass. They do not say the draft is right.")
     print("They say every quote has a source, every link resolves, and every")
     print("affiliation carries one. Read it once more, then post.")
+
+    if destination:
+        print()
+        print("POST IT AT: %s" % destination)
+
+    if copy:
+        r = subprocess.run(  # nosec B603 B607 - literal argv, no shell
+            ["pbcopy"], input=draft, text=True)
+        if r.returncode == 0:
+            print("The body is on your clipboard, without the Post-To line.")
+        else:
+            print("pbcopy failed, so copy it from the file by hand.")
+    elif destination:
+        print("Add --copy to put the body on your clipboard.")
     return 0
 
 

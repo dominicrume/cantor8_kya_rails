@@ -1,3 +1,5 @@
+Post-To: https://forum.canton.network/t/9084  (Reply)
+
 Arpit, your sentence about no standard pattern existing is now quoted in the
 CIP draft, crediting you and #627. It is the best evidence I have that this
 needs coordinating rather than leaving to each application.

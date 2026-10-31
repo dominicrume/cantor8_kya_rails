@@ -1,3 +1,5 @@
+Post-To: https://forum.canton.network/t/9323  (Reply at the bottom)
+
 Georgi, you were right and I had it wrong.
 
 "A guard signatory alone does not gate owner-controlled choices." Controllers

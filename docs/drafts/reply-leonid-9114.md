@@ -1,3 +1,5 @@
+Post-To: https://forum.canton.network/t/9114  (Reply, and tick PREDGE's post 6 as the solution while you are there)
+
 Leonid, thank you. My claim was too broad and your reply is the correction.
 
 I said a refusal reaches no monitor. That is only true of one decided in the

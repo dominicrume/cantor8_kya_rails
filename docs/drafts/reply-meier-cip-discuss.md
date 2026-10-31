@@ -1,3 +1,5 @@
+Post-To: https://lists.sync.global/g/cip-discuss/message/910  (log in, press Reply, keep the subject)
+
 Simon, you are right on both counts about the mechanism, and I had built only
 the expensive one.
 
