@@ -407,7 +407,7 @@ python3 tests/anchor_smoke.py    # the agent anchors the chain it wrote, or says
 python3 tests/standalone_smoke.py # the handed-out file is self-contained and current
 python3 tests/complexity_lint.py # no function over the ceiling without a written reason
 python3 tests/daml_tests.py                               # 169 scripts, rebuilt from source
-python3 tools/before_posting.py docs/drafts/reply-meier-cip-discuss.md docs/drafts/sources/*.txt
+python3 tools/before_posting.py docs/drafts/reply-meier-cip-discuss.md docs/drafts/sources/*.txt --copy
 ```
 
 ---
