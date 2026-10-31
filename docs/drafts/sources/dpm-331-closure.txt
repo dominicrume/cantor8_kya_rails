@@ -1,0 +1,13 @@
+digital-asset/dpm pull request #331, "keep a file's mode when publishing it
+through an atomic write". Opened by dominicrume 2026-10-30. CLOSED
+2026-10-31T16:49:07Z by dasormeter (Brian Healey). No review. One comment,
+verbatim and complete:
+
+AI contribution -- does not appear to be a true concern
+
+For the record, from the pull request's own body, written before it was filed:
+
+What this does not claim. No current caller writes an executable through these
+helpers, and 0600 is still readable by its owner, so I have no report of a user
+hitting this. It bites a cache read by more than the account that filled it.
+That is why the change is in the helper and not in any one caller.

@@ -58,6 +58,11 @@ QUEUE = [
     ("reply-meier-cip-discuss.md",
      "Simon Meier, author of eight CIPs. The hardest one, and the one where "
      "the draft has changed since the list saw it."),
+    ("reply-dpm-331.md",
+     "digital-asset/dpm#331 was closed today as not a true concern, and the "
+     "maintainer was right. A short acceptance costs nothing and is the only "
+     "thing that answers an 'AI contribution' label: a person taking the "
+     "judgement back. Leave the pull request closed."),
     ("post-sig-security.md",
      "A new topic in SIG Security, which holds two posts and is nine days "
      "old. Post this LAST: it says the others have already corrected the "
