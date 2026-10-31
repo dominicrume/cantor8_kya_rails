@@ -144,6 +144,34 @@ Hard rules for any AI touching this code:
   the reader costs more than one declared by the author. But it is stated as
   a property of a finished thing, not as an excuse for an unfinished one.
 
+- A MECHANISM IS NOT A DEFECT. Nothing is opened in somebody else's
+  repository unless you can show the thing failing for a user. Proving that
+  code behaves a certain way is not the same as proving it is wrong, and a
+  maintainer's review time is the scarcest thing in the exchange.
+  THE TELL IS IN THE DRAFT. If the pull request body needs a paragraph
+  beginning "what this does not claim", or any sentence of the form "I have no
+  report of a user hitting this", that paragraph is not honesty decorating a
+  good filing. It is the reason not to file. Write the sentence, read it, and
+  close the branch.
+  Written 31 October 2026. digital-asset/dpm#331 was closed the day after it
+  was opened, with "AI contribution -- does not appear to be a true concern".
+  The maintainer was right, and the standard he applied had already been
+  written down in this session before the thing was filed: the author said in
+  as many words that there was a proven mechanism, a convention it
+  contradicted, and no demonstrated user-visible failure, and that this was
+  the exact gap between it and #330. Then it was recommended and opened
+  anyway.
+  The AI label was not the reason. #330 carried the same Co-authored-by
+  trailer and was merged six days earlier without a question, and the
+  repository has no AI policy in CONTRIBUTING.md or .github. The label is what
+  a maintainer reaches for once he has decided the substance is thin, which
+  means thin substance is what spends the credit, and the trailer is what it
+  gets spent on. Keep the trailer. Raise the bar.
+  The cost is asymmetric in the same way a wrong defect report is. One merge
+  earns a named engineer who will read the next thing. One closure like this
+  puts "AI contribution, not a true concern" under your own account in their
+  repository, permanently, and the next reviewer reads both.
+
 - A BLOCK IN A TERMINAL IS A COMMAND. Rume runs what is printed. Every fenced
   block is either runnable exactly as it stands, or it carries a plain label
   above it saying what it is. No placeholders in angle brackets, ever: write a
