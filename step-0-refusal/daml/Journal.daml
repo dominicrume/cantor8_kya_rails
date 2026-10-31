@@ -190,6 +190,43 @@ template AttemptJournal
           refusals = refusals <> [n]
         pure (record, journal)
 
+    -- | Refuse WITHOUT creating a record, per the mechanism CIP-0112
+    -- specifies for the token standard: the arguments of an exercised choice
+    -- are already visible to that exercise's informees, so a contract whose
+    -- only job is to carry them is redundant. Simon Meier made the point on
+    -- cip-discuss on 2026-10-30: a contract per notification clutters the
+    -- active contract set, and Daml's own performance guidance agrees, saying
+    -- to keep auxiliary contracts out of it and archive early.
+    --
+    -- The auditor still learns everything, because the auditor is on the
+    -- signatory line and the signatories are informees of every exercise on a
+    -- contract, consuming or not. `action`, `detail` and `rule` reach them as
+    -- the choice arguments of this very exercise.
+    --
+    -- WHAT IT COSTS, and this is the whole reason `Refuse` still exists.
+    -- Canton's pruning reference says a pruned node "will not be able to serve
+    -- events that precede t", and that pruning "never removes active
+    -- (i.e., non-archived) Daml contracts". So this refusal's reason lives only
+    -- in the update stream of participants that witnessed it, and the operator
+    -- being audited can prune their own. After that the position remains in
+    -- `refusals` with nothing behind it, which is indistinguishable from a
+    -- reason deliberately withheld.
+    --
+    -- That is the right trade for monitoring and the wrong one for evidence.
+    -- Use this when somebody is watching now. Use `Refuse` when somebody will
+    -- ask later.
+    choice RefuseSignalled : ContractId AttemptJournal
+      with
+        action : Text
+        detail : Text
+        rule : Text
+      controller owner, actor
+      do
+        let n = attempts + 1
+        create this with
+          attempts = n
+          refusals = refusals <> [n]
+
     -- | The rule said yes. Numbers the attempt and writes NOTHING about what
     -- it was. The application does its real work in this same transaction.
     --

@@ -171,6 +171,32 @@ reason lives on the record, which can be withheld. A withheld reason then
 leaves a position with no record against it, which is exactly the detection
 this specification exists to provide.
 
+**Two mechanisms, and which one to use.** The arguments of an exercised choice
+are already visible to that exercise's informees, so a contract whose only job
+is to carry them is redundant for signalling. CIP-0112 specifies this for the
+token standard: an `EventLog` interface that emits "standalone events as
+side-effect free non-consuming choices", whose "purpose is to make the call
+arguments visible to its observers, nothing more". Implementations SHOULD
+therefore offer a signalling form that creates no contract. The reference
+implementation's `RefuseSignalled` is that form, and the auditor still learns
+everything, because a contract's signatories are informees of every exercise on
+it, consuming or not.
+
+Implementations MUST NOT present the signalling form as evidence. Canton's
+pruning reference states that a pruned node "will not be able to serve events
+that precede t", and that pruning "never removes active (i.e., non-archived)
+Daml contracts". A refusal that exists only as an exercise event therefore
+lives in the update streams of the participants that witnessed it, one of which
+is operated by the party the record concerns. Once that participant prunes, the
+position in the counter remains with nothing behind it, which is
+indistinguishable from a reason deliberately withheld.
+`testASignalledRefusalLooksWithheldOnceEventsAreGone` shows the two cases
+leaving an identical active contract set.
+
+So: signal when somebody is watching now, record when somebody will ask later.
+A monitor wants the first. An examiner arriving in eighteen months wants the
+second and cannot get it from a stream that has been pruned.
+
 ### Privacy
 
 The asymmetry is deliberate and is the point. An allowed attempt increments
@@ -201,6 +227,15 @@ difference between a control that notices and a control that holds.
 Both replies are in the open, at
 https://forum.canton.network/t/how-do-you-prove-your-app-didnt-do-something/9114
 
+Simon Meier (@meiersi-da) replied on cip-discuss on 30 October 2026 and
+supplied the mechanism this specification was missing. He pointed out that
+creating a contract to carry a notification clutters the active contract set
+and that a non-consuming choice is the better way to signal an event, which is
+the mechanism he and Bernhard Elsner specified as `EventLog` in CIP-0112. He is
+right, Daml's own performance guidance agrees, and an earlier draft of this
+specification offered only the expensive form. `RefuseSignalled` and the two
+tests that measure what it buys and what it costs exist because of that reply.
+
 Georgi Radev (Community Tech Partner, @radevG) replied on 27 October 2026 and
 found what was missing. In his words: "A guard signatory alone does not gate
 owner-controlled choices", and "audit every choice on the asset and its
@@ -230,6 +265,34 @@ The difference is durability. The Scan Bulk Data reference states that verdict
 data "is ephemeral and routinely pruned within the mediator", and that Scan
 cannot recreate pruned data. A refusal record is an ordinary contract and lasts
 as long as the ledger does.
+
+**Why this needs a CIP rather than per-application design.** Simon Meier put
+the objection plainly on 30 October 2026: "this is an application design
+pattern that every app provider can decide on independently. So it doesn't
+require a CIP, as no ecosystem level coordination is needed."
+
+The first answer is not an argument, it is another applicant. On 18 October
+2026 Arpit Karnatak of Vacuumlabs, whose Delegated Automation Capability is Dev
+Fund proposal #627, wrote on the forum: "We plan to store the logs for all runs
+offchain since the aborted/failed actions aren't natively stored on-chain, and
+since there's no standard pattern out there to commit them on-chain, it didn't
+make sense to implement it within this proposal." A team building bounded
+delegated authority on Canton put its refusal logs off-ledger, in the custody of
+the party those logs are about, because no standard existed. The absence of
+coordination changed a design decision. That is what a CIP is for.
+https://forum.canton.network/t/were-building-delegated-automation-on-canton-seeking-feedback-champion/9084
+
+The second answer is the precedent of CIP-0112. A change in a token's holdings
+is also application-level, and nothing stops each issuer signalling it their own
+way. It was standardised so that one client can read any issuer's events without
+bespoke integration per issuer. An auditor reading refusal evidence across many
+applications has that problem exactly. If per-application design were sufficient
+for events of ecosystem interest, `EventLog` would not need to exist.
+
+What is genuinely per-application is the policy: which actions are guarded, what
+the rules are, and what a refusal means. This specification fixes none of that.
+It fixes the shape of the record, so that the auditor reading it does not need to
+learn each application's vocabulary first.
 
 **Why a contract rather than a new Ledger API service.** A contract is already
 carried by every adapter, respects Canton's sub-transaction privacy, and
@@ -292,11 +355,14 @@ Also available from
 https://github.com/dominicrume/cantor8_kya_rails/releases/tag/daml-v1.0.0
 
 Daml SDK 3.4.11, target Daml-LF 2.1, MIT, no dependency beyond `daml-prim` and
-`daml-stdlib`. 166 Daml test scripts across the two packages, including
+`daml-stdlib`. 168 Daml test scripts across the two packages, including
 `testASecondJournalIsPrevented`, its stated boundary
 `testWithNoAuditorASecondJournalIsStillPossible`, and
 `testAnOwnerControlledChoiceStillBypassesTheJournal`, which demonstrates the
-second conformance requirement above by violating it.
+second conformance requirement above by violating it, and
+`testSignallingCostsNoContract` with
+`testASignalledRefusalLooksWithheldOnceEventsAreGone`, which measure the two
+mechanisms against each other.
 
 A consumer-side counter for adapter output is at
 `tools/refusal_detector.py` in the same repository: Python standard library

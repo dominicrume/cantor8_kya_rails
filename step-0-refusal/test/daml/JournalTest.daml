@@ -432,3 +432,76 @@ testARefusalHasNothingLaterThatCanRevertIt = script do
       auditor = None
   Some still <- queryContractId s.auditor record
   still.rule === "above the per-day ceiling"
+
+-- Simon Meier, cip-discuss, 2026-10-30: "creating contracts to store
+-- notifications is a storage leak and an anti-pattern ... The better way to
+-- signal events is through non-consuming choices." He is the author of
+-- CIP-0112, which specifies exactly that as the token standard's EventLog.
+--
+-- He is right, and these two tests are the measurement of what his mechanism
+-- buys and what it costs, so the choice between them is made on numbers.
+--
+-- 1. RefuseSignalled costs no contract. The count moves, the position is
+--    recorded, the auditor is told, and the active contract set does not grow.
+testSignallingCostsNoContract : Script ()
+testSignallingCostsNoContract = script do
+  s <- setup
+
+  before <- query @RefusalRecord s.owner
+  j1 <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal RefuseSignalled with
+      action = "withdraw"; detail = "amount=500"; rule = "dailyCap"
+  after <- query @RefusalRecord s.owner
+
+  -- Not one contract was created for it.
+  length after === length before
+
+  -- The auditor still learns that one attempt happened and was refused.
+  seen <- submit s.auditor do exerciseCmd j1 Expect
+  seen === (1, [1])
+
+-- 2. The cost of that, stated as a test rather than as a paragraph. A
+--    signalled refusal and a refusal whose reason was deliberately withheld
+--    leave the SAME active contract set: a numbered position with nothing
+--    behind it. They are told apart only by the update stream, which Canton's
+--    pruning reference says a pruned node can no longer serve.
+--
+--    This test cannot prune a participant, so it does not claim to. It proves
+--    the weaker thing that is still the point: once the events are gone, the
+--    two cases are identical on the ledger, and the party who can prune is the
+--    party being audited.
+testASignalledRefusalLooksWithheldOnceEventsAreGone : Script ()
+testASignalledRefusalLooksWithheldOnceEventsAreGone = script do
+  s <- setup
+
+  signalled <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal RefuseSignalled with
+      action = "withdraw"; detail = "amount=500"; rule = "dailyCap"
+
+  -- A second journal, same shape, whose refusal DID write a record.
+  o2 <- allocateParty "Treasury9"
+  a2 <- allocateParty "Bot9"
+  g2 <- allocateParty "Compliance9"
+  d2 <- allocateParty "Auditor9"
+  j2 <- submit [o2, a2, g2, d2] do
+    createCmd AttemptJournal with
+      owner = o2; actor = a2; guardian = g2; auditor = Some d2
+      attempts = 0; refusals = []
+  (record, recorded) <- submit [o2, a2] do
+    exerciseCmd j2 Refuse with
+      action = "withdraw"; detail = "amount=500"; rule = "dailyCap"
+
+  -- Both auditors see the identical count and the identical position.
+  seen1 <- submit s.auditor do exerciseCmd signalled Expect
+  seen2 <- submit d2 do exerciseCmd recorded Expect
+  seen1 === seen2
+
+  -- The difference is entirely in what survives as a contract. Canton's
+  -- pruning reference: pruning "never removes active ... contracts", and a
+  -- pruned node "will not be able to serve events that precede t".
+  withheld <- query @RefusalRecord s.owner
+  length withheld === 0
+  kept <- query @RefusalRecord o2
+  length kept === 1
+  Some r <- queryContractId o2 record
+  r.rule === "dailyCap"

@@ -29,6 +29,39 @@
 > public GitHub handles, and the review process says SIG members may self-assign
 > proposals and that SIG participation is not limited to Foundation members.
 >
+> **CORRECTED 31 October, and this one was costly.** The paragraph below says
+> a champion must hold a Tech & Ops seat, and that everything waiting on a
+> champion was waiting for the wrong thing. The second half is right. The first
+> half left out the cheaper route, and #860 sat 34 days against a gate that is
+> not the only gate.
+>
+> `Development Fund Proposal Review Process.md` in the fund's own repository
+> says three things, quoted from the file:
+>
+> * line 28: "A proposal moves to 'In Review' once it has been assigned to a
+>   **champion or reviewer**."
+> * line 16: SIG members "may use the proposal tracking board to **self assign
+>   proposals they want to review directly**."
+> * line 24: "Participation in SIGs is **not limited to Foundation members**."
+>
+> So a reviewer is enough to move a proposal out of the queue, SIG members
+> assign themselves, and the SIGs are open to people who are not Foundation
+> members. CIP-0100's champion is still what unlocks funding. It is not what
+> unlocks review.
+>
+> Membership is by pull request to `sig-directory.md`, needing a recommendation
+> from one current member of that SIG and an endorsement from a second, with at
+> least one endorser from a different organisation. The two rosters that matter
+> here are Regulatory Compliance (Julie Lascar, Kelly Mathiesen and Shaul Kfir
+> of Digital Asset, Nikos Andrikogiannopoulos of Metrika) and Security (Edward
+> Newman of Digital Asset, Richard Domikis of MPCH, Stanislav German-Evtushenko
+> of SBI Security Solutions). Three of those seven are not at Digital Asset.
+>
+> The lesson is the same one as the dpm incident. The claim "a champion must
+> hold a seat" was read out of CIP-0100 alone, and the operational document
+> that contradicts it was sitting in the same repository, unread, the whole
+> time. One file is not a measurement.
+
 > **WHAT A CHAMPION ACTUALLY IS, 30 September.** Not a supporter. A seat.
 > CIP-0100: "The Tech & Ops committee should request **one of its members** to
 > become the champion of the external contributor and **represent them in the
