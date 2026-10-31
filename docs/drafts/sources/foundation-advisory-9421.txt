@@ -1,0 +1,18 @@
+"Security Advisory for Validator and Super Validator Operators"
+Canton Network forum, Announcements (category 56), topic 9421
+Author: pedrodneves. Created 2026-10-26T17:22:58Z
+https://forum.canton.network/t/9421
+
+We are in a period of heightened security relevant activity in the industry in general and against that backdrop also within Canton Network.
+
+The predominant attack vector we've observed in recent times is that attackers target validator operators' internal networks or infrastructure to gain access to validator deployments.
+
+For nodes that hold their namespace root keys locally and/or hold significant amounts of Canton Coin in wallets by node-internal keys, this can allow attackers to take control of the node and/or the Canton Coin in those wallets. Please stay vigilant as these types of attacks are being attempted in practice.
+
+Have your incident response plans ready. When in doubt: Turn off your validator / Reach out to security@canton.foundation. The foundation can help in various ways including by coordinating with the CEXs blocks those funds from leaving through them.
+
+If you suspect your node's root namespace key was compromised: Start monitoring the network for transactions signed with the compromised key. Un-host all parties (internal and external) from your validator (send topology transactions through a non-compromised node). Move the parties owned by the compromised root key to a non-compromised validator. If the root key was compromised, you will have to race against the attacker.
+
+Review where credentials are being stored (wikis, docker images, local laptops, etc) and consider moving to secure vault.
+
+The Canton and Splice teams are working on publishing runbooks to upgrade existing node deployments to convert to KMS-based key management.
