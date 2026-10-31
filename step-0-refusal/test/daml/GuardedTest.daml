@@ -8,6 +8,7 @@
 -- control. Let one person submit as both and it is a convention again.
 module GuardedTest where
 
+import DA.Foldable (forA_)
 import DA.Assert ((===))
 import Daml.Script
 
@@ -218,5 +219,52 @@ testAnOwnerControlledChoiceStillBypassesTheJournal = script do
   -- The asset is gone and the journal never moved.
   remaining <- query @SpendableWallet e.owner
   length remaining === 0
+  seen <- submit e.auditor do exerciseCmd e.journal Expect
+  seen === (0, [])
+
+-- 8. THE LIMIT THE BINANCE HACK MAKES VISIBLE, written down on 31 October
+--    2026, two days after about USD 6.3bn left Binance through what early
+--    reporting describes as one engineer's compromised laptop.
+--
+--    The guarded asset survives a single stolen key: tests 2, 4 and 5 above
+--    show that owner and actor together move nothing, and that the guardian
+--    alone moves nothing either. The control is a conjunction.
+--
+--    What does NOT survive is the EVIDENCE. An attacker holding one party's
+--    authority does not open an attempt, because opening one gains them
+--    nothing. They exercise the asset directly, the ledger refuses during
+--    interpretation, no transaction commits, and the counter never moves. So
+--    the owner cannot afterwards prove "we were attacked and blocked it",
+--    which is the exact sentence this package exists to make provable.
+--
+--    The journal counts refusals by a COOPERATING actor. It does not count
+--    attacks. That is a real limit of the design and it is better stated here
+--    by its author than discovered by a reader after an incident.
+--
+--    What would count an attack is a different mechanism: the participant's
+--    own rejection log, or the confirmation-stage verdicts the mediator
+--    stores, which Leonid set out on forum topic 9114 on 30 October 2026 and
+--    which Splice Scan publishes on /v0/events. Those see a transaction that
+--    reached confirmation. They do not see this one either, because an
+--    authorization failure at the submitter never becomes a confirmation
+--    request.
+testAnAttackerWithOneStolenKeyLeavesNoCount : Script ()
+testAnAttackerWithOneStolenKeyLeavesNoCount = script do
+  e <- env
+  wallet <- submit [e.owner, e.guardian] do
+    createCmd Wallet with holder = e.owner; guard = e.guardian; balance = 100.0
+
+  -- Five attempts with the owner's authority alone, as a stolen key would
+  -- have. Every one is refused by the ledger.
+  forA_ [1, 2, 3, 4, 5] $ \_ ->
+    submitMustFail [e.owner] do
+      exerciseCmd (toInterfaceContractId @Journalled wallet) Perform
+
+  -- The asset is untouched, which is the control working.
+  [(_, w)] <- query @Wallet e.owner
+  w.balance === 100.0
+
+  -- And the auditor sees nothing at all. Not five refusals. Not one. The
+  -- attack is invisible, and that is the limit.
   seen <- submit e.auditor do exerciseCmd e.journal Expect
   seen === (0, [])

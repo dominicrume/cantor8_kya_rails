@@ -318,6 +318,22 @@ work and the count are in one transaction and die together. Off-ledger logging
 remains the right tool for crashes. The difference is incentive: nobody gains
 by hiding a crash, and somebody can gain by losing a refusal.
 
+**The limit a reader would otherwise find after an incident.** This counts
+refusals by a cooperating actor. It does not count attacks. An attacker holding
+one party's stolen authority gains nothing by opening an attempt, so they
+exercise the asset directly, the ledger refuses during interpretation, no
+transaction commits, and the counter never moves. The asset is safe and the
+evidence is absent: the owner cannot afterwards prove "we were attacked and
+blocked it", which is the sentence this specification exists to make provable.
+`testAnAttackerWithOneStolenKeyLeavesNoCount` makes five such attempts and
+shows the auditor seeing nothing at all, not five refusals and not one.
+
+Counting attacks needs a different mechanism, and it is not this one. The
+participant's own rejection log sees it. The confirmation-stage verdicts the
+mediator stores do not, because an authorization failure at the submitter never
+becomes a confirmation request. That boundary is worth knowing before anyone
+cites this work in an incident review.
+
 **The limit that must be stated.** Daml grants a submitter the authority of
 every party it submits as. An operator who can submit as the guardian reaches
 the asset directly and no record is written. This is therefore a control when
@@ -355,7 +371,7 @@ Also available from
 https://github.com/dominicrume/cantor8_kya_rails/releases/tag/daml-v1.0.0
 
 Daml SDK 3.4.11, target Daml-LF 2.1, MIT, no dependency beyond `daml-prim` and
-`daml-stdlib`. 169 Daml test scripts across the two packages, including
+`daml-stdlib`. 170 Daml test scripts across the two packages, including
 `testASecondJournalIsPrevented`, its stated boundary
 `testWithNoAuditorASecondJournalIsStillPossible`, and
 `testAnOwnerControlledChoiceStillBypassesTheJournal`, which demonstrates the
