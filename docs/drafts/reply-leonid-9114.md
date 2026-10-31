@@ -12,7 +12,8 @@ that a rejection happened without publishing what was refused. That is the
 asymmetry I was designing, and the protocol got there first. It is in the
 draft now, crediting you.
 
-Two notes back. The Transaction Lifecycle page names assertion violation under
-Failure Modes, rejected before any message is sent, so that case never becomes
-a verdict. And the Scan Bulk Data page says verdict data is ephemeral and
-routinely pruned in the mediator, which is a reason to want a contract.
+One thing I found while checking, in case it is new to you rather than old:
+the Scan Bulk Data reference says verdict data is ephemeral and routinely
+pruned within the mediator, and that Scan cannot recreate pruned data. That is
+the one argument I now have for a contract over an event, and I would not have
+gone looking for it without your reply.
