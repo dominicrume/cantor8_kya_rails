@@ -165,6 +165,18 @@ Hard rules for any AI touching this code:
   keystroke, and marks the line unverified in the log. Three states, not two,
   because a check that cannot run must never look like one that passed.
 
+- A MECHANISM IS NOT A DEFECT, AND THE RULE ALONE DID NOT HOLD. Run
+  `python3 tools/before_contributing.py digital-asset/dpm` before opening
+  anything in a repository that is not ours. It measures your merged and
+  closed record there, refuses the phrases that are verdicts rather than
+  caveats, refuses a filing with no test that goes red, and makes you read
+  the case back cold before answering. Checked against both real cases: it
+  passes #330, which merged in six days, and refuses #331 on the exact
+  sentence that was in #331's body.
+  The rule below was written on 23 October, read, agreed with, and walked
+  past on 31 October. A rule written four times and broken twice is a wish.
+  This is the gate.
+
 - A MECHANISM IS NOT A DEFECT. Nothing is opened in somebody else's
   repository unless you can show the thing failing for a user. Proving that
   code behaves a certain way is not the same as proving it is wrong, and a
