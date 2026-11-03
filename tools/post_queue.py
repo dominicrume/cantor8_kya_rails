@@ -50,32 +50,77 @@ DRAFTS = os.path.join(ROOT, "docs", "drafts")
 SOURCES = os.path.join(DRAFTS, "sources")
 LOG = os.path.join(DRAFTS, "posted.log")
 
-# Oldest debt first, and the new topic last so that when it says the others
-# have already been answered, that is true at the moment it is posted.
+# THE TEST FOR THIS LIST IS WHO SPOKE LAST, AND IT IS MEASURED, NOT REMEMBERED.
+#
+# The first version of this QUEUE held six drafts and gave each one a reason in
+# prose. Two of those reasons were false. It said Arpit Karnatak had been
+# waiting since 18 October; the last post on topic 9084 is orumedominic,
+# 22 October 01:45 UTC, so he was answered and the thread is ours. It implied
+# the Dev Fund proposals were owed something; #860 and #866 both end with a
+# dominicrume comment on 31 October.
+#
+# That is the same defect as the log that wrote "posted" on a keystroke. The
+# tool stated a fact about a destination it had not read. A wrong reason is
+# worse than no reason, because a wrong reason gets acted on: it would have
+# sent an unprompted reply to a man who is not waiting, and spent the one thing
+# this project has less of than code.
+#
+# So the list below holds only threads where the last word is NOT ours,
+# measured on 4 November 2026, oldest debt first, with the timestamp that
+# proves it. Anything whose last post is ours lives in OPTIONAL and is printed
+# as not owed.
 QUEUE = [
     ("reply-radev-9323.md",
-     "Georgi Radev answered a direct question on 27 October and has had "
-     "nothing back. Longest debt, so it goes first."),
+     "Georgi Radev answered a direct question on topic 9323. Last post there "
+     "is radevG, 27 October 11:52 UTC, 8 days ago. Longest debt, and he is "
+     "credited by name in the CIP, so it goes first."),
     ("reply-leonid-9114.md",
-     "Leonid corrected the Motivation on 30 October. While the page is open, "
-     "tick PREDGE's post 6 as the solution. You told him on 26 October that "
-     "you had, and it is still false."),
-    ("reply-karnatak-9084.md",
-     "Arpit Karnatak of Vacuumlabs, waiting since 18 October, and your own "
-     "question to him has been open since 22 October."),
-    ("reply-meier-cip-discuss.md",
-     "Simon Meier, author of eight CIPs. The hardest one, and the one where "
-     "the draft has changed since the list saw it."),
+     "Leonid corrected the Motivation on topic 9114. Last post there is "
+     "leonidr, 30 October 01:40 UTC. While the page is open, tick PREDGE's "
+     "post 6 as the solution: has_accepted_answer is still false, and you "
+     "told him on 26 October that you had marked it."),
     ("reply-dpm-331.md",
-     "digital-asset/dpm#331 was closed today as not a true concern, and the "
-     "maintainer was right. A short acceptance costs nothing and is the only "
-     "thing that answers an 'AI contribution' label: a person taking the "
-     "judgement back. Leave the pull request closed."),
+     "digital-asset/dpm#331 was closed 31 October 16:49 UTC as not a true "
+     "concern, and the maintainer was right. The only comment on it is his. A "
+     "short acceptance costs nothing and is the one thing that answers an 'AI "
+     "contribution' label: a person taking the judgement back. Leave the pull "
+     "request closed."),
     ("post-sig-security.md",
-     "A new topic in SIG Security, which holds two posts and is nine days "
-     "old. Post this LAST: it says the others have already corrected the "
-     "draft, which is only true once they are in."),
+     "A new topic in SIG Security, which holds exactly two topics, one of "
+     "them the auto About post, and no post of yours at all. Nobody is "
+     "waiting on this one, so it goes LAST: it says the others have already "
+     "corrected the draft, which is only true once they are in."),
 ]
+
+# Drafts that are written and checked but NOT owed, because the last word in
+# those threads is already ours. They are listed rather than deleted so that
+# nothing is quietly lost, and so the next person reading this file can see
+# that the decision was made on a measurement.
+OPTIONAL = [
+    ("reply-karnatak-9084.md",
+     "Topic 9084's last post is orumedominic, 22 October 01:45 UTC. He is not "
+     "waiting on you; you are waiting on him. Send this only if you have "
+     "something new and finished to show, never as a nudge."),
+    ("reply-meier-cip-discuss.md",
+     "Simon Meier on cip-discuss. Not a debt: he has not written since #910. "
+     "But the draft HAS changed since the list saw it, so this is worth "
+     "sending once the forum replies are in and the changes are real."),
+]
+
+
+def print_optional():
+    """Say what is written and NOT owed, so it is neither sent nor forgotten."""
+    if not OPTIONAL:
+        return
+    print("=" * 72)
+    print("WRITTEN BUT NOT OWED. The last word in each of these is already")
+    print("yours, measured 4 November 2026. Sending one is a choice, not a")
+    print("debt, and an unprompted reply spends credit rather than earning it.")
+    for name, why in OPTIONAL:
+        print()
+        print("  %s" % name)
+        print("    %s" % why)
+    print()
 
 
 def run(argv, **kw):
@@ -186,6 +231,8 @@ def main():
               % ", ".join(sorted(done)))
     if not todo:
         print("Nothing left. Everything in the queue is logged as posted.")
+        print()
+        print_optional()
         return 0
     print()
 
@@ -288,8 +335,11 @@ def main():
         print("DRY RUN finished. Every draft above passed its checks and")
         print("nothing was copied, opened or logged. Run it without")
         print("--dry-run to actually work through them.")
+        print()
+        print_optional()
         return 0
 
+    print_optional()
     print("=" * 72)
     print("%d posted this run, and written into docs/drafts/posted.log." % posted)
     print()
