@@ -30,6 +30,7 @@ Python standard library only. The only commands it runs are pbcopy and open,
 both macOS, both with a literal argv.
 """
 
+import calendar
 import json
 import os
 import re
@@ -94,6 +95,14 @@ QUEUE = [
      "short acceptance costs nothing and is the one thing that answers an 'AI "
      "contribution' label: a person taking the judgement back. Leave the pull "
      "request closed."),
+    ("post-forum-rfp27.md",
+     "Amanda Martin, Chief Operating Officer, asked for this by email on 5 "
+     "November: take the overlap assessment to the forum so the technical "
+     "community and potential Champions can review it. She named the three "
+     "objections and all three already have passing tests. It is the only "
+     "item here that somebody with authority actually requested, so it goes "
+     "FIRST. App Development, not a SIG category: the twenty SIG categories "
+     "hold eleven topics between them and 57 holds 3,417."),
     ("post-sig-security.md",
      "A new topic in SIG Security, which holds exactly two topics, one of "
      "them the auto About post, and no post of yours at all. Nobody is "
@@ -200,10 +209,46 @@ def verify(url):
             return True, "last comment is by %s" % who
         return False, "last comment is by %s, not you" % (who or "nobody")
 
-    if "forum.canton.network/c/" in url:
-        return None, ("a new topic in a category, which this cannot check "
-                      "without knowing the topic id. Paste its URL here next "
-                      "time and it will be checkable")
+    # A new topic in a category. This used to return None, "cannot check",
+    # and on 4 November 2026 that excuse logged post-sig-security.md as
+    # posted on a typed "yes" when nothing had been posted at all. The three
+    # states were right and the middle one was simply lazy: the category JSON
+    # carries last_poster_username on every topic, so a brand new topic by
+    # this author is as checkable as a reply. It is checked now.
+    m = re.search(r"forum\.canton\.network/(c/[^?#\s]+?/\d+)", url)
+    if m:
+        try:
+            d = json.loads(fetch("https://forum.canton.network/%s.json"
+                                 % m.group(1)))
+        except (urllib.error.URLError, ValueError) as e:
+            return None, "could not reach the forum: %s" % e
+        topics = d.get("topic_list", {}).get("topics", [])
+        if not topics:
+            return False, "the category has no topics at all"
+        cutoff = time.time() - 6 * 3600
+        mine = []
+        for t in topics:
+            when = t.get("created_at", "")
+            try:
+                age = calendar.timegm(time.strptime(when[:19],
+                                                    "%Y-%m-%dT%H:%M:%S"))
+            except ValueError:
+                continue
+            # A topic one post old has the same original and last poster, so
+            # last_poster_username identifies the author of a new topic.
+            if age >= cutoff and t.get("last_poster_username") == AUTHOR:
+                mine.append(t)
+        if mine:
+            t = sorted(mine, key=lambda x: x.get("created_at", ""))[-1]
+            return True, "topic %s %r by %s at %s" % (
+                t["id"], t.get("title", "")[:48], AUTHOR,
+                t.get("created_at", "")[:16])
+        newest = sorted(topics, key=lambda x: x.get("created_at", ""))[-1]
+        return False, ("no topic by %s in the last 6 hours. The newest in "
+                       "that category is %s %r by %s at %s"
+                       % (AUTHOR, newest["id"], newest.get("title", "")[:40],
+                          newest.get("last_poster_username"),
+                          newest.get("created_at", "")[:16]))
     if "lists.sync.global" in url:
         return None, ("a Groups.io list, which returns 402 to automated "
                       "fetches. Check the RSS feed by eye")
@@ -229,6 +274,11 @@ def main():
     if os.path.exists(LOG):
         with open(LOG) as f:
             for line in f:
+                # RETRACTED marks a line this log got wrong. It stays in the
+                # file, because nothing here is quietly tidied, and it does
+                # not count as posted, because it was not.
+                if line.startswith("RETRACTED"):
+                    continue
                 parts = line.split()
                 if len(parts) >= 2:
                     done.add(parts[1])
@@ -294,6 +344,9 @@ def main():
         else:
             print("pbcopy failed. Open %s and copy it by hand." % path)
 
+        # Read the destination BEFORE sending him there, so that "confirmed"
+        # afterwards has something to be different from.
+        before_ok, before = verify(url_of(destination) or "")
         print("GO HERE:  %s" % destination)
         u = url_of(destination)
         if u:
@@ -310,9 +363,20 @@ def main():
             print()
             continue
 
-        # Do not take the keystroke for the fact. Go and look.
+        # Do not take the keystroke for the fact. Go and look. And looking
+        # is not enough on its own: on 4 November 2026 this confirmed
+        # reply-leonid-9114.md because the last post on that topic was
+        # already mine, from the day before. Enter was pressed, nothing was
+        # posted, and the log said verified. A check that passes before you
+        # act is not a check. So the state is read BEFORE the browser opens
+        # and the answer afterwards must differ from it.
         print("checking that it is actually there...")
         ok, detail = verify(url_of(destination) or "")
+        if ok is True and detail == before:
+            ok = False
+            detail = ("nothing changed. Before you were sent there it "
+                      "already said: %s. That is the same post, so this "
+                      "confirms yesterday, not today" % before)
         if ok is False:
             print("NOT THERE: %s" % detail)
             print("Nothing written to the log, so this draft comes back.")
