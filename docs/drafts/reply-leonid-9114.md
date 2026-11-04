@@ -1,19 +1,21 @@
 Post-To: https://forum.canton.network/t/9114  (Reply, and tick PREDGE's post 6 as the solution while you are there)
 
-Leonid, thank you. My claim was too broad and your reply is the correction.
+The use case, since you asked for it.
 
-I said a refusal reaches no monitor. That is only true of one decided in the
-submitter's own interpretation. I had no model of the confirmation stage, and
-this repository mentioned neither the mediator nor Scan anywhere.
+An agent holds a spending mandate. Its principal has to answer one question to
+an auditor: did it ever try to exceed it? Today that answer comes from the
+application's own logs, which is the party the question is about.
 
-I checked /v0/events rather than take it: rejected verdicts since Splice
-0.4.21, and no reject reason field in the schema. So Canton already publishes
-that a rejection happened without publishing what was refused. That is the
-asymmetry I was designing, and the protocol got there first. It is in the
-draft now, crediting you.
+Your confirmation stage protects the stakeholder who hosts a confirming party.
+The principal here usually hosts nothing. They are a counterparty to a
+mandate, not a validator operator, so the rejection is logged on a participant
+they do not run and cannot read. That is the narrow thing I would want
+exposed, and it is narrower than what I claimed: not the reason, just that an
+attempt against a named mandate was rejected.
 
-One thing I found while checking, in case it is new to you rather than old:
-the Scan Bulk Data reference says verdict data is ephemeral and routinely
-pruned within the mediator, and that Scan cannot recreate pruned data. That is
-the one argument I now have for a contract over an event, and I would not have
-gone looking for it without your reply.
+I cannot evaluate the log-alerting path. No participant and no credential, so
+I am taking it as read rather than reporting on it.
+
+One question from reading the Scan Bulk Data reference: it says verdict data
+is ephemeral and routinely pruned, and that Scan cannot recreate pruned data.
+Does that cap how far back such an API could ever answer?
