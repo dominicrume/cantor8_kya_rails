@@ -70,6 +70,15 @@ LOG = os.path.join(DRAFTS, "posted.log")
 # proves it. Anything whose last post is ours lives in OPTIONAL and is printed
 # as not owed.
 QUEUE = [
+    ("ask-champion-860.md",
+     "The money. #860's body has read `Needs Champion` for 38 days, and the "
+     "field is the whole blocker: #866 carries a named champion, Yiannis "
+     "Varelis of Five North, who wrote four words on 9 October, 'Happy to "
+     "champion this.' He has never been asked about #860. Three public OFFERS "
+     "have been made to him and ignored since 22 October, so this one is a "
+     "closed question with a date on it. It also asks for the thing that "
+     "closes the DevNet gap: Five North runs the live validator OS Ledger is "
+     "deployed against. Goes FIRST."),
     ("reply-radev-9323.md",
      "Georgi Radev answered a direct question on topic 9323. Last post there "
      "is radevG, 27 October 11:52 UTC, 8 days ago. Longest debt, and he is "
