@@ -1,21 +1,22 @@
 Post-To: https://forum.canton.network/t/9114  (Reply, and tick PREDGE's post 6 as the solution while you are there)
 
-The use case, since you asked for it.
+The use case, and your first three paragraphs move where it sits.
 
 An agent holds a spending mandate. Its principal has to answer one question to
-an auditor: did it ever try to exceed it? Today that answer comes from the
-application's own logs, which is the party the question is about.
+an auditor: did it ever try to exceed it?
 
-Your confirmation stage protects the stakeholder who hosts a confirming party.
-The principal here usually hosts nothing. They are a counterparty to a
-mandate, not a validator operator, so the rejection is logged on a participant
-they do not run and cannot read. That is the narrow thing I would want
-exposed, and it is narrower than what I claimed: not the reason, just that an
-attempt against a named mandate was rejected.
+That refusal is an assertion in our own choice body, so it is your second
+paragraph and not your third. It fails in the submitter's interpretation. No
+messages are sent, no view is non-conforming, no mediator verdict exists and
+Scan has nothing to publish. The only record is at the submitting participant,
+which is the actor. Your log-alerting advice covers the confirmation-stage
+class, and I had been treating the two as one thing.
 
-I cannot evaluate the log-alerting path. No participant and no credential, so
-I am taking it as read rather than reporting on it.
+So the API you offered to consider would not reach this one. The information
+never leaves the submitter. That is an argument against how I framed it and,
+I think, for making the refusal a successful transaction instead, so that it
+goes through confirmation like any other and is simply visible.
 
-One question from reading the Scan Bulk Data reference: it says verdict data
-is ephemeral and routinely pruned, and that Scan cannot recreate pruned data.
-Does that cap how far back such an API could ever answer?
+Hence the question. Is there a protocol-level way for a refusal decided in the
+submitter's interpretation to leave an artefact beyond that participant, or is
+turning it into an accepted transaction the only route?
