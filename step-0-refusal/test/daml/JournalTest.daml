@@ -564,3 +564,57 @@ testTheCostOfBothMechanisms = script do
   -- recording is O(refusals) contracts, signalling is O(1).
   length records === n
   length none === 0
+
+-- Georgi Radev, forum.canton.network/t/9323, 4 November 2026: the configured
+-- confirming set can be inspected afterwards, but "different node IDs do not
+-- prove independent operators", and the historical configuration "identifies
+-- eligible confirmers. It does not show which nodes actually supplied
+-- approvals for a particular transaction."
+--
+-- That splits the claim in two and only one half is on the ledger. This test
+-- holds the boundary between them in both directions, so neither half can
+-- drift into the other without something going red.
+testTheLedgerNamesThePartiesAndNotTheirOperators : Script ()
+testTheLedgerNamesThePartiesAndNotTheirOperators = script do
+  s <- setup
+
+  -- Half one, which IS on the ledger. A reader of the journal names every
+  -- party on it from the contract alone: no Admin API, no topology export,
+  -- no ListPartyToParticipant. So the SPLIT is checkable by anyone who can
+  -- see the contract.
+  Some j <- queryContractId s.auditor s.journal
+  j.owner === s.owner
+  j.actor === s.actor
+  j.guardian === s.guardian
+  j.auditor === Some s.auditor
+  assertMsg "the guardian must not be the actor, or there is no split"
+    (j.guardian /= j.actor)
+  assertMsg "the auditor must not be the actor either"
+    (j.auditor /= Some j.actor)
+
+  -- Half two, which is NOT and never will be. The payload a reader gets is
+  -- exactly these six fields. Nothing in it says who operates a participant,
+  -- who holds a key, or who confirmed a particular transaction.
+  --
+  -- This reconstruction names every field, so it stops COMPILING the day
+  -- somebody adds a seventh. That is the point: if a later version carries
+  -- an operator or topology field, the limits section in the CIP has to be
+  -- rewritten by hand rather than quietly outgrown, because this will not
+  -- build until someone looks at it.
+  --
+  -- Proven, and the first attempt to prove it was wrong. Adding
+  -- `operatorClaim : Text` to AttemptJournal and running `daml test` in this
+  -- package changed nothing, because this package takes the record from
+  -- ../.daml/dist/canton-refusal-record-1.0.0.dar and that DAR was stale. A
+  -- control that does not rebuild the thing it is testing is not a control.
+  -- With `daml build` run in the parent first, the same edit produces four
+  -- DsErrors reading "Constructor 'AttemptJournal' does not have the
+  -- required strict field(s): operatorClaim".
+  let rebuilt = AttemptJournal with
+        owner = s.owner
+        actor = s.actor
+        guardian = s.guardian
+        auditor = Some s.auditor
+        attempts = j.attempts
+        refusals = j.refusals
+  rebuilt === j
