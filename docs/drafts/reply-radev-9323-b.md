@@ -13,7 +13,13 @@ operators.
 
 So the honest claim is that the specification proves authority was split
 between named parties, not that those parties were independently operated.
-Independence stays an off-ledger assertion. That is in the limits section
-now, in those two layers, credited to you.
+Independence stays an off-ledger assertion.
+
+Both halves are a test now rather than a sentence:
+testTheLedgerNamesThePartiesAndNotTheirOperators. It reads the four parties
+off the contract, checks the guardian is neither the actor nor the auditor,
+and then rebuilds the payload naming every field, so the day anyone adds an
+operator or topology field it stops compiling and the limit has to be
+rewritten by hand instead of quietly outgrown.
 
 Third time you have made this narrower. Thank you.
