@@ -30,11 +30,10 @@ testAnAttackerWithOneStolenKeyLeavesNoCount makes five attempts and shows the
 auditor seeing nothing. This counts refusals by a cooperating actor. It does
 not count attacks.
 
-What I am asking for. A SIG Security read on whether the signatory-line
-mechanism is sound, and a reviewer for Dev Fund #860, which has had none in
-34 days. The specification is also on cip-discuss as message #909, where
-Simon Meier has already corrected the mechanism once and Georgi Radev and
-Leonid have each cost it a claim on the forum.
+What I am asking for. One technical read on whether putting the guardian on
+the signatory line is sound, and whether the gap above has an answer I have
+missed. Georgi Radev and Leonid have each already cost this a claim on the
+forum, which is the kind of correction I am after.
 
 What has not been done. None of it has run on DevNet. I have never held a
 credential. Weigh it as a specification with a tested reference
