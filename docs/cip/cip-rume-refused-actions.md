@@ -342,6 +342,35 @@ when one person submits as both. Segregation of duties does the work; this
 specification only makes it enforceable. A test in the reference
 implementation performs that bypass and shows the counter never moves.
 
+**And how far an auditor can check that, which is less far than it sounds.**
+The limit above makes segregation of duties load-bearing, so the obvious next
+question is whether a reader can verify it after the fact. The answer has two
+layers and only the first is on the ledger.
+
+*Who is named* is on the ledger and needs nothing else. The guardian and the
+auditor are signatories of the journal, so anyone who can see the contract
+sees which parties they are, without Admin API access and without a topology
+export.
+
+*Who ran their node* is not, and that is where this stops. Georgi Radev set
+out the mechanism on 4 November 2026: `PartyToParticipant` records participant
+IDs, hosting permissions and the confirmation threshold, and
+`ListPartyToParticipant` supports historical snapshots with validity intervals
+given node Admin API access, or a topology export for the synchronizer and
+time otherwise. But Canton separates cryptographic identity from real-world
+ownership, so distinct node IDs do not establish distinct operators, and in
+his words that historical configuration "identifies eligible confirmers. It
+does not show which nodes actually supplied approvals for a particular
+transaction."
+
+So the honest claim is narrower than the one a reader might assume.
+This specification proves the authority was **split between named parties**.
+It does not prove those parties were **independently operated**, and nothing
+at the protocol level will prove it, because eligibility is recoverable and
+participation in a given transaction is not. Independence remains an
+off-ledger assertion backed by off-ledger evidence. An audit package built on
+this should say which of the two it is relying on.
+
 ## Backwards compatibility
 
 None. This introduces a new application-level package. It changes no protocol
@@ -392,6 +421,13 @@ rather than discovered later.
 
 ## Post-History
 
+* 2026-11-05: narrowed again after review on the forum. Georgi Radev set out
+  what `PartyToParticipant` and `ListPartyToParticipant` can and cannot
+  establish after the fact, which separated the claim this specification can
+  make, that authority was split between named parties, from the one it
+  cannot, that those parties were independently operated. The second half of
+  the limits section exists because of that reply.
+  https://forum.canton.network/t/an-audit-control-that-the-audited-party-can-switch-off-is-not-a-control/9323
 * 2026-10-30: corrected after review on the forum. Georgi Radev found that a
   guardian signatory does not gate an owner-controlled choice, which added the
   second conformance requirement and a test. Leonid set out the confirmation
