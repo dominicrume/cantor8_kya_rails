@@ -95,6 +95,13 @@ QUEUE = [
      "short acceptance costs nothing and is the one thing that answers an 'AI "
      "contribution' label: a person taking the judgement back. Leave the pull "
      "request closed."),
+    ("reply-radev-9323-b.md",
+     "Georgi Radev answered again on 4 November at 15:24 UTC, five and a "
+     "half hours after your reply, and gave the mechanism nobody had stated: "
+     "eligibility is recoverable from PartyToParticipant, participation in a "
+     "given transaction is not. Third correction from him, fastest "
+     "turnaround in the thread, and the spec is already changed. Freshest "
+     "debt in the repository, so it goes first."),
     ("post-forum-rfp27.md",
      "Amanda Martin, Chief Operating Officer, asked for this by email on 5 "
      "November: take the overlap assessment to the forum so the technical "
