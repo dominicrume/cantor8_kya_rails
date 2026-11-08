@@ -56,7 +56,7 @@ is counted. testAnAttackerWithOneStolenKeyLeavesNoCount shows the auditor
 seeing nothing after five attempts. Five thousand blocked attacks and zero
 look identical.
 
-Georgi Radev narrowed it again yesterday: the ledger shows authority was
+Georgi Radev narrowed it again on 4 November: the ledger shows authority was
 split between named parties, and nothing at the protocol level will show
 those parties were independently operated.
 
