@@ -1,5 +1,5 @@
 Review-On: https://github.com/digital-asset/dpm/pull/334
-How: Files changed tab > Review changes > "Comment" > Submit review.
+How: Files changed tab > Review changes > "Approve" > Submit review.
      NOT the comment box at the bottom of the Conversation tab. Only the
      Files-changed route makes GitHub count you in reviewed-by:dominicrume.
 
