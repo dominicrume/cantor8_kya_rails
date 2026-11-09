@@ -242,3 +242,12 @@ closing it is the beginning rather than the end.
 
 *Reproduce: `gh pr list -R canton-foundation/canton-dev-fund --state all`,
 then read `.github/workflows/champion-check.yml`.*
+
+## The vote itself, measured 9 November 2026
+
+Everything above is about reaching review. It left out what happens after.
+`docs/dev-fund-vote-mechanism.md` measures that half with
+`python3 tools/vote_pipeline.py`: no vote is ever opened automatically, all
+27 in the history were opened by one person, passing needs 51% of allowed
+voters so an absence is a no, and votes are cast in weekly Wednesday
+sittings. #860 has no vote open at all.
