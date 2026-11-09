@@ -1,0 +1,7 @@
+Thanks for testing those cases and adding the owner-controlled-choice test. The configured confirming set can be inspected afterwards, but independence needs separate evidence.
+
+[`PartyToParticipant`](https://docs.canton.network/overview/reference/external-party) records participant IDs, hosting permissions and the confirmation threshold. With appropriate node [Admin API](https://docs.canton.network/reference/admin-api/protobuf/operations/com-digitalasset-canton-topology-admin-v30/topologymanagerreadservice/listpartytoparticipant) access, `ListPartyToParticipant` supports historical snapshots and returns validity intervals. Without that access, you can request a [topology export](https://docs.canton.network/global-synchronizer/reference/canton-console-commands) for the relevant synchronizer and time, checking its completeness and provenance.
+
+Canton explicitly [separates cryptographic identities from real-world ownership](https://docs.canton.network/overview/reference/topology#design-principles). Different node IDs do not prove independent operators. You still need evidence of who controlled the nodes and relevant keys at that time.
+
+That historical configuration identifies eligible confirmers. It does not show which nodes actually supplied approvals for a particular transaction.

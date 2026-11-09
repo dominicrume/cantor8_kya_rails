@@ -1,0 +1,27 @@
+Facts measured 2026-11-09 by python3 tools/vote_pipeline.py against
+canton-foundation/canton-dev-fund. Source file for drafts that cite them.
+
+From .github/.gitvote.yml:
+  automation:
+    enabled: false
+  profiles.default.duration: 21d
+  profiles.default.pass_threshold: 51
+  profiles.default.allowed_voters.teams: tech-ops-voting
+
+Measured from the repository:
+  400 proposals read, 27 have ever reached a vote, 14 concluded (8 passed, 6 failed).
+  All 27 votes were opened by @hythloda.
+  Passed votes carry 3 or 4 binding votes in favour out of 5 eligible.
+  One vote in the whole history has ever recorded a vote against (#300).
+  #866 closed 2026-11-06 having failed: 0 in favour, 0 against, 0 abstain, 5 did not vote.
+  #860 has no gitvote label of any kind. No vote has ever been opened on it.
+  #860 was opened 2026-09-27, which is 43 days before 2026-11-09.
+
+Binding-vote timestamp clusters (sittings):
+  2026-10-21 Wed 12:17 UTC, 10 binding votes over 13 minutes
+  2026-10-28 Wed 12:40 UTC, 7 binding votes over 19 minutes
+  2026-11-04 Wed 12:20 UTC, 20 binding votes over 73 minutes
+
+From Development Fund Proposal Review Process.md:
+  "A proposal moves to 'In Review' once it has been assigned to a champion or reviewer."
+  "Proposals placed in Ready for Vote will generally remain in that column for approximately one week."

@@ -5,11 +5,12 @@ How: Files changed tab > Review changes > "Comment" > Submit review.
 
 Approve.
 
-`os.Kill` is SIGKILL and can never be delivered to a handler, so
-`signal.NotifyContext` was watching for something that could not arrive.
-Nothing is lost by dropping it. The regression that fails against the old
-entry point and passes against the new one is what makes this reviewable at
-all, and the body is precise about reaping the *direct* component.
+`os.Kill` is SIGKILL, which can never be delivered to a handler, so listing it
+in `signal.NotifyContext` could never have fired. Swapping it for
+`syscall.SIGTERM` is the whole fix and it is the right one. The regression test
+is what makes this reviewable at all: it drives the real binary, loops over
+both SIGTERM and os.Interrupt, and puts the child in its own process group
+with `Setpgid`, so a surviving grandchild is detectable rather than assumed.
 
 One question on the word "forward" in #190. `cmd.Cancel` is unset at
 `pkg/assistant/assistant.go:265`, so `CommandContext` falls back to
