@@ -27,7 +27,7 @@ Usage, both runnable exactly as written:
 import datetime
 import json
 import re
-import subprocess
+import subprocess  # nosec B404 - this tool's whole job is to run gh
 import sys
 from collections import Counter
 
@@ -41,7 +41,13 @@ BINDING = re.compile(
 
 def gh(*args):
     """Run gh and return stdout, or None when it fails. Never prints stderr."""
-    p = subprocess.run(("gh",) + args, capture_output=True, text=True)
+    # nosec B603 - literal argv, shell=False, and every element is a string
+    # this file wrote: "api", a path built from the REPO constant, and integers
+    # formatted into it. No user input reaches it. No credential is passed IN,
+    # so nothing it returns is tainted, and stderr is discarded rather than
+    # printed because a failing authenticated call echoes its own request.
+    p = subprocess.run(("gh",) + args,  # nosec B603
+                       capture_output=True, text=True)
     if p.returncode != 0:
         return None
     return p.stdout

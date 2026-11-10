@@ -27,7 +27,10 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PAGES = ["step-3-verify/verifier.html", "docs/index.html"]
+# docs/live.html added 2026-11-10. It was published that morning as a public
+# page and no lint covered it, because this list is written by hand. A new
+# page that no check can see is the same gap as a fence with no test.
+PAGES = ["step-3-verify/verifier.html", "docs/index.html", "docs/live.html"]
 
 AA_BODY = 4.5
 

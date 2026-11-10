@@ -199,6 +199,12 @@ TEMPLATE = """<!DOCTYPE html>
   a { color:var(--ink); text-decoration:underline; text-underline-offset:3px;
       text-decoration-color:var(--accent); }
   a:hover { color:var(--accent); }
+  a:focus-visible, button:focus-visible {
+    outline:3px solid var(--accent); outline-offset:2px; border-radius:3px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration:0.01ms !important; animation-iteration-count:1 !important;
+      transition-duration:0.01ms !important; scroll-behavior:auto !important; } }
   code { font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--dim);
          word-break:break-all; }
   .pill { display:inline-block; min-width:62px; text-align:center; padding:2px 8px;
