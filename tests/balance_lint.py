@@ -316,6 +316,87 @@ for rel in VECTOR_PROSE:
           "%s: quotes %s conformance vectors, the file has %d"
           % (rel, " and ".join(str(n) for n in sorted(found)), real))
 
+# ----------------------------- the vote figures, in every file that states them
+# Added 2026-11-10. The research document was re-measured and the figures
+# moved: 27 votes became 29, and "three failed" became seven once the tool
+# counted vote EVENTS instead of labels. Two other files still said 27 and
+# six: STATUS.md and .claude/skills/ecosystem-mechanics/SKILL.md. The skill is
+# the worse of the two, because that is the file an agent reads to decide what
+# to do, and for a day it taught that #866 had died when #866 had a live vote.
+#
+# So the number is pinned to the document that carries the working, and every
+# other file that states it must agree. The source of truth is
+# docs/dev-fund-vote-mechanism.md, and that document says to re-run
+# tools/vote_pipeline.py before quoting anything from it.
+#
+# This gate does NOT call GitHub. A lint that needs the network fails on a
+# plane and gets disabled. It checks only that the files agree with each
+# other, which is the failure that actually happened.
+print()
+print("the Dev Fund vote figures agree across every file that states them")
+VOTE_SOURCE = "docs/dev-fund-vote-mechanism.md"
+VOTE_PROSE = ["STATUS.md", ".claude/skills/ecosystem-mechanics/SKILL.md"]
+
+
+def votes_opened(text):
+    """Every count of votes ever opened that a file states."""
+    pats = [r"all (\d+) votes in the repository",
+            r"\*\*All (\d+) votes were opened",
+            r"(\d+) of 400 proposals have ever reached a vote",
+            r"\*\*(\d+) have ever reached a vote",
+            r"@hythloda (\d+) times out of"]
+    out = set()
+    for pat in pats:
+        out.update(int(n) for n in re.findall(pat, text))
+    return out
+
+
+WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+         "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+
+
+def as_int(token):
+    """A count written as a digit or as an English word, up to ten."""
+    return int(token) if token.isdigit() else WORDS[token.lower()]
+
+
+def votes_failed(text):
+    """Every count of failed votes that a file states, digits or words.
+
+    Both files spell it "Seven votes have failed", so a digit-only pattern
+    found nothing and the gate passed while checking nothing. A check that
+    cannot see the thing it guards is worse than no check, because it reports
+    PASS.
+    """
+    found = re.findall(r"\b(\d+|[A-Za-z]+) votes? ha(?:ve|s) "
+                       r"(?:actually )?failed", text)
+    return set(as_int(t) for t in found if t.isdigit() or t.lower() in WORDS)
+
+
+src = open(os.path.join(ROOT, VOTE_SOURCE)).read()
+opened, failed = votes_opened(src), votes_failed(src)
+check(len(opened) == 1,
+      "%s states one vote count, not %s"
+      % (VOTE_SOURCE, sorted(opened) or "none"))
+check(len(failed) == 1,
+      "%s states one failed-vote count, not %s"
+      % (VOTE_SOURCE, sorted(failed) or "none"))
+for rel in VOTE_PROSE:
+    text = open(os.path.join(ROOT, rel)).read()
+    here = votes_opened(text)
+    if not here:
+        check(False, "%s: no longer states the vote count at all" % rel)
+        continue
+    check(here == opened,
+          "%s: says %s votes opened, %s says %s"
+          % (rel, " and ".join(str(n) for n in sorted(here)),
+             VOTE_SOURCE, " and ".join(str(n) for n in sorted(opened))))
+    hf = votes_failed(text)
+    check(not hf or hf == failed,
+          "%s: says %s votes failed, %s says %s"
+          % (rel, " and ".join(str(n) for n in sorted(hf)),
+             VOTE_SOURCE, " and ".join(str(n) for n in sorted(failed))))
+
 # --------------------------------------------- the constant that was wrong
 print()
 print("the DevNet check reads the payouts instead of restating them")
