@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Everything Live</title>
+<style>
+  :root { --bg:#0e1512; --card:#13201b; --ink:#e6ede9; --dim:#9fb0a8;
+          --line:#24352e; --ok:#4ade80; --dead:#f87171; --accent:#128C7E; }
+  :root:not([data-theme="dark"]) {
+    --bg:#f6f8f7; --card:#fff; --ink:#15211c; --dim:#5a6b64;
+    --line:#dde5e1; --ok:#1a7f37; --dead:#c0392b; --accent:#075E54; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg:#0e1512; --card:#13201b; --ink:#e6ede9; --dim:#9fb0a8;
+    --line:#24352e; --ok:#4ade80; --dead:#f87171; --accent:#25d366; } }
+  :root[data-theme="dark"] {
+    --bg:#0e1512; --card:#13201b; --ink:#e6ede9; --dim:#9fb0a8;
+    --line:#24352e; --ok:#4ade80; --dead:#f87171; --accent:#25d366; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); padding:0 16px 64px;
+         font:16px/1.6 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; }
+  header { padding:48px 0 8px; }
+  h1 { font-size:30px; margin:0 0 6px; letter-spacing:-.4px; text-wrap:balance; }
+  .sub { color:var(--dim); font-size:14.5px; margin:0; }
+  h2 { font-size:15px; text-transform:uppercase; letter-spacing:.08em;
+       color:var(--accent); margin:40px 0 10px; }
+  table { width:100%; border-collapse:collapse; background:var(--card);
+          border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  td { padding:11px 13px; border-top:1px solid var(--line); vertical-align:top;
+       font-size:14.5px; }
+  tr:first-child td { border-top:0; }
+  td:first-child { width:78px; }
+  a { color:var(--ink); text-decoration:underline; text-underline-offset:3px;
+      text-decoration-color:var(--accent); }
+  a:hover { color:var(--accent); }
+  code { font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--dim);
+         word-break:break-all; }
+  .pill { display:inline-block; min-width:62px; text-align:center; padding:2px 8px;
+          border-radius:999px; font:600 11.5px ui-monospace,Menlo,monospace; }
+  .pill.ok { background:color-mix(in srgb, var(--ok) 18%, transparent); color:var(--ok); }
+  .pill.dead { background:color-mix(in srgb, var(--dead) 18%, transparent); color:var(--dead); }
+  .note { margin-top:44px; padding:16px 18px; background:var(--card);
+          border:1px solid var(--line); border-radius:10px; color:var(--dim);
+          font-size:13.5px; }
+  .note b { color:var(--ink); }
+  @media (max-width:640px) { td:nth-child(3) { display:none; } h1 { font-size:24px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Everything Live</h1>
+  <p class="sub">Every link below was fetched when this page was built:
+     <b>10 November 2026, 03:54 UTC</b>. 20 of 20 answered 200. Nothing here is typed
+     from memory, and a dead link is shown as dead rather than removed.</p>
+</header>
+<h2>Run it yourself</h2>
+<table>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://pypi.org/project/knowyouragenticai-receipts/">The receipt format on PyPI, 1.2.0, zero dependencies, MIT</a></td><td><code>pip install knowyouragenticai-receipts &amp;&amp; python -m knowyouragenticai_receipts</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://dominicrume.github.io/cantor8_kya_rails/">The offline verifier. Drop a receipt file on it, press tamper, watch the chain go red</a></td><td><code>open the page, no install, no account</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://dominicrume.github.io/cantor8_kya_rails/build.html">The build report. Every suite, with what a green result actually means</a></td><td><code>python3 tools/dashboard.py</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/dominicrume/cantor8_kya_rails">The source, MIT</a></td><td><code>git clone https://github.com/dominicrume/cantor8_kya_rails</code></td></tr>
+</table>
+<h2>Daml packages, publicly pullable</h2>
+<table>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/dominicrume/cantor8_kya_rails/tree/main/step-0-refusal">canton-refusal-record 1.0.0, a refusal written as a contract</a></td><td><code>dpm pull ghcr.io/dominicrume/canton-refusal-record:1.0.0</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/dominicrume/cantor8_kya_rails/tree/main/step-0-refusal">canton-journal-interface 1.0.0, the auditor-visible journal</a></td><td><code>dpm pull ghcr.io/dominicrume/canton-journal-interface:1.0.0</code></td></tr>
+</table>
+<h2>Listed in the ecosystem</h2>
+<table>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://canton-network-devs.github.io/Canton-Developer-Hub/">Canton Developer Hub, AI Tools</a></td><td><code>curl -s https://raw.githubusercontent.com/canton-network-devs/Canton-Developer-Hub/main/Github%20Page/tools.json | grep -c &#x27;Know Your AgenticAI&#x27;</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/canton-foundation/canton-dev-fund/pull/860">Dev Fund proposal #860, open, no vote ever opened</a></td><td><code>python3 tools/vote_pipeline.py 860</code></td></tr>
+</table>
+<h2>Merged into code we do not own</h2>
+<table>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/canton-network-devs/Canton-Developer-Hub/pull/156">Canton Developer Hub #156, our entry added</a></td><td><code>merged 2026-09-08</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/canton-network-devs/Canton-Developer-Hub/pull/160">Canton Developer Hub #160, renders every link on all nineteen cards</a></td><td><code>merged 2026-09-21</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/canton-network-devs/Canton-Developer-Hub/pull/168">Canton Developer Hub #168, entry rewritten</a></td><td><code>merged 2026-09-21</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/digital-asset/dpm/pull/330">digital-asset/dpm #330, fail loudly on unreadable registry auth</a></td><td><code>merged 2026-10-29</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/canton-foundation/cips/pull/286">canton-foundation/cips #286, fixed the CIP-0129 README link</a></td><td><code>merged</code></td></tr>
+</table>
+<h2>Findings against real third-party code</h2>
+<table>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/dominicrume/cantor8_kya_rails/blob/main/docs/findings-openzeppelin.md">Mutation testing three OpenZeppelin Canton packages</a></td><td><code>python3 tools/daml_mutate.py --help</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/OpenZeppelin/canton-token-template/issues/9">OpenZeppelin canton-token-template #9, 24 of 32 fences uncovered</a></td><td><code>open since 2026-09-07</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/OpenZeppelin/canton-stablecoin/issues/9">OpenZeppelin canton-stablecoin #9, 25 of 30 fences uncovered</a></td><td><code>open since 2026-09-07</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/OpenZeppelin/canton-contracts/issues/43">OpenZeppelin canton-contracts #43, superseded, the replacement is clean</a></td><td><code>open since 2026-09-06</code></td></tr>
+</table>
+<h2>Written down</h2>
+<table>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/dominicrume/cantor8_kya_rails/blob/main/docs/what-this-proves.md">What this proves, and what it does not</a></td><td><code>read it</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/dominicrume/cantor8_kya_rails/blob/main/SPEC.md">The specification, with 20 conformance vectors</a></td><td><code>python3 tests/conformance.py &amp;&amp; node tests/conformance.js</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://dominicrume.github.io/cantor8_kya_rails/writing/defeated-by-punctuation.html">My scanner read the file every run and missed the breach</a></td><td><code>read it</code></td></tr>
+<tr><td><span class="pill ok">200</span></td><td><a href="https://github.com/dominicrume/cantor8_kya_rails/blob/main/STATUS.md">Status: proven, mocked, pending, and three things not claimed</a></td><td><code>read the PENDING table first</code></td></tr>
+</table>
+<div class="note">
+  <b>What this page is not.</b> It is a list of things that exist and respond,
+  not a list of things anyone uses. Nobody outside this project has produced a
+  receipt chain: 0 stars, 0 forks, 0 outside contributors, and no reply on any
+  of the three OpenZeppelin issues in 64 days. The Daml spending rules have
+  never executed on a real ledger, because that needs a DevNet credential that
+  was asked for on 31 August 2026 and never arrived.
+  <br><br>
+  Rebuild it with <code>python3 tools/live_check.py --write</code>. It exits
+  non-zero if any link is dead.
+</div>
+</div>
+</body>
+</html>
