@@ -99,7 +99,8 @@ EARNED = {
 DEBT = {
     "tools/vote_pipeline.py:main": (
         "2026-11-10",
-        "cc 41. Written in one sitting on 9 November to answer a single "
+        "cc 42, up one on 10 November when the re-opened-vote section was "
+        "added. Written in one sitting on 9 November to answer a single "
         "question, and it does five things: reads the config, walks 400 "
         "proposals, tallies, clusters the sittings, and prints. The first four "
         "are separable and the fifth is the only one that needs them all. "
