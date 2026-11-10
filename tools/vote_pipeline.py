@@ -27,7 +27,8 @@ Usage, both runnable exactly as written:
 import datetime
 import json
 import re
-import subprocess  # nosec B404 - this tool's whole job is to run gh
+# This tool's whole job is to run gh, so the import is the point.
+import subprocess  # nosec B404
 import sys
 from collections import Counter
 
@@ -41,7 +42,8 @@ BINDING = re.compile(
 
 def gh(*args):
     """Run gh and return stdout, or None when it fails. Never prints stderr."""
-    # nosec B603 - literal argv, shell=False, and every element is a string
+    # Why B603 is suppressed on the call below: literal argv, shell=False,
+    # and every element is a string
     # this file wrote: "api", a path built from the REPO constant, and integers
     # formatted into it. No user input reaches it. No credential is passed IN,
     # so nothing it returns is tainted, and stderr is discarded rather than
@@ -119,6 +121,100 @@ def control():
         n = len(binding) if binding else 0
         return False, f"#942 binding votes parsed as {n}, expected 4"
     return True, "#942 reads as 4 in favour, 1 absent, 4 binding rows"
+
+
+def _event(when, body):
+    """One git-vote comment to (date, kind, tally), or None if it is neither."""
+    if "Vote created" in body:
+        return (when, "created", None)
+    if "Vote closed" not in body:
+        return None
+    m = TALLY.search(body)
+    kind = "failed" if "did not pass" in body else "passed"
+    return (when, kind, tuple(int(x) for x in m.groups()) if m else None)
+
+
+def vote_events(number):
+    """Every vote EVENT on one proposal, not just the current label.
+
+    Written 10 November 2026, after this tool said "failed 3" while the
+    repository held seven failed votes. The labels gitvote/passed and
+    gitvote/failed describe the CURRENT state of a proposal. When a vote
+    expires and somebody opens a second one, the label is reset to
+    gitvote/open and the failure disappears from any count taken by label.
+
+    #866 is the case that exposed it: a vote opened 16 October, expired
+    6 November with nobody having voted, and was re-opened on 9 November.
+    By label it is open and has never failed. By history it has failed once.
+
+    Returns a list of (date, kind, tally) oldest first, where kind is
+    "created", "failed" or "passed" and tally is (yes, no, abstain, absent)
+    or None.
+    """
+    out = gh("pr", "view", str(number), "-R", REPO, "--json", "comments")
+    if not out:
+        return []
+    bodies = [(c["createdAt"][:10], c["body"])
+              for c in json.loads(out).get("comments", [])
+              if c["author"]["login"] == "git-vote"]
+    return [e for e in (_event(w, b) for w, b in bodies) if e]
+
+
+def _failure(number):
+    """One proposal's last failure, or None. (n, tally, when, re-opened)."""
+    ev = vote_events(number)
+    fails = [e for e in ev if e[1] == "failed"]
+    if not fails:
+        return None
+    when = fails[-1][0]
+    again = [e[0] for e in ev if e[1] == "created" and e[0] >= when]
+    return (number, fails[-1][2], when, again[-1] if again else None)
+
+
+def failures(numbers):
+    """Every vote that has failed, by history, with whether it restarted."""
+    return [r for r in (_failure(n) for n in numbers) if r]
+
+
+def _by_yes(row):
+    """Sort failures by how many yes votes they got, fewest first."""
+    tally = row[1]
+    return tally[0] if tally else 9
+
+
+def _row(row):
+    """One failure as a table line."""
+    n, tally, when, again = row
+    cells = "  ".join("%3s" % x for x in (tally or ("?", "?", "?", "?")))
+    return "  #%-5s %s   %s   %s" % (n, cells, when, again or "no")
+
+
+def reopened(numbers):
+    """Print the failures the labels hide, and whether the clock restarted.
+
+    This is the finding the tool exists for now. A failed vote is not final:
+    the same person who opened the first one opens a second, and the label
+    makes the first failure invisible.
+    """
+    rows = failures(numbers)
+    if not rows:
+        return
+    print("== every vote that has FAILED, by history and not by label ==")
+    print("  prop   yes  no abs absent   failed on    re-opened")
+    for row in sorted(rows, key=_by_yes):
+        print(_row(row))
+    quiet = [r for r in rows if r[1] and r[1][1] == 0]
+    back = [r for r in rows if r[3]]
+    print(f"  {len(rows)} votes have failed. {len(quiet)} recorded NO vote "
+          "against at all: they failed")
+    print("  because the eligible voters did not vote, not because anybody "
+          "objected.")
+    print(f"  {len(back)} of the {len(rows)} were re-opened afterwards, which "
+          "resets the label and")
+    print("  removes the failure from any count taken by label, including "
+          "this tool's own")
+    print("  until 10 November 2026.")
+    print()
 
 
 def sittings(stamps, minutes=90):
@@ -250,6 +346,8 @@ def main():
     print(f"  votes recording any 'against': {len(anyno)}"
           + (f" ({', '.join('#%s' % n for n in anyno)})" if anyno else ""))
     print()
+
+    reopened([p["number"] for p in withvote])
 
     print("== when votes are actually cast ==")
     groups = [g for g in sittings(stamps) if len(g) >= 3]
