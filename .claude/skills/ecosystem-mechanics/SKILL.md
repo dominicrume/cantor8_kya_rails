@@ -33,28 +33,65 @@ From `.github/.gitvote.yml` in `canton-foundation/canton-dev-fund`:
 
 From the repository's own history:
 
-- 27 of 400 proposals have ever reached a vote at all, 6.8%.
-- **All 27 votes were opened by @hythloda (Amanda Martin). Not one by anybody
+All figures below measured 10 November 2026. Re-run the tool before quoting
+any of them; the numbers moved between 9 and 10 November and the direction was
+not the one anybody expected.
+
+- 29 of 400 proposals have ever reached a vote at all, 7.2%.
+- **All 29 votes were opened by @hythloda (Amanda Martin). Not one by anybody
   else.** That is the gate.
-- Of 14 concluded: 8 passed, 6 failed. Passed votes drew 3 to 4 yes, mean 3.5.
-  Failed votes drew 0 to 2, mean 0.7. Three had **nobody vote at all**: #866,
-  #853, #577.
-- Exactly one vote in the whole history records an "against" (#300). **Proposals
-  die of absence, not rejection.**
+- **COUNT VOTE EVENTS, NOT LABELS.** `gh pr list --label gitvote/failed`
+  returns three. Seven votes have actually failed. A re-opened vote has its
+  label reset to `gitvote/open`, so the first failure stops being visible and
+  the obvious measurement is wrong by four with nothing in its output saying
+  so. Use `vote_events()` in `tools/vote_pipeline.py`, which reads the
+  git-vote comments.
+- Every failure, with its tally and whether the clock restarted:
+
+  | Proposal | For | Against | Abstain | Did not vote | Re-opened |
+  |---|---|---|---|---|---|
+  | #866 | 0 | 0 | 0 | 5 | 9 Nov |
+  | #853 | 0 | 0 | 0 | 5 | no |
+  | #577 | 0 | 0 | 0 | 5 | 10 Nov |
+  | #813 | 1 | 0 | 0 | 4 | 6 Nov |
+  | #453 | 1 | 0 | 0 | 4 | 6 Nov |
+  | #300 | 1 | 1 | 0 | 3 | no |
+  | #752 | 2 | 0 | 1 | 2 | no |
+
+- **Six of the seven record no vote against at all.** Exactly one objection
+  exists in the whole history, on #300. **Proposals die of absence, not
+  rejection.**
+- **A failed vote is a restarted clock, not a verdict.** Four of seven were
+  re-opened within four days, by the same person who opened the first.
+- All seven were opened **within ninety seconds of each other** on 16 October
+  at 16:46 and 16:47, so all seven expired on the same day. That is one batch,
+  not seven decisions.
+- Eight have passed, drawing 3 to 4 yes, mean 3.5.
 - Binding votes arrive in clusters, which means a roll call in a meeting rather
-  than async review: 21 Oct Wed 12:17 UTC, 10 votes in 13 minutes; 28 Oct Wed
-  12:40, 7 in 19 minutes; 4 Nov Wed 12:20, 20 in 73 minutes. Gaps of 7 and 7 days.
-  **Weekly Wednesday around 12:20 UTC is an observed pattern over three sittings,
-  not a published schedule.** Reading two proposals suggested fortnightly; the
-  full dataset said weekly. That is why this is a tool and not a note.
+  than async review: 19 Oct **Mon** 09:52 UTC, 6 votes over 203 minutes;
+  21 Oct Wed 12:17, 10 in 13 minutes; 28 Oct Wed 12:40, 7 in 19 minutes;
+  4 Nov Wed 12:20, 20 in 73 minutes. Gaps of 2, 7 and 7 days.
+  **Weekly Wednesday around 12:20 UTC is an observed pattern over four
+  sittings, and the Monday does not fit it.** Reading two proposals suggested
+  fortnightly; the full dataset said weekly. That is why this is a tool and
+  not a note.
 - Caveat kept deliberately: #863 drew 12 binding votes, so the allowed-voter set
   has not been constant.
 
-**Why #866 died.** It had a champion (Yiannis Varelas, 9 October), two revisions
-and four named public backers. Both the 28 October and 4 November sittings fell
-inside its 21-day window and it was called at neither. The vote closed 6 November
-with 0 in favour, 0 against, 0 abstain, 5 did not vote. **A champion is necessary
-and not sufficient. Being called in the room is the thing.**
+**#866 did not die, and this skill said it did until 10 November.** It had a
+champion (Yiannis Varelas, 9 October), two revisions and four named public
+backers. Both the 28 October and 4 November sittings fell inside its 21-day
+window and it was called at neither. The vote closed 6 November with 0 in
+favour, 0 against, 0 abstain, 5 did not vote.
+
+Then @hythloda opened a second vote on **9 November**. The proposal is live
+again.
+
+Two lessons, and the second is about this file rather than about Canton.
+**A champion is necessary and not sufficient; being called in the room is the
+thing.** And a skill that states an outcome freezes it: this one taught "died"
+for a day after it stopped being true. State the mechanism, name the tool, and
+put the date on the number.
 
 ## The review pipeline
 
