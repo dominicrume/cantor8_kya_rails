@@ -34,6 +34,12 @@
   a { color:var(--ink); text-decoration:underline; text-underline-offset:3px;
       text-decoration-color:var(--accent); }
   a:hover { color:var(--accent); }
+  a:focus-visible, button:focus-visible {
+    outline:3px solid var(--accent); outline-offset:2px; border-radius:3px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration:0.01ms !important; animation-iteration-count:1 !important;
+      transition-duration:0.01ms !important; scroll-behavior:auto !important; } }
   code { font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--dim);
          word-break:break-all; }
   .pill { display:inline-block; min-width:62px; text-align:center; padding:2px 8px;
@@ -52,7 +58,7 @@
 <header>
   <h1>Everything Live</h1>
   <p class="sub">Every link below was fetched when this page was built:
-     <b>10 November 2026, 04:08 UTC</b>. 20 of 20 answered 200. Nothing here is typed
+     <b>10 November 2026, 11:08 UTC</b>. 20 of 20 answered 200. Nothing here is typed
      from memory, and a dead link is shown as dead rather than removed.</p>
 </header>
 <h2>Run it yourself</h2>
