@@ -8,17 +8,18 @@ How: open the conversation, paste into the message box at the bottom, press Send
 
 I was on your 29 October Canton panel, the security and privacy one.
 
-Straight answer: pre-revenue, so not an audit buyer this quarter.
+Straight answer: pre-revenue, so not an audit buyer this quarter. The
+collaboration half is where I am useful to you.
 
-The other direction may be more useful to you. I mutation-test Daml
-authorisation: make each assertMsg and ensure vacuous, rerun the project's own
-suite, see what stays green. On two OpenZeppelin Canton packages, 49 of 62
-fences could be made vacuous with every test still passing. Their newer package
-is clean. Issues filed in September, all public.
+I mutation-test Daml authorisation: make each assertMsg and ensure vacuous,
+rerun the project's own suite, see what stays green. On two OpenZeppelin Canton
+packages, 49 of 62 fences could be made vacuous with every test still passing.
+Their newer package is clean. Issues filed in September, all public.
 
-Each run seals into a hash chain, so a client can verify afterwards that no
+Each run seals into a hash chain, so the client can verify afterwards that no
 finding was softened or removed, including by the auditor.
 
 https://github.com/dominicrume/cantor8_kya_rails/blob/main/docs/findings-openzeppelin.md
 
-Who runs the Daml side at Hacken? I would like to show them.
+Concrete offer: pick one Daml engagement, I run it alongside your review at no
+cost, you keep the findings. If it earns its place we talk terms.

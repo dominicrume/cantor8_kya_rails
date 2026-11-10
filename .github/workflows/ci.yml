@@ -155,13 +155,28 @@ jobs:
   # This is what makes it a tested one. The package is stdlib-only, so there is
   # nothing to install and nothing to cache -- if it imports and self-tests on
   # a version, that version is supported.
+  #
+  # 2026-11-10: this job went red and stayed red. ubuntu-latest moved to 26.04,
+  # which setup-python has no 3.8 or 3.9 build for, so the two OLDEST versions
+  # -- the only ones the >=3.8 claim actually rests on -- silently stopped
+  # being tested. Dropping them from the matrix would have turned the build
+  # green and turned the PyPI metadata back into the untested claim this job
+  # was written to retire. They are pinned to the last runner that has them
+  # instead. When ubuntu-22.04 is retired, the honest move is to RAISE
+  # requires-python, not to quietly stop checking.
   package-python-versions:
     name: knowyouragenticai-receipts on every Python it claims
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+        include:
+          - { python-version: '3.8',  runner: ubuntu-22.04 }
+          - { python-version: '3.9',  runner: ubuntu-22.04 }
+          - { python-version: '3.10', runner: ubuntu-latest }
+          - { python-version: '3.11', runner: ubuntu-latest }
+          - { python-version: '3.12', runner: ubuntu-latest }
+          - { python-version: '3.13', runner: ubuntu-latest }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
