@@ -176,6 +176,60 @@ def failures(numbers):
     return [r for r in (_failure(n) for n in numbers) if r]
 
 
+def _comments(number):
+    """(when, author, body) for every comment, oldest first, or None."""
+    out = gh("pr", "view", str(number), "-R", REPO, "--json", "comments")
+    if not out:
+        return None
+    return [(c["createdAt"][:16], c["author"]["login"], c["body"])
+            for c in json.loads(out).get("comments", [])]
+
+
+def asks(number, who="dominicrume"):
+    """Every ask WE made on a proposal, and whether anybody answered it.
+
+    Written 10 November 2026, after this session told its owner "the question
+    has not been asked yet" about #860. It had been asked, on 9 November, and
+    it was the right question. The claim was made from memory of the strategy
+    rather than from the thread, which is the exact failure the
+    no-execution-without-a-measurement rule exists to stop, committed against
+    a destination nobody had opened.
+
+    So: before saying anything about what has or has not been asked, run this.
+
+        python3 tools/vote_pipeline.py asks 860
+    """
+    rows = _comments(number)
+    if rows is None:
+        print("Could not read #%s." % number)
+        return 1
+    mine = [r for r in rows if r[1] == who]
+    if not mine:
+        print("#%s: @%s has never commented. THAT is an unasked question."
+              % (number, who))
+        return 0
+    print("#%s: %d comments, %d of them ours.\n" % (number, len(rows), len(mine)))
+    for when, _, body in mine:
+        print(_ask_line(when, body, _replies_after(rows, when, who)))
+    return 0
+
+
+def _replies_after(rows, when, who):
+    """Comments by anybody else, after ours."""
+    return [r for r in rows if r[0] > when and r[1] != who]
+
+
+def _ask_line(when, body, after):
+    """One of our comments, with whether anybody answered it."""
+    first = body.strip().splitlines()[0][:72]
+    if after:
+        tail = "      answered %s by @%s" % (after[0][0], after[0][1])
+    else:
+        tail = ("      NO REPLY since. Asking again is a nudge unless "
+                "something changed.")
+    return "  %s  %s\n%s" % (when, first, tail)
+
+
 def _by_yes(row):
     """Sort failures by how many yes votes they got, fewest first."""
     tally = row[1]
@@ -271,8 +325,15 @@ def one(number):
     return 0
 
 
+def usage():
+    print("usage: vote_pipeline.py [<proposal>] | asks <proposal>")
+    return 2
+
+
 def main():
     args = sys.argv[1:]
+    if args and args[0] == "asks":
+        return asks(args[1]) if len(args) > 1 else usage()
     if args:
         return one(args[0])
 
