@@ -45,7 +45,13 @@ meant to outlive the code that wrote them, so that bar is high.
   lifts the JavaScript out of that file rather than transcribing it, so a
   drift between the two implementations fails the build.
 
-## [1.2.0] — 2026-09-13
+## [1.2.0] — released to PyPI 2026-10-22
+
+*Written 2026-09-13 and released on 2026-10-22. This heading said
+2026-09-13 until 2026-11-10, which is the date the entry was drafted, not
+the date anyone could install it. Thirty-nine days apart. A changelog date
+is read as "when could I have had this", so it is the upload date, taken
+from PyPI itself rather than from the commit that wrote the entry.*
 
 New features, no seal changes. Every 1.0.0 and 1.1.0 chain verifies
 byte-for-byte unchanged, which is why this is a minor and not a major: receipts
