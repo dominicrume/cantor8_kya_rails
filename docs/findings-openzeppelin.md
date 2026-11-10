@@ -200,8 +200,24 @@ The numbers reproduced to the fence.
 
 `canton-contracts` was restructured on 30 September 2026. `access-control-v1`,
 which held 7 fences of which 3 were uncovered, is gone, replaced by
-`scoped-authorization-grant-v1` and `pausable-v1`. Those are untested here
+`scoped-authorization-grant-v1` and `pausable-v1`. Those were untested here
 because they target SDK 3.5.8 and this run used 3.4.11.
+
+**Measured on 17 October 2026, once the harness could reach 3.5, and the news
+is good for them.** The replacement is clean:
+
+| Package | Fences | Scripts | Result |
+|---|---:|---:|---|
+| `packages/access/scoped-authorization-grant-v1` | 1 | 45 | **covered**, making it vacuous turns a named test red |
+| `packages/security/pausable-v1` | 0 | | no fences found |
+| `packages/security/api-pausable-v1` | 0 | | no fences found |
+
+So the `canton-contracts` row of the table at the top of this page describes
+code OpenZeppelin has already replaced, and the code that replaced it passes
+the same test. Anyone citing this report cites that sentence with it. The
+harness could not see any of this until 17 October, because it only knew the
+classic `daml` assistant and reported "does not build" for 3.5 packages that
+build fine, which reads exactly like a finding and is not one.
 
 ### What the re-run found about this report
 

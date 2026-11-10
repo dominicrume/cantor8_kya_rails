@@ -1,9 +1,12 @@
 Review-On: https://github.com/digital-asset/dpm/pull/334
-How: Files changed tab > Review changes > "Approve" > Submit review.
+How: Files changed tab > Review changes > "Comment" > Submit comments.
      NOT the comment box at the bottom of the Conversation tab. Only the
      Files-changed route makes GitHub count you in reviewed-by:dominicrume.
+     Approve and Request changes are greyed out for a non-collaborator on
+     this repository; a Comment review still registers in reviewed-by.
+POSTED 2026-11-09T04:17:47Z as a COMMENTED review. See docs/drafts/posted.log.
 
-Approve.
+This looks right to me.
 
 `os.Kill` is SIGKILL, which can never be delivered to a handler, so listing it
 in `signal.NotifyContext` could never have fired. Swapping it for
