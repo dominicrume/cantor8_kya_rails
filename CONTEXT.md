@@ -13,6 +13,7 @@ This workspace follows the Interpretable Context Methodology (ICM), arXiv 2603.1
 | Why the system is shaped this way | ARCHITECTURE.md | reference only |
 | Debts we consciously took | SHORTCUTS.md | append, never delete |
 | Honest self-score against the challenge | scoreboard/THIRTEEN-CHECKS.md | update after any change |
+| Any judgement about doctrine, claims, outreach, secrets, Canton facts or the ecosystem | DOMAIN.md | the skill it routes you to in `.claude/skills/` |
 
 ## Order of execution
 

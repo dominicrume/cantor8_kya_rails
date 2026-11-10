@@ -1,6 +1,7 @@
 # How a Canton Dev Fund proposal actually reaches a vote
 
-Measured 9 November 2026 with `python3 tools/vote_pipeline.py`, which reads
+Measured 9 November 2026 with `python3 tools/vote_pipeline.py`, and extended
+with a second case on 10 November. The tool reads
 the live repository and refuses to print numbers if its own positive control
 on proposal #942 fails. Re-run it before quoting any figure here.
 
@@ -89,6 +90,42 @@ nothing starts it automatically and the one person who starts them has not.
 3. Passing needs three of five to actively vote yes. Absence is a no, so
    the work before a vote is with the eligible voters individually, not
    with the proposal text.
+
+## A second case, and it is not a proposal
+
+Measured 2026-11-10 against `canton-foundation/canton-dev-fund#874`, the first
+milestone of Hacken's approved grant (proposal #302, merged 2026-08-26). This
+matters because it removes every excuse available to #866.
+
+    gh api repos/canton-foundation/canton-dev-fund/issues/874/comments
+
+The sequence, read off the thread:
+
+| when | what |
+|---|---|
+| 2026-10-05 | `lwolski-hacken` marks the milestone delivered |
+| 2026-10-07 17:12 | `@hythloda` comments `/vote`, git-vote opens it |
+| 2026-10-28 17:12 | **Vote closed, did not pass. In favour 0.00%, against 0.00%** |
+| 2026-11-04 13:44 | `@hythloda` comments `/vote` again |
+| 2026-11-10 01:02 | `@hythloda` comments `/count-vote`, 3 in favour, vote still open |
+
+Hacken had everything a proposal is told it needs. An approved grant. Funded
+work delivered and public under Apache-2.0. Support in the thread from a
+Digital Asset employee. Reviewers from Obsidian and IntellectEU who later voted
+in favour. **The first vote still died at zero in favour and zero against, the
+same way #866 did**, and it only moved because the one person who can open a
+vote opened a second one.
+
+Three things this settles that one case could not:
+
+1. The no-quorum death is **not** a judgement on the proposal. A delivering
+   grantee hit it. Reading #866's failure as "the work was not good enough" was
+   wrong, and so is reading #860's silence that way.
+2. **Being called a second time is a real outcome**, and it is available. Not
+   passing is not the end of the path; nobody calling it is.
+3. The opener is the same person in both cases, which is the third independent
+   confirmation that `automation.enabled: false` means a human starts every
+   vote and that human has been @hythloda 27 times out of 27.
 
 ## Caveat on the voter count
 

@@ -69,3 +69,21 @@ by a version change".
 Recorded 22 October 2026, after a correction in `#sig-security` sent us to
 read the 3.5.1 notes properly. Worth knowing before anyone proposes an
 upgrade to pick up keys, because the answer is that it cannot be an upgrade.
+
+2026-11-10 | CORRECTION to commit 49aa8e6, whose message says the DARs were
+pushed over OCI by hand "because dpm cannot". **That is false and the
+repository already knew it.** `tools/oci_push_dar.py`'s own docstring records
+that dpm 1.0.21 works and that the cause was a local `~/.docker/config.json`
+carrying `credsStore` alongside a hand-written `auths` entry, which every OCI
+client correctly resolves in favour of the helper. That misreading is the one
+`digital-asset/dpm#329` was filed on and closed NOT_PLANNED for, and it is
+written into CLAUDE.md as the controlled-comparison rule. The tool was
+corrected; the commit message was not, and a commit message is the part a
+stranger reads first. It cannot be rewritten once pushed, so it is corrected
+here. The two artefacts are real and anonymously pullable:
+`ghcr.io/dominicrume/canton-journal-interface:1.0.0` and
+`ghcr.io/dominicrume/canton-refusal-record:1.0.0`. What was wrong was the
+reason given for pushing them by hand, not the push. | found while inventorying
+what is actually published, 10 November 2026 | nothing to repay; the rule is
+that a correction lands wherever the claim was made, and for a pushed commit
+that place is this file.
