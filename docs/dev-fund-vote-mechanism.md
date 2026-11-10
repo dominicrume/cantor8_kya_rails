@@ -15,6 +15,22 @@ was the wrong question. The mechanism is not a championing process. It is a
 vote that one person opens by hand and a committee clears in a weekly
 meeting, and #860 has never entered it.
 
+## Disclosure
+
+I have a financial interest in this subject. **Canton Dev Fund proposal #860
+is mine**, it asks for 300,000 CC, and at the time of writing no vote has ever
+been opened on it. The mechanism described below is the mechanism my own
+proposal is stuck in.
+
+That is a reason to check the numbers rather than take them. Every figure here
+comes from `tools/vote_pipeline.py`, which reads the live repository, refuses
+to print anything if its positive control on #942 fails, and can be run by
+anyone with `gh` installed. Where a figure of mine was wrong, the correction
+is in the document rather than quietly replaced.
+
+No sponsorship, no commercial relationship with the Canton Foundation, and no
+payment from anyone for this work.
+
 ## The rules, from `.github/.gitvote.yml`
 
 | Setting | Value | What it means |
