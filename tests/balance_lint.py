@@ -235,6 +235,87 @@ for pattern, truth, label in CLAIMS:
     said, real = int(m.group(1)), truth()
     check(said == real, "%s: README says %d, the file has %d" % (label, said, real))
 
+# ------------------------------------------- the download figure, everywhere
+# Added 2026-11-10. STATUS.md carried "84 real downloads a month excluding
+# mirrors" for 24 days. It was never produced by a tool; the only cache in the
+# tree was 47 days old and counted mirrors, so it could not have been the
+# source. The true figure was 226, so the repository was understating itself by
+# nearly 3x in the one file whose job is to be true.
+#
+# This reads docs/evidence/downloads.json, which tools/downloads.py writes, and
+# never the network, because it runs inside the pre-commit hook. It also fails
+# when that cache goes stale, since a gate that happily checks prose against a
+# three-month-old measurement is theatre.
+print()
+print("every download figure in prose matches the last measurement")
+DL = os.path.join(ROOT, "docs", "evidence", "downloads.json")
+if not os.path.exists(DL):
+    check(False, "docs/evidence/downloads.json is missing; run tools/downloads.py")
+else:
+    with open(DL) as f:
+        dl = json.load(f)
+    check(dl.get("mirrors_excluded") is True,
+          "the cache states mirrors are excluded (the old one did not)")
+
+    from datetime import date as _date
+    y, m, d = (int(x) for x in dl["measured"].split("-"))
+    age = (_date.today() - _date(y, m, d)).days
+    check(age <= 45,
+          "the measurement is %d days old, inside the 45-day limit" % age)
+
+    want30, wantall = dl["window_30d"]["downloads"], dl["all_time"]
+    DOWNLOAD_PROSE = ["STATUS.md", "docs/opportunities.md", "docs/accomplished.md",
+                      "docs/evidence/index.md", "docs/dev-fund-proposal.md"]
+    # \s+ not a literal space: "226\nin the thirty days" is the same claim and
+    # the first version of this regex silently skipped the one file where the
+    # number happened to fall at a line break. A gate that quietly matches
+    # nothing is the failure it was built to stop.
+    pat30 = re.compile(r"(\d[\d,]*)\s+(?:downloads\s+)?in\s+the\s+(?:30|thirty)\s+days")
+    for rel in DOWNLOAD_PROSE:
+        text = open(os.path.join(ROOT, rel)).read()
+        said = set(int(n.replace(",", "")) for n in pat30.findall(text))
+        if not said:
+            check(False, "%s: no 30-day download figure found; has the line "
+                         "been reworded out of the gate's sight?" % rel)
+            continue
+        check(said == {want30},
+              "%s: says %s in the last 30 days, the measurement is %d"
+              % (rel, " and ".join(str(n) for n in sorted(said)), want30))
+        if "all time" in text:
+            alls = set(int(n.replace(",", "")) for n in
+                       re.findall(r"(\d[\d,]*)\s+(?:downloads\s+)?all time", text))
+            bad = alls - {wantall, dl["all_time_including_mirrors"]}
+            check(not bad,
+                  "%s: all-time figures %s agree with the measurement (%d "
+                  "excluding mirrors, %d including)"
+                  % (rel, sorted(alls) or "none", wantall,
+                     dl["all_time_including_mirrors"]))
+
+# ------------------------------- the same number, in the files the README is not
+# Found 2026-11-09 while extracting the domain knowledge into .claude/skills/.
+# The CLAIMS loop above reads README.md only, and its pattern matches the
+# markdown-link form `[20 conformance vectors](tests/vectors.json)`. So the
+# README was right and SPEC.md line 390 and tools/dashboard.py both still said
+# 16, against 20 cases in tests/vectors.json. Four vectors were added across
+# three commits and neither of those files was touched by any of them.
+#
+# A gate that guards one file is not a gate on the number. These two are named
+# explicitly rather than walking the tree, so adding a third place that quotes
+# the figure is a deliberate act that shows up in a diff.
+print()
+print("the vector count is the same number everywhere it is written down")
+VECTOR_PROSE = ["SPEC.md", "tools/dashboard.py", "README.md"]
+for rel in VECTOR_PROSE:
+    text = open(os.path.join(ROOT, rel)).read()
+    found = set(int(n) for n in re.findall(r"(\d+) conformance vectors", text))
+    if not found:
+        check(False, "%s: no longer quotes the vector count at all" % rel)
+        continue
+    real = vector_count()
+    check(found == {real},
+          "%s: quotes %s conformance vectors, the file has %d"
+          % (rel, " and ".join(str(n) for n in sorted(found)), real))
+
 # --------------------------------------------- the constant that was wrong
 print()
 print("the DevNet check reads the payouts instead of restating them")

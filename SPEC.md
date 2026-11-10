@@ -387,7 +387,7 @@ none:
   verifies, and its head is a real seal — the count is what catches it.
 
   This is a binding, not a signature: the format is unchanged, every seal is
-  unchanged, and all 16 conformance vectors still hold. An unanchored chain is
+  unchanged, and all 20 conformance vectors still hold. An unanchored chain is
   still a valid chain; it just carries no claim about where it came from.
 - **It does not prove the rule was enforced.** `rule` is a string. The
   guarantee that a limit was actually applied comes from wherever the decision

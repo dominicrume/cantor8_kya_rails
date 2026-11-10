@@ -41,4 +41,9 @@ step-0-refusal/test/.daml/
 # Local tool permissions. Machine-specific, created by whatever assistant is
 # being used that week, and nothing to do with the project. It carried a
 # one-off URL from a job board the first time it appeared.
-.claude/
+.claude/*
+# ...except the extracted doctrine. The skills in .claude/skills/ are the
+# durable asset: they are what makes this repository legible to an agent that
+# has never seen it, so they are tracked and reviewed like any other source.
+# Added 2026-11-09. settings.json stays ignored, for the reason above.
+!.claude/skills/

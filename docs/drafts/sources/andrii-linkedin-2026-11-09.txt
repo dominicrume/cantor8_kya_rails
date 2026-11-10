@@ -1,0 +1,32 @@
+Source: LinkedIn conversation, read by Rume on his own account and pasted into
+the session on 2026-11-09. This is the primary record of the inbound message.
+hacken.io returns 403 to automated fetching and no LinkedIn profile is
+retrievable from this machine, so this pasted thread is the only primary source
+for Andrii Semibratov's name and title. His title below is his own LinkedIn
+headline, written by him.
+
+Andrii Semibratov
+1st degree connection
+Partnerships & Marketing Manager at Hacken, Blockchain Security & Compliance
+
+Monday 9:35 AM, Andrii Semibratov:
+Hi Dominic, thanks for connecting.
+You signed up for one of our Canton sessions a while back, which is how I found you.
+Are you building on Canton, or still figuring out if it's worth it?
+
+10:13 AM, Dominic O'Rume:
+Thanks for reaching out..
+After winning the $ 25,000 hackathon and coming in 3rd,
+Yes I'm still building on Canton.
+How about u?
+
+10:15 AM, Dominic O'Rume:
+What are you currently working on and how can I create and build alongside you you.
+Or you re still trying to figure it out out?
+
+1:16 PM, Andrii Semibratov:
+Congrats on taking 3rd place! Great to hear you're continuing to build on Canton.
+I'm with Hacken, helping Canton teams with Daml security audits. We also offer
+AI-powered Daml reviews as a first step before a full manual audit of the codebase.
+What stage is your project at now, and what's your next milestone? That'll help
+us figure out where an audit or other collaboration could fit.

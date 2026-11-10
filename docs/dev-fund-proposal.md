@@ -325,10 +325,17 @@ installed at all -- so the barrier to trying it is as low as it can be made. Tha
 is a *distribution* fact, not an adoption one, and the two should not be confused.
 
 The honest position: the format has three implementations and the applicant
-wrote all three. Nobody outside is running it yet. The applicant's prior
-published tooling has 2,471 total PyPI downloads with 880 in the last thirty
-days, a figure that includes CI and mirror traffic and should not be read as
-2,471 people.
+wrote all three. Nobody outside is running it yet. The package that implements
+this format, `knowyouragenticai-receipts`, has **481 downloads all time and 226
+in the thirty days to 9 November 2026, excluding mirrors**
+(`python3 tools/downloads.py`). That is installs, not people, and it is not
+adoption: nobody outside has produced a chain.
+
+An earlier version of this paragraph gave 2,471 total and 880 in thirty days.
+Neither figure is reproducible from this package, and it reached them by adding
+in `ai-code-quality-auditor`, which is a separate project with no Canton
+content. Summing an unrelated package into a Canton proposal inflates the only
+number a reviewer can check.
 
 That is precisely why Milestones 3 and 4 are accepted on integration rather
 than on effort, and on integration rather than on adoption. Waiting to be

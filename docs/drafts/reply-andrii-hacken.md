@@ -1,18 +1,24 @@
-Post-To: LinkedIn direct message to Andrii Semibratov (Partnerships & Marketing Manager, Hacken)
+Post-To: LinkedIn direct message to Andrii Semibratov
+Source: docs/drafts/sources/andrii-linkedin-2026-11-09.txt, the inbound thread
+  itself. No title or employer is asserted in the body, and none should be:
+  hacken.io is 403 to this machine, no LinkedIn profile is fetchable, and a
+  Jobicy aggregator gives a different title. His own headline is the only
+  primary source and it stays in the source file, not in a message.
 How: open the conversation, paste into the message box at the bottom, press Send.
 
-Honest answer first: pre-revenue, so not an audit buyer yet.
+I was on your 29 October Canton panel, the security and privacy one.
 
-Stage is a Daml specification with three implementations agreeing on 20
-conformance vectors, and 32 fences where breaking any one of them turns a named
-test red. Next milestone is running it on a real ledger, blocked on a DevNet
-credential.
+Straight answer: pre-revenue, so not an audit buyer this quarter.
 
-The part that may interest you. I built the mutation runner to emit its findings
-as a hash-chained record, so a client can check afterwards that no finding was
-softened or removed, including by the auditor. Ran it over three OpenZeppelin
-Canton packages in September:
+The other direction may be more useful to you. I mutation-test Daml
+authorisation: make each assertMsg and ensure vacuous, rerun the project's own
+suite, see what stays green. On two OpenZeppelin Canton packages, 49 of 62
+fences could be made vacuous with every test still passing. Their newer package
+is clean. Issues filed in September, all public.
+
+Each run seals into a hash chain, so a client can verify afterwards that no
+finding was softened or removed, including by the auditor.
 
 https://github.com/dominicrume/cantor8_kya_rails/blob/main/docs/findings-openzeppelin.md
 
-How does Hacken handle that part, where the client has to trust the report?
+Who runs the Daml side at Hacken? I would like to show them.

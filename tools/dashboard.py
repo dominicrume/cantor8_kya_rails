@@ -34,7 +34,7 @@ OUT = os.path.join(ROOT, "docs", "build.html")
 # (command, group, what a green result actually means)
 SUITES = [
     ("python3 tests/conformance.py", "The format",
-     "the Python implementation agrees with all 16 conformance vectors"),
+     "the Python implementation agrees with all 20 conformance vectors"),
     ("node tests/conformance.js", "The format",
      "the JavaScript implementation agrees, byte for byte, with the Python one"),
     ("cd impl/go && go run .", "The format",
