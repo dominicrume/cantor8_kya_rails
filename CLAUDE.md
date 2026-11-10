@@ -274,6 +274,33 @@ Hard rules for any AI touching this code:
   the other to make a sentence land is the overclaim habit wearing new
   clothes.
 
+- NO EXECUTION WITHOUT A MEASUREMENT. Measure the thing you are about to act
+  on, THEN act. Not afterwards, not from the repository's own memory of it, and
+  not from a sentence written in one of our own files on a date nobody checked.
+  The command comes before the keystroke, the fetch before the quote, the lint
+  before the commit, and reading the result before reporting it.
+  Written 10 November 2026, after eight instances in a single session, counted
+  rather than remembered:
+  * told the owner to click "Approve" on digital-asset/dpm#334 without checking
+    he had collaborator access. He did not; the button was greyed out.
+  * repeated "Lukasz and Andrew are in #sig-security with you" from
+    docs/outreach/contracts-and-the-clock.md. Nothing in the tree evidences it.
+  * printed a forum draft for pasting whose first sentence was already false,
+    because #866's vote had closed and failed four days earlier.
+  * reported a commit as landed on an exit code of 0. Nothing was staged, so no
+    commit existed. The exit code belonged to `echo`.
+  * concluded "fortnightly Wednesday" from two data points. The full dataset
+    said weekly, gaps of 7 and 7.
+  * published docs/live.html without checking any lint covered it. It had three
+    accessibility defects and was unusable without a mouse.
+  * wrote a function at complexity 21 and committed without running the lint.
+  * committed tools/vote_pipeline.py without running bandit, turning the public
+    build red.
+  Every one of those produced a correct-looking result at the time. That is the
+  whole danger: executing first works most of the time, which is exactly why it
+  survives until the day it costs something in somebody else's repository.
+  The nine corrections made that day were not virtue. They were the invoice.
+
 - Before any release, verify rather than assume: build from committed code and
   never the working tree, list every file that would go public, scan the built
   artefacts for secrets WITH A POSITIVE CONTROL proving the scan reads them,

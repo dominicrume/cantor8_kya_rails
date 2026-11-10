@@ -1,0 +1,4 @@
+2026-11-10 digital-asset/dpm
+  user hits : SIGTERM kills dpm, the component keeps running and never releases its lock
+  red test  : TestExecSdkCommandSignalsComponentOnCancel and TestExecSdkCommandEscalatesWhenComponentIgnoresSignal
+  asked by  : Michael Lip asked on dpm#334 on 9 November, for issue #190

@@ -38,6 +38,26 @@ Anything recording what we did reads the destination before writing the line.
 replies that were never on the forum. It verifies now, and where a destination
 cannot be checked it says CANNOT CHECK rather than looking like a pass.
 
+## No execution without a measurement
+
+Measure the thing you are about to act on, then act. The command before the
+keystroke, the fetch before the quote, the lint before the commit, and reading
+the result before reporting it.
+
+This is the ordering rule applied to your own hands rather than to a draft.
+`before_posting.py` already enforces it for messages. It has no equivalent for
+the dozen smaller acts a session is made of: clicking a button, quoting a file
+of ours, reporting that a command worked.
+
+Eight instances were counted in one session on 10 November 2026, including
+telling the owner to press a button his account could not press, reporting a
+commit that did not exist because nothing was staged, and publishing a public
+page that no lint covered and that failed three accessibility checks the moment
+one did. Full list in CLAUDE.md with the rule.
+
+Every one looked correct when it happened. Acting first works most of the time.
+That is why it survives.
+
 ## Three states, never two
 
 `STATUS.md` is the model and it is kept current, not written once:
