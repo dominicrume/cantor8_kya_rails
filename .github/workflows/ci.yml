@@ -162,7 +162,18 @@ jobs:
   # being tested. Dropping them from the matrix would have turned the build
   # green and turned the PyPI metadata back into the untested claim this job
   # was written to retire. They are pinned to the last runner that has them
-  # instead. When ubuntu-22.04 is retired, the honest move is to RAISE
+  # instead.
+  #
+  # 2026-11-10, later: that pin was ubuntu-22.04, and it was the shortest
+  # extension available. actions/python-versions' manifest lists 3.8 and 3.9
+  # with builds for 16.04 through 24.04 and NOTHING for 26.04, so 24.04 is
+  # the last runner that carries them and it outlives 22.04 by about two
+  # years. Read the manifest, do not guess which runner has which Python:
+  #   gh api repos/actions/python-versions/contents/versions-manifest.json
+  # The same read says 3.10 to 3.13 all have 26.04 builds, so those four stay
+  # on ubuntu-latest and the migration notice does not touch them.
+  #
+  # When ubuntu-24.04 is retired, the honest move is to RAISE
   # requires-python, not to quietly stop checking.
   package-python-versions:
     name: knowyouragenticai-receipts on every Python it claims
@@ -171,8 +182,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { python-version: '3.8',  runner: ubuntu-22.04 }
-          - { python-version: '3.9',  runner: ubuntu-22.04 }
+          - { python-version: '3.8',  runner: ubuntu-24.04 }
+          - { python-version: '3.9',  runner: ubuntu-24.04 }
           - { python-version: '3.10', runner: ubuntu-latest }
           - { python-version: '3.11', runner: ubuntu-latest }
           - { python-version: '3.12', runner: ubuntu-latest }
