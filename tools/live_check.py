@@ -103,52 +103,63 @@ def probe(url):
         return 0
 
 
+def line(status, what, url):
+    code = status[url]
+    return "  %s %-3s %s" % ("OK " if code == 200 else "DEAD", code or "---", what)
+
+
+def dead_of(status):
+    return [u for u, code in status.items() if code != 200]
+
+
+def report(status):
+    """Print the probe table. Returns the urls that did not answer 200."""
+    for group in dict.fromkeys(g for g, _, _, _ in ITEMS):
+        print("\n%s" % group)
+        for row in [r for r in ITEMS if r[0] == group]:
+            print(line(status, row[1], row[2]))
+    bad = dead_of(status)
+    print("\n%d links, %d live, %d not"
+          % (len(status), len(status) - len(bad), len(bad)))
+    for u in bad:
+        print("  DEAD %s  %s" % (status[u] or "no response", u))
+    return bad
+
+
+def render(status):
+    """The page body: one table per group, status pill beside every row."""
+    out = []
+    for group in dict.fromkeys(g for g, _, _, _ in ITEMS):
+        out.append('<h2>%s</h2>\n<table>' % html.escape(group))
+        for g, what, url, how in ITEMS:
+            if g != group:
+                continue
+            code = status[url]
+            out.append(
+                '<tr><td><span class="pill %s">%s</span></td>'
+                '<td><a href="%s">%s</a></td><td><code>%s</code></td></tr>'
+                % ("ok" if code == 200 else "dead", code or "no response",
+                   html.escape(url), html.escape(what), html.escape(how)))
+        out.append("</table>")
+    return "\n".join(out)
+
+
 def main():
     urls = sorted({u for _, _, u, _ in ITEMS})
     with ThreadPoolExecutor(max_workers=8) as ex:
         status = dict(zip(urls, ex.map(probe, urls)))
 
-    bad = [u for u, s in status.items() if s != 200]
-    for group in dict.fromkeys(g for g, _, _, _ in ITEMS):
-        print("\n%s" % group)
-        for g, what, url, how in ITEMS:
-            if g != group:
-                continue
-            s = status[url]
-            print("  %s %-3s %s" % ("OK " if s == 200 else "DEAD", s or "---", what))
-
-    print("\n%d links, %d live, %d not" % (len(urls), len(urls) - len(bad), len(bad)))
-    for u in bad:
-        print("  DEAD %s  %s" % (status[u] or "no response", u))
-
-    if "--write" not in sys.argv:
-        return 1 if bad else 0
-
-    built = datetime.now(timezone.utc).strftime("%d %B %Y, %H:%M UTC")
-    rows = []
-    for group in dict.fromkeys(g for g, _, _, _ in ITEMS):
-        rows.append('<h2>%s</h2>\n<table>' % html.escape(group))
-        for g, what, url, how in ITEMS:
-            if g != group:
-                continue
-            s = status[url]
-            cls = "ok" if s == 200 else "dead"
-            lab = str(s) if s else "no response"
-            rows.append(
-                '<tr><td><span class="pill %s">%s</span></td>'
-                '<td><a href="%s">%s</a></td><td><code>%s</code></td></tr>'
-                % (cls, lab, html.escape(url), html.escape(what), html.escape(how)))
-        rows.append("</table>")
-
-    page = TEMPLATE % {
-        "built": html.escape(built),
-        "live": len(urls) - len(bad),
-        "total": len(urls),
-        "rows": "\n".join(rows),
-    }
-    with open(OUT, "w") as f:
-        f.write(page)
-    print("\nwrote %s" % os.path.relpath(OUT, ROOT))
+    bad = report(status)
+    if "--write" in sys.argv:
+        with open(OUT, "w") as f:
+            f.write(TEMPLATE % {
+                "built": html.escape(
+                    datetime.now(timezone.utc).strftime("%d %B %Y, %H:%M UTC")),
+                "live": len(urls) - len(bad),
+                "total": len(urls),
+                "rows": render(status),
+            })
+        print("\nwrote %s" % os.path.relpath(OUT, ROOT))
     return 1 if bad else 0
 
 

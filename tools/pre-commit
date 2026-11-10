@@ -83,3 +83,23 @@ if ! python3 tests/fence_lint.py; then
     echo "To commit anyway, knowing all of that: git commit --no-verify"
     exit 1
 fi
+
+# ---------------------------------------------------------------------------
+# 2026-11-10. This hook ran balance_lint and fence_lint and nothing else, while
+# CI ran complexity_lint too. So every commit passed locally and the build went
+# red on push, for days, unread, while STATUS.md said the suite was green.
+#
+# A hook that is weaker than CI teaches you to trust a green local run that
+# means nothing. The two agree from here. If this hook and .github/workflows
+# ever diverge again, the hook is the one that is wrong.
+if ! python3 tests/complexity_lint.py > /dev/null; then
+    python3 tests/complexity_lint.py | grep -E "^\s+FAIL|^    - "
+    echo
+    echo "COMMIT REFUSED: a function is over the complexity ceiling with no"
+    echo "written reason. Simplify it, add it to EARNED if splitting it would"
+    echo "make the code worse, or add it to DEBT, dated, if it is simply too"
+    echo "complicated and you are not fixing it today."
+    echo
+    echo "To commit anyway, knowing all of that: git commit --no-verify"
+    exit 1
+fi
