@@ -1,6 +1,11 @@
 # How a Canton Dev Fund proposal actually reaches a vote
 
-Measured 10 November 2026 with `python3 tools/vote_pipeline.py`. The tool
+By O'Rume Dominic Uririe (Rume Dominic), Birmingham, United Kingdom.
+GitHub [@dominicrume](https://github.com/dominicrume) and
+X [@dominicrume](https://x.com/dominicrume). Published November 2026.
+
+Measured 10 November 2026, re-measured 12 November, with
+`python3 tools/vote_pipeline.py`. The tool
 reads the live repository and refuses to print numbers if its own positive
 control on proposal #942 fails. Re-run it before quoting any figure here.
 
