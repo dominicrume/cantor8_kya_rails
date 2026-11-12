@@ -10,7 +10,7 @@ Criterion codes are Tech Nation's: **MC** mandatory, **OC1** innovation, **OC2**
 
 | first published | package | where | what it shows | maps to |
 |---|---|---|---|---|
-| 2026-09-06 | `knowyouragenticai-receipts` **1.2.0, 3 releases** | pypi.org/project/knowyouragenticai-receipts/ | A receipt format with a written specification. Zero dependencies, MIT. **226 downloads in the 30 days to 2026-11-09 and 481 all time with mirrors excluded**, 1,570 all time including them, re-measured 2026-11-10 with `python3 tools/downloads.py`. Installs, not users, and not adoption. | OC1 |
+| 2026-09-06 | `knowyouragenticai-receipts` **1.2.0, 3 releases** | pypi.org/project/knowyouragenticai-receipts/ | A receipt format with a written specification. Zero dependencies, MIT. **488 downloads all time with mirrors excluded**, 1,602 including them, re-measured 2026-11-12 with `python3 tools/downloads.py`. No 30-day figure is quoted: it is a rolling window and it fell from 226 to 205 between 10 and 12 November with nobody editing anything. Installs, not users, and not adoption. | OC1 |
 | 2026-05-31 | `ai-code-quality-auditor` 0.5.1, 6 releases | pypi.org/project/ai-code-quality-auditor/ | MSc dissertation tool. The longer track record of the two. 388/month raw, re-measured 2026-10-26. 19% report an operating system. | OC1, OC4 |
 
 ## Contributions to projects owned by other people
