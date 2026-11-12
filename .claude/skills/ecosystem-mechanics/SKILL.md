@@ -37,11 +37,13 @@ All figures below measured 10 November 2026. Re-run the tool before quoting
 any of them; the numbers moved between 9 and 10 November and the direction was
 not the one anybody expected.
 
-- 29 of 400 proposals have ever reached a vote at all, 7.2%.
-- **All 29 votes were opened by @hythloda (Amanda Martin). Not one by anybody
+- 31 of 616 proposals have ever reached a vote at all, 5.0%. The figure was
+  published as 29 of 400 until 12 November 2026; 400 was the tool's row cap,
+  not the repository's size, and a cap looks exactly like a count.
+- **All 31 votes were opened by @hythloda (Amanda Martin). Not one by anybody
   else.** That is the gate.
 - **COUNT VOTE EVENTS, NOT LABELS.** `gh pr list --label gitvote/failed`
-  returns three. Seven votes have actually failed. A re-opened vote has its
+  returns four. Nine votes have actually failed. A re-opened vote has its
   label reset to `gitvote/open`, so the first failure stops being visible and
   the obvious measurement is wrong by four with nothing in its output saying
   so. Use `vote_events()` in `tools/vote_pipeline.py`, which reads the
