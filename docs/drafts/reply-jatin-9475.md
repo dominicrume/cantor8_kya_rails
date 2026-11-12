@@ -1,15 +1,15 @@
 Destination: forum.canton.network topic 9475, reply to Jatin_Pandya_cf post #2
-Written: 2026-11-12
+Written: 2026-11-13, replacing the 2026-11-12 draft
 
-No, I do not have one. I asked @zeroknowledger on 4 November and have not had
-a reply.
+Thanks Jatin, and thanks for merging the Hub entries on 8 and 21 September.
 
-Your question made me go and count, and the answer was not what I expected.
-Of the 31 proposals that have ever reached a vote, 24 carry no
-champion-confirmed label. And 51 proposals carry the label and have never had
-a vote.
+Direct answer: no. #860 has no champion. I asked @zeroknowledger on 4 November
+and have not heard back.
 
-So the label is not what starts a vote. All 31 were opened by hand by
-@hythloda, because automation.enabled is false in .gitvote.yml.
+Your question sent me to count, and the result surprised me. Of the 31
+proposals that have ever reached a vote, 24 carry no champion-confirmed label.
+51 proposals carry the label and have never had a vote. And #866's vote closed
+on 6 November with 0 in favour and 0 against.
 
-Is there something a champion does that the label does not record?
+So absence ends them, not objection. What does a champion do that the label
+does not record?
