@@ -99,12 +99,14 @@ EARNED = {
 DEBT = {
     "tools/vote_pipeline.py:main": (
         "2026-11-10",
-        "cc 42, up one on 10 November when the re-opened-vote section was "
-        "added. Written in one sitting on 9 November to answer a single "
-        "question, and it does five things: reads the config, walks 400 "
-        "proposals, tallies, clusters the sittings, and prints. The first four "
-        "are separable and the fifth is the only one that needs them all. "
-        "Split it into config(), survey(), sittings() and a print-only main."),
+        "cc 46 as of 12 November, up from 42. Written in one sitting on "
+        "9 November to answer a single question, and it does five things: "
+        "reads the config, walks every proposal in the repository, tallies, "
+        "clusters the sittings, and prints. It said 'walks 400 proposals' "
+        "until 12 November, which was the defect itself written down as a "
+        "feature: 400 was the row cap, not the count. The first four jobs are "
+        "separable and the fifth is the only one that needs them all. Split "
+        "it into config(), survey(), sittings() and a print-only main."),
     "tools/post_queue.py:main": (
         "2026-11-10",
         "cc 31. The queue walk, the gate call, the destination read-back and "

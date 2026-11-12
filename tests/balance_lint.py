@@ -339,15 +339,63 @@ VOTE_PROSE = ["STATUS.md", ".claude/skills/ecosystem-mechanics/SKILL.md"]
 
 
 def votes_opened(text):
-    """Every count of votes ever opened that a file states."""
+    """Every count of votes ever opened that a file states.
+
+    One of these patterns used to read `(\d+) of 400 proposals`, with the
+    denominator written in. On 12 November 2026 the denominator turned out to
+    be wrong: 400 was `gh pr list --limit 400`, a cap the tool had mistaken
+    for the repository's size, which is 616. A gate that pins the numerator
+    and hardcodes the denominator cannot catch the denominator being wrong,
+    which is exactly the error it then failed to catch. The denominator is a
+    capture group now, and `population()` below checks it separately.
+
+    Lines inside this document's own correction notes quote the former wrong
+    figures on purpose, so they are excluded: a file that honestly records
+    what it used to say must not be read as still saying it.
+    """
+    body = without_corrections(text)
     pats = [r"all (\d+) votes in the repository",
             r"\*\*All (\d+) votes were opened",
-            r"(\d+) of 400 proposals have ever reached a vote",
-            r"\*\*(\d+) have ever reached a vote",
+            r"(\d+) of \d+ proposals have ever reached a vote",
+            r"(\d+) have ever reached a vote",
             r"@hythloda (\d+) times out of"]
     out = set()
     for pat in pats:
-        out.update(int(n) for n in re.findall(pat, text))
+        out.update(int(n) for n in re.findall(pat, body))
+    return out
+
+
+def without_corrections(text):
+    """The text with every sentence that reports a FORMER figure removed.
+
+    This filter was line-based for one revision and that was wrong. A STATUS.md
+    row is a single line holding both the live figure and the note saying what
+    the figure used to be, so dropping the line dropped the live figure too and
+    the gate reported that the file had stopped stating a count at all. It
+    splits on sentences now, which is the unit a correction is actually
+    written in.
+    """
+    keep = [part for part in re.split(r"(?<=[.!?])\s+|\s*\|\s*", text)
+            if not CORRECTION.search(part)]
+    return " ".join(keep)
+
+
+# A sentence that reports what a figure USED to be is not one stating it.
+CORRECTION = re.compile(
+    r"used to|was really|until 12 November|was published as|"
+    r"version of this (row|section|table)|said 29 of 400|"
+    r"10 November version", re.I)
+
+
+def population(text):
+    """Every total-proposal figure a file states, so the denominator is
+    checked rather than assumed. Added 12 November 2026."""
+    body = without_corrections(text)
+    out = set()
+    for pat in [r"(\d+) of (\d+) proposals have ever reached",
+                r"\*\*(?:Of )?\*?\*?(\d+) proposals, every one"]:
+        for m in re.finditer(pat, body):
+            out.add(int(m.group(m.lastindex)))
     return out
 
 
@@ -375,9 +423,13 @@ def votes_failed(text):
 
 src = open(os.path.join(ROOT, VOTE_SOURCE)).read()
 opened, failed = votes_opened(src), votes_failed(src)
+pop = population(src)
 check(len(opened) == 1,
       "%s states one vote count, not %s"
       % (VOTE_SOURCE, sorted(opened) or "none"))
+check(len(pop) == 1,
+      "%s states one proposal total, not %s"
+      % (VOTE_SOURCE, sorted(pop) or "none"))
 check(len(failed) == 1,
       "%s states one failed-vote count, not %s"
       % (VOTE_SOURCE, sorted(failed) or "none"))
@@ -391,6 +443,12 @@ for rel in VOTE_PROSE:
           "%s: says %s votes opened, %s says %s"
           % (rel, " and ".join(str(n) for n in sorted(here)),
              VOTE_SOURCE, " and ".join(str(n) for n in sorted(opened))))
+    hp = population(text)
+    check(not hp or hp == pop,
+          "%s: says %s proposals in total, %s says %s. A denominator is a "
+          "claim too, and 400 was a row cap once."
+          % (rel, " and ".join(str(n) for n in sorted(hp)),
+             VOTE_SOURCE, " and ".join(str(n) for n in sorted(pop))))
     hf = votes_failed(text)
     check(not hf or hf == failed,
           "%s: says %s votes failed, %s says %s"

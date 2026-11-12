@@ -4,11 +4,23 @@ Measured 10 November 2026 with `python3 tools/vote_pipeline.py`. The tool
 reads the live repository and refuses to print numbers if its own positive
 control on proposal #942 fails. Re-run it before quoting any figure here.
 
-**This document was wrong on 9 November and is corrected below.** It said
-#866 "died". It did not. Its vote expired unvoted on 6 November and a second
-vote was opened on 9 November. The tool missed it because the tool counted
-labels, and a re-opened vote has its label reset. The correction is the
-finding.
+**This document has been wrong twice and is corrected below both times.**
+
+On 9 November it said #866 "died". It had not. Its vote expired unvoted on
+6 November and a second vote opened on 9 November. The tool missed it because
+the tool counted labels, and a re-opened vote has its label reset.
+
+On 10 November every rate in it was computed over the wrong denominator. The
+tool read the proposal list with `gh pr list --limit 400`. The repository holds
+616 proposals. A cap looks exactly like a count, so "29 of 400 reached a vote
+(7.2%)" was really 29 of the most recent 400, and two vote-bearing proposals
+outside that window, #161 and #197, were invisible. The true figure is 31 of
+616, which is 5.0%.
+
+Both errors have the same shape, and it is the shape this document is about: a
+measurement that is wrong with nothing in its output saying so. `proposals()`
+now refuses to return a capped list at all, and raises instead of handing back
+a figure somebody would quote.
 
 For 43 days #860 was pushed with the question "who will champion this". That
 was the wrong question. The mechanism is not a championing process. It is a
@@ -43,20 +55,20 @@ payment from anyone for this work.
 
 ## What the history says
 
-Of 400 proposals read, **29 have ever reached a vote (7.2%)**. Eight have
-passed. Seven votes have failed, which is not the same as seven proposals:
-see the section below on why counting by label gives three.
+Of **616 proposals, every one in the repository, 31 have ever reached a vote
+(5.0%)**. Ten have passed. Nine votes have failed, which is not the same as
+nine proposals: see the section below on why counting by label gives four.
 
-**Every one of those 29 votes was opened by @hythloda.** Not one was opened
+**Every one of those 31 votes was opened by @hythloda.** Not one was opened
 by anybody else. That is the gate, and it is a single person.
 
 Passed votes carry 3 or 4 yes (mean 3.5). Failed votes carry 0 to 2
-(mean 0.7). In the entire history **one vote has ever recorded a single
+(mean 0.8). In the entire history **one vote has ever recorded a single
 "against"** (#300). Proposals do not die of rejection here. They die of
 absence.
 
-Three failures had **nobody vote at all**: #866, #853, #577, each 0 in
-favour, 0 against, 0 abstain, 5 did not vote.
+Five failures had **nobody vote at all**: #866, #853, #577, #672 and #161,
+each 0 in favour, 0 against, 0 abstain, 5 did not vote.
 
 ## Votes are cast in a meeting, not reviewed asynchronously
 
@@ -69,46 +81,63 @@ Binding-vote timestamps cluster into sittings minutes wide:
 | 2026-10-28 Wed 12:40 UTC | 7 | 19 min |
 | 2026-11-04 Wed 12:20 UTC | 20 | 73 min |
 
-Gaps of 2, 7 and 7 days. Three of the four are Wednesdays starting within
-twenty-three minutes of each other, and on 4 November the committee cleared
-four proposals in 73 minutes.
+### The cadence reading was wrong, and it is retired rather than patched
 
-The fourth is a Monday morning spread over more than three hours, which does
-not look like a meeting at all. An earlier reading of only two proposals
-suggested a fortnightly cadence; the full set says weekly with one
-exception. Both readings were produced by the same person looking at the
-same repository, which is the argument for the tool over the note.
+On 10 November this section said the next sitting was "probably Wednesday
+11 November around 12:20 UTC" and that nobody had confirmed it. That
+prediction was testable, so it was tested.
 
-**This is an observed pattern over four sittings, not a published
-schedule**, and one of the four does not fit it. The next sitting is probably
-Wednesday 11 November around 12:20 UTC. Nobody has confirmed that. Asking
-the Foundation for the actual calendar is in ASK-THE-ORGANISERS.md.
+**Wednesday 11 November produced one binding vote, at 04:03 UTC.** Nothing at
+or near 12:20. The five `gitvote/passed` labels that landed together at 09:32
+were the bot's 21-day expiry sweep, not a meeting. The nearest thing to a
+sitting that week was Tuesday 10 November: five binding votes spread from
+13:03 to 20:47, seven hours wide, which is what people clicking when they get
+to it looks like, not a room.
+
+So the three tight Wednesday clusters were three busy afternoons, and three
+points plus a miss is not a schedule. The claim is withdrawn. What survives it
+is narrower and still useful: votes are cast in bursts by a handful of people,
+there is no published calendar, and nothing in the repository tells an author
+when their proposal will be called.
+
+Asking the Foundation for the actual calendar is in ASK-THE-ORGANISERS.md, and
+after this it is the only way to know.
 
 ## A failed vote is not final, and the labels hide that
 
-On **16 October 2026 at 16:46 and 16:47**, within ninety seconds, @hythloda
+On **16 October 2026 between 16:45 and 16:47**, inside two minutes, @hythloda
 opened votes on a batch of proposals. Twenty-one days later, on
-**6 November**, seven of them closed without passing. Every tally:
+**6 November**, eight of them closed without passing. A ninth, #672, failed on
+11 November. Every tally:
+
+The 10 November version of this section said the batch began at 16:46 and that
+seven failed. Both were artefacts of the 400-proposal cap: #161's vote was
+created at 16:45:30 and was outside the window the tool could see.
 
 | Proposal | In favour | Against | Abstain | Did not vote | Re-opened |
 |---|---|---|---|---|---|
 | #866 | 0 | 0 | 0 | 5 | 9 November |
 | #853 | 0 | 0 | 0 | 5 | no |
-| #577 | 0 | 0 | 0 | 5 | **10 November** |
+| #577 | 0 | 0 | 0 | 5 | 10 November |
+| #161 | 0 | 0 | 0 | 5 | no |
 | #813 | 1 | 0 | 0 | 4 | 6 November |
 | #453 | 1 | 0 | 0 | 4 | 9 November |
 | #300 | 1 | 1 | 0 | 3 | no |
 | #752 | 2 | 0 | 1 | 2 | no |
+| #672 | 0 | 0 | 0 | 5 | **11 November**, 3h22m later |
+
+#161 was outside the 400-proposal cap and so was missing from the 10 November
+version of this table. #672 failed on 11 November, after it was published.
 
 Three findings, in order of how much they change what you would do.
 
-**Six of the seven recorded no vote against at all.** One proposal in the
+**Eight of the nine recorded no vote against at all.** One proposal in the
 entire set, #300, drew a single objection. The others did not fail because
 anybody disagreed. They failed because three of five eligible voters did not
 vote, and under a threshold of 51% of allowed voters an absence counts as a
 no. The Dev Fund's failure mode is not rejection. It is non-attendance.
 
-**Four of the seven were re-opened within four days.** #813 the same day it
+**Five of the nine were re-opened, four of them within four days.** #813 the same day it
 expired, #866 and #453 on 9 November, #577 on 10 November while this document
 was being written. The same person who opened the first vote opened the
 second. So a failed vote is a restarted clock, not a verdict.
@@ -116,9 +145,11 @@ second. So a failed vote is a restarted clock, not a verdict.
 **The labels make the first failure invisible.** `gitvote/passed` and
 `gitvote/failed` describe a proposal's current state. When a second vote
 opens, the label resets to `gitvote/open`. Count by label and the repository
-reports three failures. Count by vote event and it reports seven. This tool
-counted by label until 10 November and was therefore wrong by four, in the
-direction that made the process look more decisive than it is.
+reports four failures. Count by vote event and it reports nine. This tool
+counted by label until 10 November and was wrong by five, in the direction
+that made the process look more decisive than it is. The gap widens every
+time a vote is re-opened, so the label count drifts further from the truth
+on its own, with no edit to anything.
 
 That last one is the reason the method matters more than the numbers. Reading
 `gh pr list --label gitvote/failed` is the obvious measurement and it gives a
@@ -151,18 +182,26 @@ of the window. That is not a failure of will. It is a process with a
 
     gitvote       NO VOTE HAS EVER BEEN OPENED
 
-Opened 27 September. 44 days as of 10 November. The 21-day clock has never started, because
-nothing starts it automatically and the one person who starts them has not.
+Opened 27 September. **46 days as of 12 November.** The 21-day clock has never
+started, because nothing starts it automatically and the one person who starts
+them has not. Six review requests are outstanding and not one has been
+submitted. Between 9 and 11 November @hythloda opened seven votes. #860 was in
+none of them.
 
 ## What this changes
 
 1. The ask is not "will you champion this". It is "will you open a vote,
    and will you call it at a sitting while the window is open".
-2. It is addressed to @hythloda, because 29 of 29 votes were hers to open.
+2. It is addressed to @hythloda, because 31 of 31 votes were hers to open.
    Asking @zeroknowledger on 4 November was aimed at the wrong role.
 3. Passing needs three of five to actively vote yes. Absence is a no, so
    the work before a vote is with the eligible voters individually, not
    with the proposal text.
+4. **A champion is neither necessary nor sufficient, measured.** Of the 31
+   proposals that ever reached a vote, 24 carry no `champion-confirmed`
+   label. 51 proposals carry that label and have never had a vote. So
+   "find a champion" is not the mechanism either, and #860 not carrying it
+   is not what is stopping it.
 
 ## A second case, and it is not a proposal
 
@@ -198,7 +237,7 @@ Three things this settles that one case could not:
    passing is not the end of the path; nobody calling it is.
 3. The opener is the same person in both cases, which is the third independent
    confirmation that `automation.enabled: false` means a human starts every
-   vote and that human has been @hythloda 29 times out of 29.
+   vote and that human has been @hythloda 31 times out of 31.
 
 ## Caveat on the voter count
 

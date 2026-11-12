@@ -75,10 +75,42 @@ def config():
     return got
 
 
-def proposals(limit=400):
+def proposals(limit=2000):
+    """Every proposal in the repository, and it REFUSES to return a capped list.
+
+    Written 2026-11-12, after this function was the defect.
+
+    It used to default to limit=400. `gh pr list --limit 400` on a repository
+    holding 616 proposals returns 400 of them and says nothing about the 216
+    it dropped. Every rate computed from it was therefore a rate over the
+    WINDOW and not over the population: "29 of 400 reached a vote (7.2%)"
+    was really 29 of the most recent 400, and the true figure was 31 of 616,
+    which is 5.0%. Two vote-bearing proposals, #161 and #197, were outside
+    the window and invisible. docs/dev-fund-vote-mechanism.md was published
+    with those numbers.
+
+    That is the same failure the document itself is about. Counting by label
+    under-reported failures by five because a re-opened vote resets its label;
+    counting inside a cap under-reported the denominator by 216 because a cap
+    looks exactly like a count. In both cases the output carried no sign that
+    anything was missing, which is the only property that matters.
+
+    So the guard below is the point of this function, not the limit. If the
+    result ever saturates the limit, the honest answer is that the number is
+    unknown, and it raises rather than returning a figure somebody will quote.
+    """
     out = gh("pr", "list", "-R", REPO, "--state", "all", "--limit", str(limit),
              "--json", "number,title,state,labels,createdAt")
-    return json.loads(out) if out else []
+    rows = json.loads(out) if out else []
+    if len(rows) >= limit:
+        raise SystemExit(
+            "REFUSING TO REPORT: gh returned %d rows for a limit of %d, so the\n"
+            "list is capped and every rate computed from it would be a rate over\n"
+            "the window rather than the population. Raise the limit and re-run.\n"
+            "This guard exists because the previous default of 400 silently\n"
+            "dropped 216 proposals and those figures were published."
+            % (len(rows), limit))
+    return rows
 
 
 def vote_of(number):
@@ -358,7 +390,7 @@ def main():
     withvote = [p for p in rows
                 if any(l["name"].startswith("gitvote") for l in p["labels"])]
     print("== how far proposals get ==")
-    print(f"  proposals read        {len(rows)}")
+    print(f"  proposals in repo     {len(rows)}  (every one, highest #{max(r['number'] for r in rows)})")
     print(f"  reached any vote      {len(withvote)}  "
           f"({100.0 * len(withvote) / max(len(rows), 1):.1f}%)")
 
