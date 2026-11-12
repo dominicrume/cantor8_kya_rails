@@ -1,15 +1,15 @@
 {
   "package": "knowyouragenticai-receipts",
-  "measured": "2026-11-10",
+  "measured": "2026-11-12",
   "mirrors_excluded": true,
   "window_30d": {
-    "downloads": 226,
-    "from": "2026-10-11",
-    "to": "2026-11-09"
+    "downloads": 205,
+    "from": "2026-10-13",
+    "to": "2026-11-11"
   },
-  "window_7d": 21,
-  "all_time": 481,
-  "all_time_including_mirrors": 1570,
+  "window_7d": 22,
+  "all_time": 488,
+  "all_time_including_mirrors": 1602,
   "source": "https://pypistats.org/api/packages/knowyouragenticai-receipts/overall?mirrors=false",
   "note": "Mirrors excluded. The previous cache used pypistats /recent, which includes mirrors, and was cited for an excluding-mirrors claim. See tools/downloads.py."
 }

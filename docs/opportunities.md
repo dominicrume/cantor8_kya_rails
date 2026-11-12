@@ -22,7 +22,7 @@ Things that exist and cannot be taken away.
 
 | | what it is | evidence |
 |---|---|---|
-| **A published format** | `knowyouragenticai-receipts` on PyPI, **1.2.0 live since 2026-10-22** | **226 in the 30 days to 2026-11-09 and 481 all time, mirrors excluded** (1,570 with). `python3 tools/downloads.py` |
+| **A published format** | `knowyouragenticai-receipts` on PyPI, **1.2.0 live since 2026-10-22** | **488 all time, mirrors excluded** (1,602 with), measured 12 November. The rolling 30-day figure is not quoted here on purpose: it fell from 226 to 205 in two days with no edit. `python3 tools/downloads.py` |
 | **A dissertation tool** | `ai-code-quality-auditor` on PyPI, now 0.5.1, first published 31 May | 388/month raw; 19% carry an OS. Still the better used of the two, on the same measure |
 | **A reusable Daml package** | `canton-refusal-record` 1.0.0, one module, no dependencies beyond the standard library | 8 scripts, incl. a lending protocol and a collateral engine |
 | **A spec with three implementations** | Python, JavaScript, Go agreeing on 20 conformance vectors | a format three people implement is closer to a standard than a library |

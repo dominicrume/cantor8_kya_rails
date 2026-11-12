@@ -1,8 +1,19 @@
+RETIRED 2026-11-12. Do not send.
+Two reasons. The vote request has since gone onto the #860 thread, so this
+would be a second ask to the same person. And its opening claimed she asked
+me for an overlap assessment on 21 October. She did not: that comment was a
+committee note on #866 and it predates our first comment on #866 by a day.
+We picked it up off a thread and then wrote it down as though it were
+addressed to us. The sentence is corrected below rather than deleted, so the
+error stays readable.
+
 Post-To: https://github.com/canton-foundation/canton-dev-fund/pull/860  (Comment box at the bottom)
 
 Amanda, a mechanical question rather than another pitch.
 
-You asked me on 21 October for an overlap assessment before a vote. I wrote
+On 21 October you wrote on #866 that overlap with existing CIPs should be
+assessed before proceeding to a vote. That was not addressed to me, and I
+wrote
 one covering all three RFP 27 proposals and posted it on #866 on 22 and 31
 October, declaring that I wrote one of the three.
 

@@ -26,6 +26,7 @@ agent.py, and this file checks that it does.
 
 Run: python3 tests/balance_lint.py
 """
+import importlib.util
 import json
 import os
 import re
@@ -125,7 +126,35 @@ def stated_in(cmd, pattern):
     return int(m.group(1)) if m else -1
 
 
+def fences_in_daml():
+    """The number of fences the mutation harness actually deletes.
+
+    Added 12 November 2026. The README said "each of the 30 assertMsg fences"
+    and "All 30 do" in a paragraph whose entire argument is that we check our
+    counts. The true figure was 32, and README line 177 already said 32, so
+    the file contradicted itself. fence_lint passed throughout, because it
+    checks that every fence named in the harness EXISTS in its contract and
+    never that a stated total matches the list's length. A gate that cannot
+    see the thing it guards reports PASS, which is worse than no gate.
+
+    The authority is tests/mutation.py's FENCES list, the same list fence_lint
+    reads, and not a fresh count of `assertMsg` in the contracts. The first
+    version of this function did the latter and got 54: true, and a count of
+    a different thing, because not every assertion is a fence the harness
+    mutates. Two implementations of one number is how the number drifts.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "mut_count", os.path.join(ROOT, "tests", "mutation.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return len(mod.FENCES)
+
+
 CLAIMS = [
+    (r"deletes each of the (\d+) `assertMsg` fences", fences_in_daml,
+     "README fence total, first mention"),
+    (r"All (\d+) do \u2014 so no fence is decoration", fences_in_daml,
+     "README fence total, second mention"),
     (r"breaks \*\*(\d+)\*\* real things",
      lambda: rows_in("tests/mutation_suite.py", r'^    \("'),
      "mutation_suite rows"),
@@ -275,12 +304,22 @@ else:
         text = open(os.path.join(ROOT, rel)).read()
         said = set(int(n.replace(",", "")) for n in pat30.findall(text))
         if not said:
-            check(False, "%s: no 30-day download figure found; has the line "
-                         "been reworded out of the gate's sight?" % rel)
-            continue
-        check(said == {want30},
-              "%s: says %s in the last 30 days, the measurement is %d"
-              % (rel, " and ".join(str(n) for n in sorted(said)), want30))
+            # Absence is the RIGHT answer here, and this branch used to fail
+            # on it. 226 was correct on 10 November and wrong on 12 November
+            # with nobody editing a line, because a 30-day figure is a rolling
+            # window: the only way for prose to carry one and stay true is for
+            # somebody to re-run the tool every few days forever. So these
+            # files state the all-time count and the command instead, and a
+            # file that quotes no rolling figure passes. The all-time check
+            # below still pins what they do state.
+            check(True, "%s: quotes no rolling 30-day figure, which is the "
+                        "point; the all-time count is pinned instead" % rel)
+        else:
+            check(said == {want30},
+                  "%s: says %s in the last 30 days, the measurement is %d. A "
+                  "rolling window in prose goes stale on its own; consider "
+                  "removing it rather than correcting it again"
+                  % (rel, " and ".join(str(n) for n in sorted(said)), want30))
         if "all time" in text:
             alls = set(int(n.replace(",", "")) for n in
                        re.findall(r"(\d[\d,]*)\s+(?:downloads\s+)?all time", text))
@@ -339,7 +378,7 @@ VOTE_PROSE = ["STATUS.md", ".claude/skills/ecosystem-mechanics/SKILL.md"]
 
 
 def votes_opened(text):
-    """Every count of votes ever opened that a file states.
+    r"""Every count of votes ever opened that a file states.
 
     One of these patterns used to read `(\d+) of 400 proposals`, with the
     denominator written in. On 12 November 2026 the denominator turned out to

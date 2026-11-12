@@ -1,3 +1,13 @@
+BLOCKED 2026-11-12. Do not send as written.
+The body claimed the Foundation's COO asked me on 5 November to bring this to
+the forum. Nothing in this repository or in any public thread evidences that,
+and it was repeated in conversation as fact on 12 November before anybody
+checked it. The sentence is removed. If the ask was real it has a source;
+find the source and put it back with a link. If it cannot be sourced it does
+not go in a post.
+Also decide first whether topic 9475 of 10 November already covers this, in
+which case a second thread is noise.
+
 Post-To: https://forum.canton.network/c/developer-support/57  (New Topic.)
 Title: RFP 27 has three open proposals. Are they three things or one thing
 three times?
@@ -5,7 +15,7 @@ three times?
 Three proposals are open under RFP 27 and nobody outside the committee has
 assessed whether they overlap. I wrote one of them, so I am the worst
 possible person to answer that and the best placed to put the question. The
-Foundation's COO asked me on 5 November to bring it here rather than argue
+question belongs here rather than being argued
 it on a funding thread, and she is right that it is a technical question.
 
 Declared interest: #860 is mine.

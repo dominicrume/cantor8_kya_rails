@@ -1,7 +1,16 @@
 # Measured against the people who beat us
 
-*Measured 17 October 2026 from their repositories, not from memory or from what
-they said on the day. Re-measure before quoting any of it.*
+*Their figures were measured 17 October 2026 from their repositories, not from
+memory or from what they said on the day. Re-measure before quoting any of it.*
+
+*Our own figures were re-measured 12 November 2026. They had drifted and the
+file is the one meant to be re-run before every pitch, which makes it the
+worst place in the tree for a stale number. It said this repository had 193
+commits as of 26 October (it has 262 as of 12 November), that the Daml suite
+ran 165 scripts (171), and that it ran 111 Daml tests, a figure this
+repository had already purged from four other files on 17 October and left
+standing here. Nothing about their rows is re-measured and all of it is now
+nine weeks old.*
 
 Cantor8 "Build on Canton", London, 29 August 2026. This project placed 3rd as
 **Vorem**. 1st was **Team Mandate**, 2nd was **Lattice Scan**.
@@ -15,7 +24,7 @@ The assumption going in was that they built more. **They did not.**
 | 1st place, `aswin-giridhar/canton8-hackathon-2026` | **29 August** | 34 |
 | 2nd place, `workonthestreets/lattice-scan` | **29 August** | 21 |
 | `khalydmaina/sentry` (HackCanton S3, same idea) | 29 September | 36 |
-| **this repository** | **26 October** | **193** |
+| **this repository** | **12 November** | **262** |
 
 Both winning teams stopped on hackathon day. They built a twelve-hour project
 and presented it better. The gap was never depth.
@@ -31,7 +40,7 @@ and presented it better. The gap was never depth.
 | `ASK-DAVIDE.md`, questions for the organiser | **yes** | **now `ASK-THE-ORGANISERS.md`** |
 | DevNet bug report, shareable with organisers | yes | 4 toolkit PRs, 8 issues |
 | Team | four, split workstreams | one |
-| Daml tests | **2** | **111** |
+| Daml tests | **2** | **171** |
 
 ## 2nd place: what they had that we did not
 
@@ -43,7 +52,7 @@ and presented it better. The gap was never depth.
 | Script that regenerates the README's numbers | `scripts/measure.mjs` | `tools/evidence_pack.py` |
 | Chaos test | `scripts/killtest.sh`, kill -9 and resume | `tests/mutation_guard_smoke.py` |
 | Tests against the deployed instance | `test/live.test.mjs` | `tests/devnet_check.py`, never run |
-| Offline tests needing no credentials | 76 | 43 suites, 165 Daml scripts, 82 mutations |
+| Offline tests needing no credentials | 76 | 43 suites, 171 Daml scripts, 82 mutations |
 | Stated limits | "Honest boundary" section | `SHORTCUTS.md`, `STATUS.md` |
 
 ## The three real gaps

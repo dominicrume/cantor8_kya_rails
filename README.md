@@ -75,8 +75,8 @@ Two more fences on the same choice, beyond what D1 asks for:
 total cap still has room.
 
 **Every fence is proven load-bearing, not just present.** `tests/mutation.py`
-deletes each of the 30 `assertMsg` fences in turn, rebuilds, and requires a
-*named* test to go red. All 30 do — so no fence is decoration, and none is
+deletes each of the 32 `assertMsg` fences in turn, rebuilds, and requires a
+*named* test to go red. All 32 do — so no fence is decoration, and none is
 enforced only by a test that would pass without it:
 
 ```
@@ -170,7 +170,7 @@ country and deciding whether to trust the person who produced it.
 | Claim | Evidence |
 | --- | --- |
 | Attack suite green | **171 / 171** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
-| Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.1.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
+| Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.2.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
 | The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |
 | The tests are themselves tested | `tests/mutation_suite.py` breaks **82** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |

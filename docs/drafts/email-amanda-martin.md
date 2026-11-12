@@ -1,10 +1,17 @@
+RETIRED 2026-11-12. Do not send.
+Superseded in substance by the #860 comment of 4 November, and its subject
+line and opening both claimed she asked me for this. She did not. See
+ask-hythloda-860.md for the same error and the same correction.
+
 Post-To: mailto:hythloda@gmail.com  (Email. Subject below. Channel verified: email published on her own GitHub profile, github.com/hythloda, read 4 November 2026)
 
-Subject: #860, the overlap assessment you asked for, and one question
+Subject: #860, an overlap assessment, and one question
 
 Amanda,
 
-On 21 October you asked for an assessment of how the RFP 27 proposals overlap
+On 21 October you wrote on #866 that overlap between the RFP 27 proposals
+should be assessed before a vote. Taking that as the standard rather than as a
+request to me, here is how they overlap
 with existing CIPs and initiatives before proceeding to a vote. I wrote one
 covering all three. I am the author of one of them and it says so in its first
 line.
