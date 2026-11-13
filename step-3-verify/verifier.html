@@ -450,6 +450,35 @@ async function checkDisclosure(doc){
           ', but this document promises to show every refusal'};
     }
   }
+  // SPEC 6d. `topology`, optional. It pins an independence assertion to one
+  // named configuration at one named time. Absent means a smaller claim was
+  // made, not a worse document, so absent checks nothing and implies nothing.
+  //
+  // The shape is checked and NOTHING MORE. This verifier does not hold the
+  // topology export, so it cannot confirm the digest, and it could not
+  // confirm independence even if it did: Canton separates cryptographic
+  // identities from real-world ownership, so distinct node ids are not
+  // distinct operators. Georgi Radev established that on forum topic 9323 on
+  // 2026-11-04 and tonozzibeverley953 proposed this field on 2026-11-13.
+  if(doc.topology !== undefined){
+    const t = doc.topology;
+    if(t===null || typeof t!=='object' || Array.isArray(t))
+      return {ok:false, why:'topology is present but is not an object'};
+    for(const k of ['digest','exportedAt','validFrom','validTo']){
+      if(typeof t[k] !== 'string' || !t[k])
+        return {ok:false, why:'topology is missing '+k+
+          ', and all four fields are required when it is present'};
+    }
+    if(!/^sha256:[0-9a-f]{64}$/.test(t.digest))
+      return {ok:false, why:'topology.digest must be sha256: and 64 lowercase hex'};
+    if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(t.exportedAt))
+      return {ok:false, why:'topology.exportedAt must be RFC 3339 with a Z offset'};
+    if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(t.validFrom))
+      return {ok:false, why:'topology.validFrom must be RFC 3339 with a Z offset'};
+    if(t.validTo !== 'OPEN' &&
+       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(t.validTo))
+      return {ok:false, why:'topology.validTo must be RFC 3339 with a Z offset, or OPEN'};
+  }
   // SPEC 6c. The outcomes digest. `disclosing` above catches a withheld
   // entry that ADMITS it was refused. It cannot catch one relabelled
   // accepted, because a withheld body contradicts nothing. This can.
