@@ -28,7 +28,10 @@ writes the log is the party the question is about.
 Know Your AgenticAI writes a receipt for every attempt, refusals included, and
 seals each one onto the last. Anyone can check the chain by dropping the file
 on a web page. No wallet, no install, no account, no node. The head is
-anchored on Canton, so a chain rewritten from scratch has nowhere to hide.
+anchored on Canton, so a chain rewritten from scratch would have nowhere to
+hide. **The anchor has never been created on any ledger.** `KyaAnchor.daml`
+passes `daml test` and no `ChainAnchor` contract has ever existed outside it.
+Until one does, this is a design and not a defence.
 
 And the refusal itself is written to the ledger, which is the part that was
 missing. The normal way to enforce a spending rule is to abort the
@@ -91,7 +94,7 @@ every fence is covered: deleting any one of them turns a test red.
 One command runs the ledger side end to end:
 
 ```bash
-python3 tests/daml_tests.py                # 111 of 111 attack scripts
+python3 tests/daml_tests.py                # 171 of 171 attack scripts
 ```
 
 Nothing above is enforced in Python. The Python mirror in `step-2-agent/agent.py`
@@ -176,7 +179,7 @@ country and deciding whether to trust the person who produced it.
 | The tests are themselves tested | `tests/mutation_suite.py` breaks **82** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **32** in the Daml: delete any one and a *named* test goes red. `tests/mutation_py.py` does the same for the refusals at the edges, and now covers **1 of 1** — the journal's, because the webhook adapters it also covered moved to the kya-desk repository with the desk. The count is small and stated rather than rounded: it was 30 of 30 when there were thirty edges, and a repository that quotes yesterday's number is the thing this column exists to prevent |
 | One bad line cannot end the model's session | `tests/mcp_smoke.py` feeds 15 malformed JSON-RPC lines **between** the good ones. Each gets its proper code (-32700 / -32600 / -32601), and the request after them all is still answered |
-| The chain is bound to its origin | the head is published on Canton — a **fully forged** chain verifies green in all three implementations, and the ledger answers `NOT ANCHORED` |
+| The chain is bound to its origin | **NOT YET TRUE.** The design publishes the head on Canton, and a fully forged chain verifies green in all four implementations, which is exactly why an anchor matters. No anchor has ever been written to a ledger, so today a forged chain is caught by nothing. `KyaAnchor.daml` is exercised in `daml test` only |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, positive amount — five `assertMsg` fences in the `Charge` choice body. Revoke is not one of them and should not be: it is a **consuming** choice, so it archives the mandate and there is no contract left to charge. That is a stronger guarantee than an assertion, and the distinction is worth stating rather than rounding off |
 | Deployed on Cantor8 DevNet | Built: `kya-rails-mandate` **1.1.1** on SDK 3.4.11 (103/103 scripts in that package; 123 across both). Vetted on DevNet: **1.1.0**, as an upgrade of 1.0.0 — 1.1.1 is built and tested but not yet uploaded, and this row will say so until it is. The mandate templates carry package `df5a02e88a68…` from 1.0.0; `KyaAnchor` arrived in 1.1.0 as `fd3f43a273be…`, and both are vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
