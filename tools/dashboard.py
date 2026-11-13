@@ -115,6 +115,8 @@ SUITES = [
      "drop a file and it is checked -- and a non-chain is never called tampered"),
     ("node tests/origin_smoke.js", "The page",
      "the page says where a chain came from, not only that it holds"),
+    ("node tests/topology_smoke.js", "The page",
+     "a topology claim is shape-checked, and absence is a smaller claim"),
     ("python3 tests/contrast_lint.py", "The page",
      "no text anywhere is invisible against its own background"),
     ("python3 tests/a11y_lint.py", "The page",

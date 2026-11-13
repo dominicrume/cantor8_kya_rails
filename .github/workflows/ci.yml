@@ -75,6 +75,9 @@ jobs:
       - name: the verifier answers the origin question on the page
         run: node tests/origin_smoke.js
 
+      - name: a topology claim is shape-checked and claims nothing more
+        run: node tests/topology_smoke.js
+
       - name: the hosted page is regenerated, never hand-edited
         run: |
           python3 step-3-verify/build-standalone.py --pages

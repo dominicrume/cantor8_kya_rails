@@ -349,6 +349,53 @@ digest something it is not. Section 8 says the same thing and means it.
 
 So: anchor `head` and `outcomes` together, or `outcomes` is decoration.
 
+## 6d. `topology`: pinning an independence claim to a snapshot
+
+A disclosure may assert that authority was split between parties who are
+independently operated. The ledger cannot support that claim. It records
+which **parties** are named, and `PartyToParticipant` records which
+participants were **eligible** to confirm, but Canton separates cryptographic
+identities from real-world ownership: distinct node identifiers are not
+distinct operators, and which nodes actually supplied approvals for a
+particular transaction is not recoverable at all.
+
+Georgi Radev of LimeChain established that on forum.canton.network topic
+9323 on 2026-11-04, and the claim was split in two in public on 2026-11-09 as
+a result. What a reader can check is who was named. Who ran their node stays
+an off-ledger assertion.
+
+tonozzibeverley953 proposed the remedy on the same topic on 2026-11-13:
+
+> "if independence stays an off-ledger assertion, tie it to a specific
+> topology snapshot by recording that export's hash, time and validity
+> interval in the audit package. It still won't prove who controlled the
+> nodes, but it stops the claim from floating free of the configuration it
+> describes and makes later threshold or hosting changes visible."
+
+So a disclosure **MAY** carry a `topology` object. It has exactly four
+fields, all strings, all required when the object is present:
+
+| field | meaning |
+|---|---|
+| `digest` | `sha256:` followed by 64 lowercase hex characters, over the topology export exactly as it was read |
+| `exportedAt` | when the export was taken, RFC 3339 with a `Z` offset |
+| `validFrom` | start of the validity interval the export itself states |
+| `validTo` | end of that interval, or the string `OPEN` if it had none |
+
+A verifier **MUST** check the shape and **MUST NOT** claim more than the
+shape. It does not hold the export, so it cannot confirm the digest, and it
+could not confirm independence even if it did.
+
+What this is worth, stated exactly, because the proposer stated it first and
+more modestly than a seller would: it does not prove who controlled the
+nodes. It pins the assertion to one named configuration at one named time, so
+a later hosting or threshold change becomes visible to anyone who compares
+two disclosures. It converts a claim nobody can check into one somebody can
+falsify, which is a smaller thing and the only honest one available.
+
+A disclosure that carries no `topology` is not worse formed. It is making a
+smaller claim, and a reader should read it as one.
+
 ## 7. Verification
 
 ```
