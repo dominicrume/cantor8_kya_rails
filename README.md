@@ -84,7 +84,7 @@ enforced only by a test that would pass without it:
 
 ```
 $ python3 tests/mutation.py
-baseline: 171 scripts green
+baseline: 173 scripts green
   ok    charge would exceed the cap          -> testOverCapRefusedByTheCapAssertion goes red
   ok    payee is not on the allow-list       -> testPayoutRedirectionRefused goes red
   ...  32 of 32
@@ -94,7 +94,7 @@ every fence is covered: deleting any one of them turns a test red.
 One command runs the ledger side end to end:
 
 ```bash
-python3 tests/daml_tests.py                # 171 of 171 attack scripts
+python3 tests/daml_tests.py                # 173 of 173 attack scripts
 ```
 
 Nothing above is enforced in Python. The Python mirror in `step-2-agent/agent.py`
@@ -172,7 +172,7 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **171 / 171** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
+| Attack suite green | **173 / 173** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.2.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
 | The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |

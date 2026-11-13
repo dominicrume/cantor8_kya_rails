@@ -1,0 +1,146 @@
+-- | Does a choice observer witness a non-consuming exercise, and does a plain
+-- contract observer not?
+--
+-- PREDGE asked and answered this on forum.canton.network topic 9114, post 16,
+-- on 2026-11-13, replying to tonozzibeverley953's pruning question of
+-- 2026-11-11. His claim, quoted:
+--
+--   "Pruning is per participant: each node prunes only what it stores for the
+--   parties it hosts. So the question becomes whether the auditor's own
+--   participant ever receives the record. For the non-consuming path that
+--   depends on who is an informee. A non-consuming exercise goes to
+--   signatories, actors and choice observers, not to plain contract
+--   observers. If the auditor is a choice observer on the refusal choice,
+--   every refusal event lands on the auditor's participant, and the audited
+--   party's pruning can't touch that copy."
+--
+-- WHY THIS MATTERS TO THIS PACKAGE. `Journal.daml` solves the same problem by
+-- putting the auditor on the SIGNATORY line, which works because signatories
+-- are informees of every exercise. That costs the auditor's authority at
+-- creation time. If PREDGE is right, a choice observer gets the same delivery
+-- for less: no authority needed, and the audited party still cannot prune the
+-- auditor's copy, because pruning is per participant.
+--
+-- WHAT THIS SCRIPT CAN AND CANNOT ESTABLISH, stated before the result so the
+-- result cannot be oversold. Daml Script has no primitive for reading an
+-- event stream or asking who was an informee of an exercise node. It can only
+-- ask what a party can see of the contract store. So this test does not
+-- observe informee sets directly. It observes a CONSEQUENCE of them: the
+-- non-consuming choice creates a contract on which neither the auditor nor
+-- the bystander is a stakeholder, and asks which of them can then read it.
+-- A witness to a create has it divulged; a party who never witnessed the
+-- exercise does not.
+--
+-- So a pass here is evidence for PREDGE's claim and is not a proof of it.
+-- The proof is a Ledger API transaction stream read per party, which needs
+-- the sandbox and not Daml Script. That is named here rather than skipped.
+module ChoiceObserverTest where
+
+import Daml.Script
+
+-- | Created by the non-consuming choice below. Neither the auditor nor the
+-- bystander is a stakeholder, so anything either of them can see of it came
+-- from witnessing the exercise and not from being on the contract.
+template SignalTrace
+  with
+    owner : Party
+    reason : Text
+  where
+    signatory owner
+
+-- | `bystander` is a plain contract observer. `auditor` is named as an
+-- observer ON THE CHOICE and nowhere else. That is the whole experiment.
+template SignalSource
+  with
+    owner : Party
+    auditor : Party
+    bystander : Party
+  where
+    signatory owner
+    observer bystander
+
+    nonconsuming choice Signal : ContractId SignalTrace
+      with
+        reason : Text
+      observer auditor
+      controller owner
+      do create SignalTrace with owner; reason
+
+setup : Script (Party, Party, Party)
+setup = do
+  owner <- allocatePartyByHint (PartyIdHint "Owner")
+  auditor <- allocatePartyByHint (PartyIdHint "Auditor")
+  bystander <- allocatePartyByHint (PartyIdHint "Bystander")
+  pure (owner, auditor, bystander)
+
+-- | What Daml Script can establish here, which is a limitation and not a
+-- result about Canton.
+--
+-- Run 13 November 2026 against SDK 3.4.11: NEITHER the choice observer NOR
+-- the plain contract observer could read the contract the non-consuming
+-- exercise created. So `queryContractId` does not expose a divulged contract
+-- on this ledger, the proxy carries no signal either way, and this script
+-- cannot answer PREDGE's question.
+--
+-- That is asserted rather than lamented, so it stays true: if a future SDK
+-- starts exposing divulgence, this goes red and tells somebody the proxy has
+-- become usable.
+--
+-- The question itself is answered by
+-- `tools/who_witnesses_a_nonconsuming_exercise.py`, which reads the Ledger
+-- API update stream once as each party. On this ledger the choice observer
+-- receives the exercise and the plain contract observer does not, with a
+-- signatory case measured alongside as a positive control.
+testDamlScriptCannotSeeDivulgedContracts : Script ()
+testDamlScriptCannotSeeDivulgedContracts = do
+  (owner, auditor, bystander) <- setup
+
+  src <- submit owner do
+    createCmd SignalSource with owner; auditor; bystander
+
+  -- The plain observer can see the source contract, which establishes that
+  -- it really is on it, so anything it cannot see later is about the
+  -- exercise and not about the party being a stranger.
+  seenBySrc <- queryContractId bystander src
+  case seenBySrc of
+    None -> abort "the bystander cannot see the source contract it observes"
+    Some _ -> pure ()
+
+  trace <- submit owner do
+    exerciseCmd src Signal with reason = "cap exceeded"
+
+  byAuditor <- queryContractId auditor trace
+  byBystander <- queryContractId bystander trace
+
+  case (byAuditor, byBystander) of
+    (None, None) -> pure ()
+    _ -> abort "queryContractId now returns a divulged contract. The Daml \
+               \Script proxy has become usable and this test should be \
+               \rewritten to use it."
+
+-- The signatory case is NOT scripted here, deliberately. It fails for the
+-- same reason as the test above: `queryContractId` hides a divulged contract
+-- whatever the party's informee status, so a Daml Script version would go red
+-- and a reader would conclude that a signatory does not witness an exercise
+-- on its own contract, which is false. The Ledger API says it plainly:
+--
+--     control: does a SIGNATORY witness a non-consuming exercise? yes
+--
+-- from `tools/who_witnesses_a_nonconsuming_exercise.py`, which uses the
+-- template below through the JSON Ledger API. That is why `CoSignedSource`
+-- exists in this module with no script of its own.
+
+template CoSignedSource
+  with
+    owner : Party
+    auditor : Party
+    bystander : Party
+  where
+    signatory owner, auditor
+    observer bystander
+
+    nonconsuming choice CoSignedSignal : ContractId SignalTrace
+      with
+        reason : Text
+      controller owner
+      do create SignalTrace with owner; reason
