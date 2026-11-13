@@ -53,6 +53,9 @@ jobs:
       - name: no function over the complexity ceiling without a written reason
         run: python3 tests/complexity_lint.py
 
+      - name: a tool's build chain can be followed from a clean clone
+        run: python3 tests/build_chain_lint.py
+
       - name: bandit - production code must be clean
         run: |
           pip install --quiet bandit

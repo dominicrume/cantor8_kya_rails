@@ -86,3 +86,51 @@ canton-foundation/canton-dev-fund.
 
 Why it matters here: being RFP-aligned is where four fifths of the money goes.
 A proposal filed as an individual initiative is competing for the other fifth.
+
+## Georgi Radev on what a guard signatory does and does not gate
+
+Verified 2026-11-13. `radevG`, 2026-10-27, post 2 of forum topic 9323.
+<https://forum.canton.network/t/9323/2>
+
+    curl -s https://forum.canton.network/t/9323.json   # post_number 2
+
+> A guard signatory alone does not gate owner-controlled choices.
+
+Why it matters here: he was right, the test suite had missed it because the
+test wallet carried no owner-controlled choices, and it became
+`testAnOwnerControlledChoiceStillBypassesTheJournal` plus a requirement on
+implementers in the draft specification, credited to him.
+
+## OpenZeppelin's own invitation to test their Canton packages
+
+Verified 2026-11-13. `Pepe_Blasco`, 2026-08-12, post 1 of forum topic 9059.
+<https://forum.canton.network/t/9059>
+
+    curl -s https://forum.canton.network/t/9059.json   # post_number 1
+
+> Clone the repos, read the design reports, and open an issue with how it works for what you’re building, or where it should change.
+
+Why it matters here: the mutation findings against two of their Canton
+packages answer this invitation, and they were reported as public issues on
+each repository. The apostrophe in the quote is the curly one, as published.
+
+## The four free-text questions on OpenZeppelin's application form
+
+Read 2026-11-13 from the posting for Senior Blockchain Security Developer
+(Canton), as pasted in full by the applicant, who had the live form open. The
+posting page itself shows only an Apply link, and a fetch of it on the same day
+did not render the form fields, so this is the applicant's copy of the form and
+not a fetch. The apostrophe in the first question is the curly one, as
+published.
+<https://www.openzeppelin.com/careers/opening?gh_jid=7742510003>
+
+> Our mission is to accelerate the world’s transition to an open financial system. How do you identify with that mission?
+
+> What has been your experience working with Canton to this point?
+
+> Describe an instance where you built tools that other people have leveraged for their benefit.
+
+> How do you leverage AI in your daily workflow?
+
+Why it matters here: an answer written to a paraphrase of a question is an
+answer to a different question. These are the words the form actually asks.

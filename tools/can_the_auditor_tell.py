@@ -38,8 +38,9 @@ WHAT THIS MEASURES AND WHAT IT CANNOT. One participant hosts every party here,
 so this measures what the ledger and the contract store say. It does NOT
 measure pruning, which is the open question tonozzibeverley953 raised: a
 second participant is needed to show whether the auditor's copy survives the
-audited party's retention policy. That row is reported as NOT MEASURED rather
-than guessed, and LocalNet is what would close it.
+audited party's retention policy. That row is reported as NOT SETTLED rather
+than guessed. tools/does_the_auditors_copy_survive.py goes further with two
+participants started from the canton.jar in the Daml SDK, no LocalNet needed.
 
 PREREQUISITE: none. It builds the three packages it needs, starts a real
 Canton sandbox, runs, and stops it. If a ledger is already answering on port
@@ -385,14 +386,22 @@ def play():
     say("=" * 66)
 
     say("")
-    say("NOT MEASURED, and it is the open question on the thread.")
-    say("Pruning. One participant hosts every party here, so this says")
+    say("NOT SETTLED, and it is the open question on the thread.")
+    say("Pruning. One participant hosts every party here, so this tool says")
     say("nothing about whether the auditor's copy survives the audited")
     say("party's retention policy. tonozzibeverley953 asked that on")
-    say("2026-11-11 and it needs a second participant, which means LocalNet.")
-    say("Until somebody runs it there, the honest answer is that the cheap")
-    say("path's REASONS are prunable by the party being audited and the")
-    say("COUNT is not, because an active contract is never pruned.")
+    say("2026-11-11.")
+    say("")
+    say("tools/does_the_auditors_copy_survive.py takes it further, with two")
+    say("participants started from the canton.jar inside the Daml SDK. No")
+    say("Docker and no LocalNet were needed, which this text used to say they")
+    say("were. It shows pruning is per participant. It does not settle the")
+    say("question, because Canton refused to prune as far as the event inside")
+    say("a 168h window, so the event itself was never pruned.")
+    say("")
+    say("Canton's pruning reference says pruning never removes an active")
+    say("contract, so the COUNT should survive a prune. Whether the REASONS do")
+    say("is the part nobody has shown.")
     return 0
 
 
