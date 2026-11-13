@@ -44,7 +44,8 @@ import json
 import os
 import shutil
 import signal
-import subprocess  # nosec B404 - driving daml is this tool's whole job
+# B404 is suppressed below: driving the daml CLI is this tool's whole job.
+import subprocess  # nosec B404
 import sys
 import tempfile
 import time
@@ -76,7 +77,8 @@ def build_dar():
     staleness.
     """
     say("building the test DAR")
-    r = subprocess.run(  # nosec B603 B607 - literal argv, shell=False
+    # B603 and B607: literal argv, shell=False, every element a string.
+    r = subprocess.run(  # nosec B603 B607
         ["daml", "build", QUIET],
         cwd=os.path.join(ROOT, "step-1-mandate", "test"),
         capture_output=True, text=True)
@@ -94,7 +96,8 @@ def start_sandbox(portfile):
     which looks like a test failure and is not one.
     """
     say("starting a real Canton sandbox (participant, sequencer, mediator)")
-    proc = subprocess.Popen(  # nosec B603 B607 - literal argv, shell=False
+    # B603 and B607: literal argv, shell=False, every element a string.
+    proc = subprocess.Popen(  # nosec B603 B607
         ["daml", "sandbox", QUIET, "--dar", DAR, "--canton-port-file", portfile],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         start_new_session=True)
@@ -114,7 +117,8 @@ def start_sandbox(portfile):
 
 def run_script(name, port):
     """Exercise one Daml script against the running ledger. Returns the code."""
-    r = subprocess.run(  # nosec B603 B607 - literal argv, shell=False
+    # B603 and B607: literal argv, shell=False, every element a string.
+    r = subprocess.run(  # nosec B603 B607
         ["daml", "script", QUIET, "--dar", DAR, "--script-name", name,
          "--ledger-host", "localhost", "--ledger-port", str(port)],
         capture_output=True, text=True)
