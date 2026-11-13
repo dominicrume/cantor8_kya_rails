@@ -40,79 +40,19 @@ about ledgers, applied to this tool.
 
 Stdlib only, per THE-RULES.md. The organisers' toolkit is never touched.
 """
-import json
 import os
-import shutil
-import signal
 # B404 is suppressed below: driving the daml CLI is this tool's whole job.
 import subprocess  # nosec B404
 import sys
-import tempfile
-import time
+
+from canton_sandbox import (MANDATE_CHAIN, QUIET, Sandbox, build_chain,
+                            have_daml, say)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DAR = os.path.join(ROOT, "step-1-mandate", "test", ".daml", "dist",
                    "kya-mandate-test-0.0.1.dar")
 REAL = "KyaTest:testRefusalIsOnLedgerAndNothingMoved"
 CONTROL = "KyaTest:thisScriptDoesNotExist"
-QUIET = "--no-legacy-assistant-warning"
-
-
-def say(msg):
-    print(msg, flush=True)
-
-
-def need_daml():
-    if shutil.which("daml") is None:
-        say("daml is not on PATH. Install the SDK, then re-run.")
-        return False
-    return True
-
-
-def build_dar():
-    """Rebuild the test DAR, because a stale one is the first thing that bites.
-
-    The DAR on disk was five weeks old the first time this was attempted, and
-    Canton answered with 'unknown definition' rather than anything about
-    staleness.
-    """
-    say("building the test DAR")
-    # B603 and B607: literal argv, shell=False, every element a string.
-    r = subprocess.run(  # nosec B603 B607
-        ["daml", "build", QUIET],
-        cwd=os.path.join(ROOT, "step-1-mandate", "test"),
-        capture_output=True, text=True)
-    if r.returncode != 0:
-        say("  build failed:\n    " + (r.stderr or r.stdout).strip()[-400:])
-        return False
-    return os.path.exists(DAR)
-
-
-def start_sandbox(portfile):
-    """Start Canton and wait for it to write its ports.
-
-    Canton must start CLEAN for each run. Party allocation uses fixed hints,
-    so a second run against a live ledger dies with 'Party already exists',
-    which looks like a test failure and is not one.
-    """
-    say("starting a real Canton sandbox (participant, sequencer, mediator)")
-    # B603 and B607: literal argv, shell=False, every element a string.
-    proc = subprocess.Popen(  # nosec B603 B607
-        ["daml", "sandbox", QUIET, "--dar", DAR, "--canton-port-file", portfile],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        start_new_session=True)
-    for _ in range(180):
-        if proc.poll() is not None:
-            say("  the sandbox exited before it was ready")
-            return None, None
-        if os.path.exists(portfile) and os.path.getsize(portfile) > 0:
-            with open(portfile) as fh:
-                ports = json.load(fh)["sandbox"]
-            say("  ledger API on port %d" % ports["ledgerApi"])
-            return proc, ports["ledgerApi"]
-        time.sleep(1)
-    say("  the sandbox did not become ready within 180 seconds")
-    return proc, None
 
 
 def run_script(name, port):
@@ -125,32 +65,17 @@ def run_script(name, port):
     return r.returncode
 
 
-def stop(proc):
-    if proc is None or proc.poll() is not None:
-        return
-    try:
-        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-    except (ProcessLookupError, PermissionError):
-        proc.terminate()
-    try:
-        proc.wait(timeout=30)
-    except subprocess.TimeoutExpired:
-        try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        except (ProcessLookupError, PermissionError):
-            proc.kill()
-
-
 def main():
-    if not need_daml() or not build_dar():
+    if not have_daml() or not build_chain(MANDATE_CHAIN):
         return 1
-    tmp = tempfile.mkdtemp(prefix="kya-sandbox-")
-    portfile = os.path.join(tmp, "ports.json")
-    proc = None
+    if not os.path.exists(DAR):
+        say("the build reported success but %s is missing" % DAR)
+        return 1
+    box = Sandbox(DAR)
     try:
-        proc, port = start_sandbox(portfile)
-        if port is None:
+        if not box.start():
             return 1
+        port = box.ports["ledgerApi"]
 
         say("\ncontrol: a script that does not exist MUST fail")
         if run_script(CONTROL, port) == 0:
@@ -174,8 +99,7 @@ def main():
         say("  Canton network\".")
         return 0
     finally:
-        stop(proc)
-        shutil.rmtree(tmp, ignore_errors=True)
+        box.stop()
 
 
 if __name__ == "__main__":
