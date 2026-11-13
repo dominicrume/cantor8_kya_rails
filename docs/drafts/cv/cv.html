@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>O'Rume Dominic Uririe CV</title>
+<style>
+  /* ATS rules followed deliberately: one column, real text, no tables for
+     layout, no text in headers or footers, standard section headings, no
+     images or icon fonts. Everything below is selectable text. */
+  @page { size: A4; margin: 12mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 9.7pt; line-height: 1.36; color: #111; margin: 0;
+  }
+  h1 { font-size: 19pt; margin: 0 0 1mm; letter-spacing: -0.01em; }
+  .role { font-size: 10.6pt; color: #333; margin: 0 0 1.5mm; }
+  .contact { font-size: 9.2pt; color: #333; margin: 0 0 4mm; }
+  h2 {
+    font-size: 9.2pt; text-transform: uppercase; letter-spacing: 0.09em;
+    border-bottom: 0.7pt solid #111; padding-bottom: 1mm;
+    margin: 4mm 0 2mm;
+  }
+  h3 { font-size: 10.4pt; margin: 3mm 0 0.6mm; }
+  .meta { font-size: 9.2pt; color: #444; margin: 0 0 1.2mm; }
+  p { margin: 0 0 2mm; }
+  ul { margin: 0 0 2mm; padding-left: 4.6mm; }
+  li { margin: 0 0 1.1mm; }
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 9pt;
+    background: #f2f2f2; padding: 0.3mm 1mm;
+  }
+  .lead { margin-bottom: 3mm; }
+  .proof { border-left: 2pt solid #111; padding-left: 3mm; margin: 0 0 3mm; }
+  a { color: #111; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<h1>O'Rume Dominic Uririe</h1>
+<p class="role">Daml and Canton engineer. Adversarial evidence infrastructure.</p>
+<p class="contact">
+  Birmingham, United Kingdom &nbsp;|&nbsp;
+  github.com/dominicrume &nbsp;|&nbsp;
+  x.com/dominicrume &nbsp;|&nbsp;
+  REPLACE WITH YOUR EMAIL &nbsp;|&nbsp; REPLACE WITH YOUR PHONE
+</p>
+
+<h2>Summary</h2>
+<p class="lead">
+  I build Daml on Canton and treat every claim about it as something a stranger
+  must be able to reproduce with one command. My current work puts the auditor
+  on the signatory line, so a node holding one compromised key cannot create the
+  contract at all, and proves that the ledger enforces its spending rules rather
+  than the application. Every stated number in my repository is re-derived by a
+  lint from the file that produces it, and every harness runs a deliberately
+  broken control first, because a harness that can only report success cannot
+  tell you whether it ran.
+</p>
+
+<h2>Verify this in two minutes</h2>
+<div class="proof">
+  <p><code>git clone https://github.com/dominicrume/cantor8_kya_rails</code><br>
+  <code>cd cantor8_kya_rails &amp;&amp; python3 tools/prove_refusal_on_sandbox.py</code></p>
+  <p>
+    Starts a real Canton participant, sequencer and mediator locally. Runs a
+    script that does not exist and <strong>requires it to fail</strong>. Only
+    then runs the real one: Canton refuses a 90.0 charge against a mandate with
+    40.0 already spent, writes a refusal record naming the rule, and leaves the
+    spent total untouched. If the control passes, the tool refuses to report
+    anything. It also prints what it does not prove: single-participant local
+    Canton, no Amulet, so nothing about a shared network or Canton Coin.
+  </p>
+</div>
+
+<h2>Technical evidence</h2>
+<ul>
+  <li>
+    <strong>Daml and multi-party authorization.</strong> 166 Daml files and 171
+    passing Daml Script tests across two packages. Guardian on the signatory
+    line rather than the observer line: a create needs every signatory's
+    authority, so a node holding one compromised key cannot bring the contract
+    into existence. Propose and accept workflow, interfaces, and a package
+    vetted on Canton DevNet under Canton's smart contract upgrade check.
+  </li>
+  <li>
+    <strong>Stating the limits of my own design.</strong> A named test proves
+    the guardian pattern does <em>not</em> gate an owner-controlled consuming
+    choice, because such a choice archives on the controller's authority alone.
+    That is a specification hole and it is written into the file by its author
+    rather than left for a reviewer to discover.
+  </li>
+  <li>
+    <strong>Adversarial testing.</strong> 82 mutation rows: each deletes a real
+    fence from the source, rebuilds, and requires a <em>named</em> test to go
+    red, so no assertion is decoration. 32 Daml fences, each individually
+    mutation tested. Two audits found 15 assertions that could never fail; this
+    harness exists to stop the sixteenth.
+  </li>
+  <li>
+    <strong>Privacy boundaries.</strong> A privacy matrix test asserts what
+    each party can and cannot see, checked against the Daml rather than
+    documented beside it.
+  </li>
+  <li>
+    <strong>Cross-implementation conformance.</strong> One receipt format,
+    three independent implementations in Python, JavaScript and Go, graded
+    against 20 shared vectors through a pipe.
+  </li>
+  <li>
+    <strong>AI-native engineering, held to a reviewable standard.</strong> 267
+    commits produced with Claude Code as a daily driver, governed by gates I
+    wrote: a tool that refuses to open anything in another repository unless a
+    test goes red, a tool that reads a destination back after posting instead
+    of trusting a keystroke, and a lint that re-derives every stated count from
+    its source file. That lint caught six wrong numbers in my own work in one
+    week, two of which the previous version of the gate was structurally unable
+    to see.
+  </li>
+</ul>
+
+<h2>Open source contributions</h2>
+<ul>
+  <li>
+    <strong>digital-asset/dpm #330</strong>, merged in six days after review by
+    a maintainer. Makes the package manager fail loudly when registry
+    authentication configuration cannot be read instead of proceeding
+    unauthenticated.
+  </li>
+  <li>
+    <strong>digital-asset/dpm #339</strong>, open. Graceful SIGTERM forwarding
+    to component processes with a bounded escalation, written to a maintainer's
+    written specification on issue #190, with two tests that fail without it.
+  </li>
+  <li>
+    <strong>Canton Developer Hub</strong>, three pull requests reviewed and
+    merged by the Canton Foundation's Developer Relations maintainer, including
+    a fix to the catalogue's own link rendering.
+  </li>
+  <li>
+    <strong>knowyouragenticai-receipts</strong> on PyPI, 1.2.0, MIT, zero
+    dependencies, conformance vectors shipped inside the package so
+    <code>selftest</code> runs with no network.
+  </li>
+  <li>
+    <strong>Published research.</strong> A measured study of how Canton Dev
+    Fund proposals reach a vote, corrected twice in public with the mechanism
+    of each error named, including one where my own tool mistook a query row
+    cap for a population count.
+  </li>
+</ul>
+
+<h2>Experience</h2>
+
+<h3>Founder, Vorem</h3>
+<p class="meta">Birmingham, United Kingdom. REPLACE WITH YOUR START DATE to present.</p>
+<ul>
+  <li>
+    Creator of Know Your AgenticAI, an evidence layer for agent-initiated
+    payments: spending rules enforced in Daml on Canton, a hash-chained receipt
+    format with a written specification, and a ledger record of refused actions.
+  </li>
+  <li>
+    Third place, Cantor8 "Build on Canton" hackathon, London, August 2026.
+  </li>
+</ul>
+
+<h3>REPLACE WITH YOUR PREVIOUS ROLE TITLE</h3>
+<p class="meta">REPLACE WITH EMPLOYER, LOCATION AND DATES.</p>
+<ul>
+  <li>REPLACE WITH WHAT YOU SHIPPED AND WHAT IT CHANGED, WITH A NUMBER IN IT.</li>
+  <li>REPLACE WITH A SECOND LINE, SAME RULE.</li>
+</ul>
+
+<h3>REPLACE WITH ANY EARLIER ROLE TITLE</h3>
+<p class="meta">REPLACE WITH EMPLOYER, LOCATION AND DATES.</p>
+<ul>
+  <li>REPLACE WITH WHAT YOU SHIPPED AND WHAT IT CHANGED.</li>
+</ul>
+
+<h2>Education</h2>
+<h3>MSc, Artificial Intelligence and Business Strategy</h3>
+<p class="meta">Aston University, Birmingham, United Kingdom. REPLACE WITH YOUR DATES.</p>
+
+<h2>Skills</h2>
+<p>
+  Daml. Canton. Multi-party authorization. Signatories, observers and
+  controllers. Sub-transaction views and privacy boundaries. Propose and accept
+  patterns. Smart contract upgrades. Daml Script. Canton sandbox and LocalNet.
+  DPM. Python. JavaScript. Go. Mutation testing. Threat modelling. Adversarial
+  review. Claude Code, agents, harnesses and skills. Git and GitHub. CI.
+</p>
+
+</body>
+</html>

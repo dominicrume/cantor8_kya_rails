@@ -87,3 +87,47 @@ reason given for pushing them by hand, not the push. | found while inventorying
 what is actually published, 10 November 2026 | nothing to repay; the rule is
 that a correction lands wherever the claim was made, and for a pushed commit
 that place is this file.
+
+## Two defects found in our own Daml on 13 November 2026, by an audit of this tree
+
+Both are in `step-1-mandate/daml/KyaInbound.daml`. Neither is fixed here,
+because a fence is a spending rule and changing one is the owner's decision,
+not an assistant's. Both are written down so they cannot be forgotten.
+
+**1. A fence that cannot fail, line 71.**
+
+    assertMsg "naira does not equal the crypto amount times the rate"
+      (abs (nairaAmount - (nairaAmount / rate) * rate) < 0.01)
+
+`(x / r) * r` is `x`. This tests Decimal rounding of a division and nothing
+else. It passes for every input. Worse, the quote carries no crypto-amount
+field at all, so the message names a quantity the contract does not hold.
+
+This is exactly the defect `tools/daml_mutate.py` exists to find, sitting in
+the repository that built the tool. It was missed because the line is **not in
+the fence manifest**: `grep -c "naira does not equal" tests/mutation.py`
+returns 0. The harness only mutates fences it has been told about, so a fence
+nobody listed is a fence nobody tested. That is a hole in the method, not just
+in this line, and the method is the thing being sold.
+
+Proposed fix, for the owner to accept or reject: add a `cryptoAmount` field to
+the quote and assert it against `nairaAmount / rate` within a stated
+tolerance, then add the line to `tests/mutation.py` so deleting it turns a
+named test red. Changing the fence changes the package, so it needs a version
+bump under Canton's upgrade check.
+
+**2. `ReleaseCrypto` does not fence the amount, lines 169 to 181.**
+
+It asserts the wallet, the network, the expiry, the naira confirmation and
+`amount > 0.0`. It never relates `amount` to `nairaAmount / rate`. So the
+operator may release any quantity of crypto against a confirmed naira credit.
+In a module whose own header says the desk is exposed from the moment it
+releases, the quantity is the one unfenced field.
+
+No test in `KyaInboundTest.daml` asserts the released amount against the
+quote, and this is **not** in `docs/threat-model.md`. It is a limit a reader
+found rather than one the author declared, which is the thing this repository
+says it will not allow.
+
+These modules stayed only for Canton's upgrade check, per CLAUDE.md. That is
+a reason to keep them, not a reason to leave a hole in them unrecorded.

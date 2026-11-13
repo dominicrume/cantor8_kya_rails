@@ -423,7 +423,7 @@ it just looks like one, which is worse than an honest grouping.
 | Band | Risk | Status |
 | --- | --- | --- |
 | 1 | Principal's key stolen (T4) | not defended; out of scope, and the biggest hole |
-| 2 | Chain not bound to origin (T5) | **defended** — the head is anchored on Canton; a forged chain verifies green and the ledger says NOT ANCHORED |
+| 2 | Chain not bound to origin (T5) | **DESIGNED, NOT EXECUTED.** Corrected 13 November 2026. This row said **defended** on the strength of `KyaAnchor.daml` passing `daml test`. No `ChainAnchor` contract has ever been created on any ledger, so nothing is anchored and a forged chain is currently caught by nothing. `docs/prior-art.md` cites Hearsay finding that a hash chain with no external anchor caught 0 of 28 injected omissions, which is precisely this hole |
 | 3 | Refusals can be omitted (T6) | partially detectable; tail truncation is not |
 | 4 | Adding a counterparty (T1 residual) | the real privileged operation; deserves its own control |
 | 7 | Operator issues a quote to themselves (T9 residual) | **defended** — `PayoutBook` refuses a quote to an unapproved account (`KyaQuote.daml:76`), and only the principal may approve one. What remains is a KYC question, not a code one: the principal must not approve an account that is secretly the operator's |
