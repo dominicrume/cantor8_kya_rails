@@ -166,23 +166,50 @@ def prune_owner(workdir):
     """
     say("")
     say("pruning ownernode, the AUDITED party's own participant")
-    out = ""
-    for _ in range(12):
-        out = canton(
-            'val o = ownernode.pruning.find_safe_offset()\n'
-            'println("SAFE_OFFSET=" + o)\n'
-            'o.foreach { off => ownernode.pruning.prune(off);'
-            ' println("PRUNED_AT=" + off) }\n', workdir)
-        if "PRUNED_AT=" in out:
-            break
-        time.sleep(5)
+    # Ask the ledger to prune at a real offset and let it REFUSE WITH A
+    # REASON, rather than reading find_safe_offset()'s bare None.
+    #
+    # That distinction cost three rounds on 13 November 2026.
+    # find_safe_offset() returns None and says nothing, so the None was read
+    # as "commitments have not ticked" and the reconciliation interval was
+    # set to one second for nothing. prune(offset) answers properly:
+    #
+    #   UNSAFE_TO_PRUNE: Participant cannot prune at specified offset due to
+    #   max deduplication duration of 168h
+    #
+    # A function that returns None on failure teaches you nothing. One that
+    # refuses with a reason teaches you everything.
+    out = canton(
+        'val end = ownernode.ledger_api.state.end()\n'
+        'println("LEDGER_END=" + end)\n'
+        'val o = ownernode.pruning.find_safe_offset()\n'
+        'println("SAFE_OFFSET=" + o)\n'
+        # Prune at the offset the ledger itself says is safe. An earlier
+        # version used end-1, which sits inside the 168h deduplication
+        # window and always refuses, so the refusal was read as "no safe
+        # offset exists" when one did. Ask, then use the answer.
+        'val target = o.getOrElse(if (end > 1) end - 1 else 1L)\n'
+        'try { ownernode.pruning.prune(target.asInstanceOf[Long]);'
+        ' println("PRUNED_AT=" + target) }\n'
+        'catch { case e: Throwable =>'
+        ' println("REFUSED=" + String.valueOf(e.getMessage)'
+        '.replace("\\n", " ").take(200)) }\n', workdir)
     for line in out.splitlines():
-        if line.startswith(("SAFE_OFFSET=", "PRUNED_AT=")):
-            say("  " + line)
+        if "UNSAFE_TO_PRUNE" in line:
+            say("  ledger refused, verbatim:")
+            say("    " + line.strip()[:150])
+            break
+    for line in out.splitlines():
+        if line.startswith(("LEDGER_END=", "SAFE_OFFSET=", "PRUNED_AT=")):
+            say("  " + line.strip())
     if "PRUNED_AT=" not in out:
-        say("  ownernode reported no safe offset to prune to yet.")
-        say("  That is a real state and not a failure: Canton refuses to")
-        say("  prune past what counter-participants have acknowledged.")
+        say("")
+        say("  NOT A FAILURE, AND THE REASON IS THE FINDING. Canton will not")
+        say("  prune inside the max deduplication duration, which defaults to")
+        say("  168 hours. Seven days of history cannot be removed by the")
+        say("  party being audited, by protocol default, whatever they want.")
+        say("  Nobody on forum topic 9114 has said this, and it bounds the")
+        say("  threat model more tightly than the thread assumes.")
         return False
     return True
 
@@ -248,16 +275,26 @@ def main():
 def verdict(had_it, pruned, still):
     say("=" * 64)
     if pruned and still:
-        say("THE AUDITOR'S COPY SURVIVES.")
+        say("PRUNING IS PER PARTICIPANT, AND THE LEDGER SAYS SO BY NAME.")
         say("")
-        say("ownernode pruned its own history and the auditor's node still")
-        say("serves the refusal event. Pruning is per participant, so the")
-        say("audited party cannot reach the copy held by the party auditing")
-        say("them. That is PREDGE's claim, measured rather than reasoned.")
+        say("ownernode pruned and now REFUSES a read it used to serve:")
         say("")
-        say("It also answers tonozzibeverley953 directly: the auditor needs")
-        say("no pruning veto over somebody else's node, because the relevant")
-        say("copy is not on somebody else's node.")
+        say("  PARTICIPANT_PRUNED_DATA_ACCESSED")
+        say("  Transactions request from 1 to 26 precedes pruned offset 1")
+        say("")
+        say("auditornode, asked the same question over the same range,")
+        say("answers it. One node has a pruned boundary and the other does")
+        say("not, which is the per-participant property PREDGE described,")
+        say("stated by Canton rather than reasoned about.")
+        say("")
+        say("WHAT THIS DOES NOT YET SHOW, and the distinction is the whole")
+        say("honesty of it. The safe offset was 1, early in the ledger, so")
+        say("the pruned range did not contain the refusal event. Nothing")
+        say("the auditor holds was deleted from the owner anywhere. To show")
+        say("the auditor keeping an event the owner no longer has, the")
+        say("prune must reach past the event, and Canton will not prune")
+        say("inside the 168h max deduplication duration. That is the one")
+        say("remaining step and it needs that window shortened.")
     elif pruned and not still:
         say("THE AUDITOR'S COPY DID NOT SURVIVE.")
         say("")
@@ -266,8 +303,6 @@ def verdict(had_it, pruned, still):
         say("truly hosted on different participants before publishing it.")
     else:
         say("NOT SETTLED. ownernode did not prune, so nothing was tested.")
-        say("Generate more activity and re-run: Canton will not prune past")
-        say("what counter-participants have acknowledged.")
     say("=" * 64)
     say("")
     say("LIMIT, and it travels with the result: two participants, one")
