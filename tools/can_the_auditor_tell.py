@@ -41,19 +41,24 @@ second participant is needed to show whether the auditor's copy survives the
 audited party's retention policy. That row is reported as NOT MEASURED rather
 than guessed, and LocalNet is what would close it.
 
-PREREQUISITE, started by hand because this tool does not manage the ledger it
-is measuring:
-
-    daml sandbox --dar step-0-refusal/test/.daml/dist/canton-refusal-record-test-1.0.0.dar \\
-      --json-api-port 7575
+PREREQUISITE: none. It builds the three packages it needs, starts a real
+Canton sandbox, runs, and stops it. If a ledger is already answering on port
+7575 it uses that one instead and leaves it running.
 
 Stdlib only, per THE-RULES.md.
 """
 import json
+import os
 import sys
 import time
 import urllib.error
 import urllib.request
+
+from canton_sandbox import REFUSAL_CHAIN, Sandbox, build_chain, have_daml
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DAR = os.path.join(ROOT, "step-0-refusal", "test", ".daml", "dist",
+                   "canton-refusal-record-test-1.0.0.dar")
 
 BASE = "http://localhost:7575"
 PKG = "canton-refusal-record"
@@ -295,15 +300,40 @@ def control_passes():
     return True
 
 
-def main():
+def ledger_running():
+    """Is a JSON Ledger API already answering on the expected port?"""
     try:
         call("/v2/version")
+        return True
     except Exception:
-        say("No JSON Ledger API on %s. Start one, then re-run:" % BASE)
-        say("  daml sandbox --dar step-0-refusal/test/.daml/dist/"
-            "canton-refusal-record-test-1.0.0.dar --json-api-port 7575")
-        return 1
+        return False
 
+
+def main():
+    """Use a ledger that is already running, otherwise build one and start it.
+
+    The first version of this tool only did the first half. It printed
+    "Start one, then re-run" with a daml sandbox command that needed a DAR
+    built by hand, and a forum reply on topic 9114 told a reader to run it as
+    a single command. It worked on the author's machine because the author's
+    machine already held the DARs. From a clean clone it failed on the first
+    line, which was found by running it from a clean clone, not by reading it.
+    """
+    if ledger_running():
+        return play()
+    if not have_daml() or not build_chain(REFUSAL_CHAIN):
+        return 1
+    if not os.path.exists(DAR):
+        say("the build reported success but %s is missing" % DAR)
+        return 1
+    box = Sandbox(DAR, extra=["--json-api-port", BASE.rsplit(":", 1)[1]])
+    try:
+        return play() if box.start() else 1
+    finally:
+        box.stop()
+
+
+def play():
     say("Playing the operator against the auditor, on a real Canton ledger.")
 
     if not control_passes():
