@@ -54,6 +54,12 @@ RAW = "https://raw.githubusercontent.com/dominicrume/cantor8_kya_rails/main/"
 PROMISED = [
     "tools/can_the_auditor_tell.py",
     "tools/prove_refusal_on_sandbox.py",
+    # Both import this. A tool pushed without the module it imports answers
+    # 200 and then dies on its first line for a stranger.
+    "tools/canton_sandbox.py",
+    "tools/does_the_auditors_copy_survive.py",
+    "tests/build_chain_lint.py",
+    "tests/topology_smoke.js",
     "tools/vote_pipeline.py",
     "tools/downloads.py",
     "tests/daml_tests.py",

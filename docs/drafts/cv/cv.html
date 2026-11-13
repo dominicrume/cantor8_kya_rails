@@ -63,7 +63,8 @@
   <p><code>git clone https://github.com/dominicrume/cantor8_kya_rails</code><br>
   <code>cd cantor8_kya_rails &amp;&amp; python3 tools/prove_refusal_on_sandbox.py</code></p>
   <p>
-    Starts a real Canton participant, sequencer and mediator locally. Runs a
+    Builds the Daml, starts a real Canton participant, sequencer and mediator
+    locally. Runs a
     script that does not exist and <strong>requires it to fail</strong>. Only
     then runs the real one: Canton refuses a 90.0 charge against a mandate with
     40.0 already spent, writes a refusal record naming the rule, and leaves the
@@ -76,7 +77,7 @@
 <h2>Technical evidence</h2>
 <ul>
   <li>
-    <strong>Daml and multi-party authorization.</strong> 166 Daml files and 171
+    <strong>Daml and multi-party authorization.</strong> 167 Daml files and 173
     passing Daml Script tests across two packages. Guardian on the signatory
     line rather than the observer line: a create needs every signatory's
     authority, so a node holding one compromised key cannot bring the contract
@@ -91,11 +92,13 @@
     rather than left for a reviewer to discover.
   </li>
   <li>
-    <strong>Adversarial testing.</strong> 82 mutation rows: each deletes a real
-    fence from the source, rebuilds, and requires a <em>named</em> test to go
-    red, so no assertion is decoration. 32 Daml fences, each individually
-    mutation tested. Two audits found 15 assertions that could never fail; this
-    harness exists to stop the sixteenth.
+    <strong>Adversarial testing.</strong> All 32 Daml fences are deleted in
+    turn, the package is rebuilt, and a <em>named</em> test must go red, so no
+    assertion is decoration. A wider suite breaks 82 real things the same way.
+    The same harness, run on two OpenZeppelin Canton packages at pinned
+    commits, found 49 of 62 fences with no test that failed when the fence was
+    made vacuous. That is a coverage finding and not a vulnerability, and it
+    was reported as public issues.
   </li>
   <li>
     <strong>Privacy boundaries.</strong> A privacy matrix test asserts what
@@ -108,14 +111,14 @@
     against 20 shared vectors through a pipe.
   </li>
   <li>
-    <strong>AI-native engineering, held to a reviewable standard.</strong> 267
-    commits produced with Claude Code as a daily driver, governed by gates I
-    wrote: a tool that refuses to open anything in another repository unless a
-    test goes red, a tool that reads a destination back after posting instead
-    of trusting a keystroke, and a lint that re-derives every stated count from
-    its source file. That lint caught six wrong numbers in my own work in one
-    week, two of which the previous version of the gate was structurally unable
-    to see.
+    <strong>AI-native engineering, held to a reviewable standard.</strong> Over
+    270 commits produced with Claude Code as a daily driver, governed by gates I
+    wrote: a tool that refuses a quote that is not in a source file or an
+    employer claim with no link, a tool that reads a destination back after
+    posting instead of trusting a keystroke, and a lint that re-derives every
+    stated count from its source file. An audit of my own repository found six
+    wrong numbers, including a README that said 30 fences when the file had 32.
+    My gates had passed all six, so I fixed the gates.
   </li>
 </ul>
 

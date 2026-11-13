@@ -129,6 +129,8 @@ SUITES = [
      "no bandit finding in production code"),
     ("python3 tests/complexity_lint.py", "The rules",
      "every function is under the ceiling, or says in writing why not"),
+    ("python3 tests/build_chain_lint.py", "The rules",
+     "a tool's build chain can be followed from a clean clone"),
     ("python3 tests/deadcode_lint.py", "The rules",
      "nothing unreachable, and no import silently overwritten"),
     ("python3 tests/xss_lint.py", "The rules",

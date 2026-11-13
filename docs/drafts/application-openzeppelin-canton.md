@@ -1,92 +1,163 @@
 Destination: https://www.openzeppelin.com/careers/opening?gh_jid=7742510003
 Role: Senior Blockchain Security Developer (Canton), Secure Development, remote
-Written: 2026-11-13. NOT SENT. Rume submits this himself; nobody applies for a
-job as him without him reading it first.
+Written: 2026-11-14, replacing the 2026-11-13 draft. NOT SENT.
 
-Process, from their Logistics section, so there is no surprise: recruiter call
-30-45 min, manager 60, team 45, leadership 30, then a PAID TECHNICAL WORK
-TRIAL, targeting about 30 days end to end. They state that automated tools
-including AI help review applications, with human review of all hiring
-decisions, and that a human review can be requested at talent@openzeppelin.com.
+Nobody applies for a job as you without you reading it first. This file holds
+every word that goes in the form, and a list of the fields only you can answer.
+
+Their process, from the posting: recruiter call, manager interview, team
+interview, leadership interview, then a PAID TECHNICAL WORK TRIAL, about 30
+days end to end. They say AI tools help screen applications, with human review
+of every decision, and a human review can be asked for at
+talent@openzeppelin.com.
 
 ---
 
-## COVER LETTER (paste into the cover letter field)
+## BEFORE YOU SUBMIT, in this order
 
-I build adversarial evidence infrastructure in Daml on Canton, and I would
-rather show you than tell you.
+1. `git push origin main`. The command in the cover letter only works from a
+   clean clone once the fix for it is on GitHub. On 14 November it was not.
+2. Fill the placeholders in docs/drafts/cv/cv.html, then rebuild cv.pdf.
+3. Submit.
+
+---
+
+## COVER LETTER
+
+I build adversarial evidence tools in Daml on Canton, and I would rather show
+you than describe it.
 
     git clone https://github.com/dominicrume/cantor8_kya_rails
     cd cantor8_kya_rails && python3 tools/prove_refusal_on_sandbox.py
 
-That starts a real Canton participant, sequencer and mediator locally, runs a
-script that does not exist and REQUIRES it to fail, and only then runs the
-real one. Canton refuses a 90.0 charge against a mandate with 40.0 already
-spent, writes a refusal record naming the rule, and leaves the spent total
-untouched. If the control passes, the tool refuses to report the real result,
-because a harness that can only say "pass" cannot tell you whether it ran.
+That builds the Daml, starts a real Canton participant, sequencer and mediator
+on your machine, and runs a script that does not exist, which must fail. Only
+then does it run the real one: Canton refuses a charge of 90.0 against a
+mandate with 40.0 already spent, writes a refusal record naming the rule, and
+leaves the spent total untouched. If the control passes, the tool refuses to
+report. It also prints what it does not prove: this is one local participant,
+not a shared network, and there is no Canton Coin.
 
-The tool also prints what it does not prove: single-participant local Canton,
-no Amulet, so nothing about a shared network or Canton Coin.
+Three things in your posting, with evidence.
 
-Three things in your posting I can evidence rather than assert.
+Security first. Every one of my 32 Daml fences is deleted in turn, and a named
+test must go red. A wider suite breaks 82 real things the same way. In
+September I ran that harness on two of your Canton packages, after your forum
+thread invited people to clone the repos and open an issue. 49 of 62 fences
+had no test that failed when the fence was made vacuous, at pinned commits
+c96456f and fbc6392. That is a coverage finding and not a vulnerability. I
+opened public issues.
 
-Production Daml and multi-party authorization. 166 Daml files and 171 passing
-scripts across two packages. The design decision I would defend is putting the
-auditor on the signatory line rather than the observer line: a create needs
-every signatory's authority, so a compromised node holding one party's key
-cannot bring the contract into existence at all. One test shows the limit of
-that too, which matters more: a consuming choice archives on the controller's
-authority alone, so one ordinary owner-controlled choice still moves an asset
-past the journal. That is a specification hole, and it is named in the file
-rather than left for a reader to find.
+Being wrong in public. Georgi Radev showed on the Canton forum that a guard
+signatory alone does not gate owner-controlled choices. My test wallet had no
+owner-controlled choices, so my suite could not see it. I wrote the test that
+proves the hole, named it for what it shows, and put it in the draft
+specification as a requirement, credited to him.
 
-A security-first mindset, which you call non-negotiable. 82 mutation rows:
-each deletes a real fence, rebuilds, and requires a NAMED test to go red, so
-no assertion is decoration. Two audits found 15 assertions that could never
-fail. The harness exists to stop the sixteenth.
+An AI workflow with checks. I use Claude Code every day. This week my own tool
+printed that an auditor's copy of a refusal survives pruning. It was true and
+meaningless, because the prune never reached the event. Asking whether the
+owner's node still held it too exposed that. I then found a stronger claim
+that I had written and not tested, and corrected it before it was published.
 
-An AI-native workflow. I use Claude Code daily and hold its output to the
-standard of a colleague's pull request, which in practice means gates rather
-than trust: a tool that refuses to open anything in another repository unless
-a test goes red, a tool that reads the destination back after posting instead
-of recording a keystroke, and a lint that makes every stated count re-derive
-from the file that produces it. That lint caught six wrong numbers in my own
-repository this week, including two the previous version of the gate was
-structurally unable to see.
+What I do not have: production DeFi. I have shipped no AMM, vault, lending
+protocol or cross-chain settlement, and your first-year work is exactly that.
 
-One thing your posting asks for that I do not have, said here rather than
-found later: production DeFi. I have shipped no AMM, no vault, no lending
-protocol and no cross-chain settlement, and your year-one work is exactly
-that. What I bring to it is Canton-specific authorization judgment and an
-unusually literal habit about what evidence does and does not support.
+One merged contribution outside my own repositories: digital-asset/dpm #330.
 
-My one merged contribution outside my own repositories is digital-asset/dpm
-#330, approved and merged in six days by a maintainer of that repository. It
-is small and it is real, and you can read the review on the pull request.
-
-O'Rume Dominic Uririe, Birmingham, United Kingdom.
+Dominic O'Rume, Birmingham, United Kingdom.
 
 ---
 
-## LINKS FIELD
+## FORM ANSWER 1
+"Our mission is to accelerate the world’s transition to an open financial system. How do you identify with that mission?"
 
-Repository: https://github.com/dominicrume/cantor8_kya_rails
-Merged upstream: https://github.com/digital-asset/dpm/pull/330
-Published package: https://pypi.org/project/knowyouragenticai-receipts/
-Research: https://github.com/dominicrume/cantor8_kya_rails/blob/main/docs/dev-fund-vote-mechanism.md
-X: https://x.com/dominicrume
+An open financial system is one a stranger can check. That is what I care
+about, and it is what I build.
+
+My work is about refusals. When a system stops something, the stop should sit
+on a record that the stopped party cannot quietly delete. The claim I find
+hardest to trust is the one nobody outside can test. So I try to make mine
+testable with one command, and I print what they do not prove.
+
+OpenZeppelin has done this for years by publishing libraries and reviews in
+the open. Canton is where it matters next. Its privacy means fewer people can
+look, so the few who do carry more weight.
 
 ---
 
-## NOTES FOR RUME BEFORE YOU SEND
+## FORM ANSWER 2
+"What has been your experience working with Canton to this point?"
 
-1. The repository link is the whole application. Make sure the command in the
-   letter runs on a clean clone before you press submit. If it does not, the
-   letter is a liability rather than an asset.
-2. The DeFi paragraph stays. A limit you declare costs less than one a
-   reviewer finds, and they will find this one in the first call.
-3. Do not add the hackathon placing. It is not evidence to this audience and
-   it dilutes the parts that are.
-4. The work trial is paid and it is where you actually win. Everything above
-   exists only to reach it.
+About eleven weeks, since the Cantor8 hackathon in London on 29 August 2026,
+where I placed third.
+
+I wrote two main Daml packages. One is a spending mandate that Canton itself
+enforces. The other is a refusal journal with the auditor as a signatory, so a
+second journal cannot be created. 173 Daml scripts pass. Version 1.1.0 of the
+mandate package was vetted on DevNet under Canton's upgrade check. I run real
+Canton locally, including two participants to test pruning. That work is not
+finished.
+
+I have one merged pull request in digital-asset/dpm and three in the Canton
+Developer Hub. Engineers have reviewed my design in public on the forum.
+
+What I have not done: run on a shared network under load, or ship production
+DeFi.
+
+---
+
+## FORM ANSWER 3
+"Describe an instance where you built tools that other people have leveraged for their benefit."
+
+The honest answer first: less than I would like. My own repository has no
+outside contributors and no outside issues. My package has 488 installs, which
+I count as installs and not users.
+
+What others have used are two changes that someone else reviewed and merged.
+
+In dpm, a bad path given to --auth was silently ignored, so the tool carried
+on without logging in. I made it stop with an error. It was merged in six
+days.
+
+In the Canton Developer Hub, 19 of 56 catalogue entries declared several
+links, but each card showed only the first. I fixed that, and it was merged.
+
+Both are small. I chose them because they are the ones another person
+checked.
+
+---
+
+## FORM ANSWER 4
+"How do you leverage AI in your daily workflow?"
+
+Claude Code is open all day. I treat its output like a colleague's pull
+request, which means it does not count until something checks it. So I build
+the checks.
+
+A gate refuses to let me post a quote that is not in a source file, or a claim
+about someone's employer with no link. This week it refused a made-up first
+name with a company attached. Every test harness I write runs a control that
+must fail first.
+
+An audit of my own repository found six wrong numbers, including a README that
+said 30 fences when the file had 32. My gates had passed all of them, so I
+fixed the gates.
+
+I also use agents for research, and I check them. One told me a pull request
+of mine duplicated another. I read both diffs. They touch different files, so
+I did not close it.
+
+---
+
+## FIELDS ONLY YOU CAN ANSWER
+
+I do not know these and I will not guess them. Answer each truthfully.
+
+- Email, phone, and your LinkedIn profile URL.
+- What time zone do you legally reside in? You live in Birmingham, so this is
+  probably the UK option, but read the list.
+- What is your country of residency? Probably the United Kingdom.
+- Do you have the right to work in your country of residency? Yours to answer.
+- Do you require visa sponsorship from OpenZeppelin, now or in the future?
+  Yours to answer. A wrong answer here costs you more than a slow one.
