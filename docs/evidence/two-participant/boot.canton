@@ -1,0 +1,13 @@
+import com.digitalasset.canton.config.RequireTypes.PositiveInt
+import com.digitalasset.canton.version.ProtocolVersion
+bootstrap.synchronizer(
+  synchronizerName = "sync",
+  sequencers = Seq(sequencer1),
+  mediators = Seq(mediator1),
+  synchronizerOwners = Seq(sequencer1),
+  synchronizerThreshold = PositiveInt.one,
+  staticSynchronizerParameters = StaticSynchronizerParameters.defaults(sequencer1.config.crypto, ProtocolVersion.v34)
+)
+ownernode.synchronizers.connect_local(sequencer1, "sync")
+auditornode.synchronizers.connect_local(sequencer1, "sync")
+println("TOPOLOGY UP: owner ledger-api 5011, auditor ledger-api 5021")
