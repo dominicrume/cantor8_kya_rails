@@ -204,12 +204,24 @@ def prune_owner(workdir):
             say("  " + line.strip())
     if "PRUNED_AT=" not in out:
         say("")
-        say("  NOT A FAILURE, AND THE REASON IS THE FINDING. Canton will not")
-        say("  prune inside the max deduplication duration, which defaults to")
-        say("  168 hours. Seven days of history cannot be removed by the")
-        say("  party being audited, by protocol default, whatever they want.")
-        say("  Nobody on forum topic 9114 has said this, and it bounds the")
-        say("  threat model more tightly than the thread assumes.")
+        # The reason is printed ONLY if the ledger gave it. An earlier version
+        # of this block said "Canton will not prune inside 168 hours, seven
+        # days cannot be removed by the party being audited, whatever they
+        # want" whenever pruning failed, whatever the reason. That was a
+        # claim written into the output without being tested, and it went as
+        # far as a commit title before it was challenged. It is a default
+        # observed on one build. Whether an operator can change it was never
+        # established, and the config key I tried was rejected as unknown.
+        if "UNSAFE_TO_PRUNE" in out:
+            say("  The ledger refused, and said why (verbatim above): this")
+            say("  participant will not prune inside a max deduplication")
+            say("  duration of 168h. That is what Canton Community 3.4.11")
+            say("  did on a default config, reproduced twice.")
+            say("  NOT ESTABLISHED: whether an operator can change that window,")
+            say("  which would decide whether the audited party is bound by it.")
+        else:
+            say("  The ledger did not prune and did not give a recognised")
+            say("  reason. Read the raw output before concluding anything.")
         return False
     return True
 
@@ -292,9 +304,10 @@ def verdict(had_it, pruned, still):
         say("the pruned range did not contain the refusal event. Nothing")
         say("the auditor holds was deleted from the owner anywhere. To show")
         say("the auditor keeping an event the owner no longer has, the")
-        say("prune must reach past the event, and Canton will not prune")
-        say("inside the 168h max deduplication duration. That is the one")
-        say("remaining step and it needs that window shortened.")
+        say("prune must reach past the event. This build refuses that")
+        say("inside a 168h window. Either the event has to be older than")
+        say("168 hours, or the window has to be changed, and I did not find")
+        say("the setting. That is the remaining step.")
     elif pruned and not still:
         say("THE AUDITOR'S COPY DID NOT SURVIVE.")
         say("")
