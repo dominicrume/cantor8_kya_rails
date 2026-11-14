@@ -11,24 +11,35 @@ import KyaQuote
 
 data Desk = Desk with
   operator : Party
+  principal : Party
   asker    : Party   -- the person who requested this quote
   stranger : Party   -- watching the chain; sends nothing, claims everything
 
+-- The quote is issued the way production issues it: the operator exercises
+-- IssueQuote on the principal's PayoutBook. It used to be created by the
+-- operator alone with `createCmd Quote`, which was exactly the bypass N1
+-- describes, and the setup was hiding it from every test that used it.
 setup : Script (Desk, ContractId Quote)
 setup = script do
-  operator <- allocateParty "Operator"
-  asker    <- allocateParty "Customer"
-  stranger <- allocateParty "Watcher"
+  operator  <- allocateParty "Operator"
+  principal <- allocateParty "Principal"
+  asker     <- allocateParty "Customer"
+  stranger  <- allocateParty "Watcher"
   now <- getTime
+  book <- submit principal do
+    createCmd PayoutBook with
+      principal; operator
+      approved = ["GTB 0123456789 / A CUSTOMER"]
+      rateFloor = 1000.0; rateCeiling = 1500.0
   q <- submit operator do
-    createCmd Quote with
-      operator; customer = asker
+    exerciseCmd book IssueQuote with
+      customer = asker
       reference = "KYA-7Q31"          -- issued with the quote, to the asker only
       rate = 1250.0
       expectedAmount = 10.0
       payoutAccount = "GTB 0123456789 / A CUSTOMER"   -- fixed before any money
       expiresAt = addRelTime now (hours 2)
-  let d = Desk with operator; asker; stranger
+  let d = Desk with operator; principal; asker; stranger
   pure (d, q)
 
 -- 1. The ordinary case. The person who asked, sent, and is paid to the account

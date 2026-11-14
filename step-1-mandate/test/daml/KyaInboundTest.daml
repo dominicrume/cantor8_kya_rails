@@ -40,7 +40,7 @@ quoteIt d b = script do
       customer = d.customer; reference = "KYA-IN-1"
       payIntoAccount = deskAccount; nairaAmount = 1250000.0; rate = 1250.0
       asset = "USDT"; network = "TRC20"; customerWallet = customerWalletTrc
-      expiresAt = addRelTime now (hours 2)
+      expiresAt = addRelTime now (hours 2); cryptoAmount = Some 1000.0
 
 -- 1. The ordinary cycle: quote, principal confirms the naira landed, release.
 testInboundCycleCompletes : Script ()
@@ -152,7 +152,7 @@ testOperatorCannotNominateTheirOwnNairaAccount = script do
       payIntoAccount = "OPAY 5555555555 / THE OPERATOR"
       nairaAmount = 1250000.0; rate = 1250.0
       asset = "USDT"; network = "TRC20"; customerWallet = customerWalletTrc
-      expiresAt = addRelTime now (hours 2)
+      expiresAt = addRelTime now (hours 2); cryptoAmount = Some 1000.0
 
 -- 10. The desk cannot quote an asset it has no way to send.
 testCannotQuoteAnAssetTheDeskCannotSend : Script ()
@@ -164,7 +164,7 @@ testCannotQuoteAnAssetTheDeskCannotSend = script do
       customer = d.customer; reference = "KYA-IN-10"
       payIntoAccount = deskAccount; nairaAmount = 1250000.0; rate = 1250.0
       asset = "XRP"; network = "XRPL"; customerWallet = "rSomething"
-      expiresAt = addRelTime now (hours 2)
+      expiresAt = addRelTime now (hours 2); cryptoAmount = Some 1000.0
 
 -- 11. The customer can see their own deal and their own release, so both
 --     "which account do I pay" and "did you send it" have answers on the
@@ -201,7 +201,7 @@ testInboundRateMustBeInsideTheBand = script do
       customer = d.customer; reference = "KYA-IN-12"
       payIntoAccount = deskAccount; nairaAmount = 1600000.0; rate = 1600.0
       asset = "USDT"; network = "TRC20"; customerWallet = customerWalletTrc
-      expiresAt = addRelTime now (hours 2)
+      expiresAt = addRelTime now (hours 2); cryptoAmount = Some 1000.0
 
 
 -- ---------------------------------------------------------------------------
@@ -352,3 +352,37 @@ testPrincipalCanMoveTheRateBand = script do
   assertMsg "the floor moved" (b.rateFloor == 1200.0)
   assertMsg "the ceiling moved" (b.rateCeiling == 1400.0)
 
+
+-- 18. The quote fixes how much crypto the customer gets, and the arithmetic
+--     is checked on the ledger. 1,250,000 naira at 1,250 is 1,000 USDT, not
+--     1,001. Goes red if the fence is vacuous, which it was until 1.1.1.
+testQuotedCryptoMustEqualNairaOverRate : Script ()
+testQuotedCryptoMustEqualNairaOverRate = script do
+  (d, b) <- books
+  now <- getTime
+  submitMustFail d.operator do
+    exerciseCmd b QuoteForNaira with
+      customer = d.customer; reference = "KYA-IN-18"
+      payIntoAccount = deskAccount; nairaAmount = 1250000.0; rate = 1250.0
+      asset = "USDT"; network = "TRC20"; customerWallet = customerWalletTrc
+      expiresAt = addRelTime now (hours 2); cryptoAmount = Some 1001.0
+  submitMustFail d.operator do
+    exerciseCmd b QuoteForNaira with
+      customer = d.customer; reference = "KYA-IN-18b"
+      payIntoAccount = deskAccount; nairaAmount = 1250000.0; rate = 1250.0
+      asset = "USDT"; network = "TRC20"; customerWallet = customerWalletTrc
+      expiresAt = addRelTime now (hours 2); cryptoAmount = None
+
+-- 19. THE OVER-RELEASE. Naira for 1,000 USDT is confirmed; the operator
+--     releases 10,000. Every other fence on ReleaseCrypto passes: right
+--     wallet, right network, in time, confirmed. Only the amount is wrong.
+testCannotReleaseMoreThanWasQuoted : Script ()
+testCannotReleaseMoreThanWasQuoted = script do
+  (d, b) <- books
+  deal <- quoteIt d b
+  confirmed <- submit d.principal do
+    exerciseCmd deal ConfirmNairaCredited with
+      bankRef = "GTB/2026-11-14/0000019"; credited = 1250000.0
+  submitMustFail d.operator do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = customerWalletTrc; onNetwork = "TRC20"; amount = 10000.0

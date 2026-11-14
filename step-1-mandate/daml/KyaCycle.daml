@@ -16,7 +16,7 @@
 --   is the desk's own and the amounts are larger.
 module KyaCycle where
 
-import DA.Optional (isNone)
+import DA.Optional (isNone, isSome)
 
 -- Where a given asset may be received, on a given network, and whether that
 -- network requires a memo or tag. Approved by the principal, not the operator.
@@ -60,6 +60,7 @@ template DepositBook
         create DepositInstruction with
           operator; customer; quoteRef; asset; network; address; memo
           depositFeed; confirmed = False; txReference = ""
+          principal = Some principal
 
     -- Naming the watcher is the principal's alone. An operator who appoints
     -- the thing that confirms their own deposits has no fence.
@@ -89,8 +90,16 @@ template DepositInstruction
     depositFeed : Optional Party
     confirmed   : Bool
     txReference : Text
+    principal   : Optional Party
   where
-    signatory operator
+    ensure isSome principal
+
+    -- The principal co-signs. Without this the operator alone could create
+    -- one of these directly, skipping the book and every rule in front of it
+    -- (N1, found 14 November 2026). `principal` is Optional only so Canton's
+    -- upgrade check accepts the new field; `ensure isSome principal` closes
+    -- the gap that Optional would otherwise reopen.
+    signatory operator, optional [] (\p -> [p]) principal
     -- The watcher observes, or it cannot act: a party that cannot see a
     -- contract cannot exercise a choice on it.
     observer customer, optional [] (\p -> [p]) depositFeed
@@ -133,6 +142,7 @@ template OffTakerBook
         create SupplyLeg with
           operator; offTaker; asset; network; toAddress; amount
           expectedNaira; sentAt = now; nairaReceived = False
+          principal = Some principal
 
     choice ApproveOffTakerWallet : ContractId OffTakerBook
       with offTaker : Text, asset : Text, network : Text, address : Text
@@ -156,8 +166,16 @@ template SupplyLeg
     expectedNaira : Decimal
     sentAt        : Time
     nairaReceived : Bool
+    principal     : Optional Party
   where
-    signatory operator
+    ensure isSome principal
+
+    -- The principal co-signs. Without this the operator alone could create
+    -- one of these directly, skipping the book and every rule in front of it
+    -- (N1, found 14 November 2026). `principal` is Optional only so Canton's
+    -- upgrade check accepts the new field; `ensure isSome principal` closes
+    -- the gap that Optional would otherwise reopen.
+    signatory operator, optional [] (\p -> [p]) principal
 
     -- Record the naira arriving. Short of the agreed amount is not something
     -- to be agreed to at 2am under pressure from a customer who is waiting.

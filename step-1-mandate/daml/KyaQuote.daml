@@ -23,6 +23,8 @@
 -- demanding the KYC that drives real customers away.
 module KyaQuote where
 
+import DA.Optional (isSome)
+
 -- What the desk paid out, and against which quote. Consuming Fulfil means one
 -- of these exists per quote at most -- the double payout is not a rule that
 -- can be forgotten, it is an archived contract that cannot be exercised twice.
@@ -35,8 +37,16 @@ template Settlement
     paidAmount    : Decimal
     depositRef    : Text
     settledAt     : Time
+    principal     : Optional Party
   where
-    signatory operator
+    ensure isSome principal
+
+    -- The principal co-signs. Without this the operator alone could create
+    -- one of these directly, skipping the book and every rule in front of it
+    -- (N1, found 14 November 2026). `principal` is Optional only so Canton's
+    -- upgrade check accepts the new field; `ensure isSome principal` closes
+    -- the gap that Optional would otherwise reopen.
+    signatory operator, optional [] (\p -> [p]) principal
     observer customer
 
 -- Who may be paid at all, decided by the principal and not by the operator.
@@ -77,7 +87,7 @@ template PayoutBook
         assertMsg "rate is outside the band the principal set" (rate >= rateFloor && rate <= rateCeiling)
         create Quote with
           operator; customer; reference; rate; expectedAmount
-          payoutAccount; expiresAt
+          payoutAccount; expiresAt; principal = Some principal
 
     -- Only the principal widens the book. An operator cannot approve the
     -- account they are about to pay themselves through.
@@ -113,11 +123,18 @@ template Quote
     -- deliberately no choice anywhere in this template that changes it.
     payoutAccount  : Text
     expiresAt      : Time
+    principal      : Optional Party
   where
     ensure rate > 0.0 && expectedAmount > 0.0
         && reference /= "" && payoutAccount /= ""
+        && isSome principal
 
-    signatory operator
+    -- The principal co-signs. Without this the operator alone could create
+    -- one of these directly, skipping the book and every rule in front of it
+    -- (N1, found 14 November 2026). `principal` is Optional only so Canton's
+    -- upgrade check accepts the new field; `ensure isSome principal` closes
+    -- the gap that Optional would otherwise reopen.
+    signatory operator, optional [] (\p -> [p]) principal
     observer customer
 
     -- Pay out against this quote. Consuming: a quote settles once or not at all.
@@ -140,7 +157,7 @@ template Quote
         assertMsg "payout account does not match the account named in the quote" (claimedAccount == payoutAccount)
         create Settlement with
           operator; customer; reference; payoutAccount
-          paidAmount = amount; depositRef; settledAt = now
+          paidAmount = amount; depositRef; settledAt = now; principal
 
     -- The customer never sent. Close it so the reference cannot be reused.
     choice Abandon : ()

@@ -426,16 +426,16 @@ it just looks like one, which is worse than an honest grouping.
 | 2 | Chain not bound to origin (T5) | **DESIGNED, NOT EXECUTED.** Corrected 13 November 2026. This row said **defended** on the strength of `KyaAnchor.daml` passing `daml test`. No `ChainAnchor` contract has ever been created on any ledger, so nothing is anchored and a forged chain is currently caught by nothing. `docs/prior-art.md` cites Hearsay finding that a hash chain with no external anchor caught 0 of 28 injected omissions, which is precisely this hole |
 | 3 | Refusals can be omitted (T6) | partially detectable; tail truncation is not |
 | 4 | Adding a counterparty (T1 residual) | the real privileged operation; deserves its own control |
-| 7 | Operator issues a quote to themselves (T9 residual) | **defended** — `PayoutBook` refuses a quote to an unapproved account (`KyaQuote.daml:76`), and only the principal may approve one. What remains is a KYC question, not a code one: the principal must not approve an account that is secretly the operator's |
+| 7 | Operator issues a quote to themselves (T9 residual) | **defended since 14 November 2026.** Before that the operator alone could create a `Quote` directly and skip the `PayoutBook` entirely (N1), so this row was false on the ledger. The principal now co-signs every desk template (`KyaOperatorAloneTest.daml`). Original text: **defended** — `PayoutBook` refuses a quote to an unapproved account (`KyaQuote.daml:76`), and only the principal may approve one. What remains is a KYC question, not a code one: the principal must not approve an account that is secretly the operator's |
 | 6 | Operator persuaded (T1) | **defended** |
 | 7 | Float drained (T2) | **defended, bounded** |
 | 8 | Spending after revoke (T3) | **defended** |
 | 6 | Off-taker keeps the crypto (T11 residual) | **not defended** — bounded and recorded, not prevented |
 | 9 | Stranger claims a deposit (T9) | **defended** — the account is fixed before the money exists |
 | 9 | Wrong network or missing memo (T10) | **defended** — the instruction cannot be issued |
-| 9 | Crypto to an unapproved off-taker wallet (T11) | **defended** |
+| 9 | Crypto to an unapproved off-taker wallet (T11) | **defended since 14 November 2026.** Before that the operator alone could create a `SupplyLeg` to any address (N1). The principal now co-signs it |
 | 3 | Confirmed naira later reversed (T12 residual) | **not defended** — no hold period; a commercial decision |
-| 9 | Fake bank alert (T12) | **defended** — only the principal may confirm a credit |
+| 9 | Fake bank alert (T12) | **defended since 14 November 2026.** Before that the operator alone could create an `InboundDeal` with `nairaConfirmed = True` and release 1,000,000 without the principal (N1). The principal now co-signs it, and the released amount is fenced against the quoted crypto amount. Original text: only the principal may confirm a credit |
 | 9 | Desk sends on the wrong network (T13) | **defended** |
 | 10 | Implementations diverge (T7) | **defended, three implementations in CI** |
 | 2 | Meta app secret stolen (T16 residual) | not defended; same class as T4 — a stolen key is a stolen key |

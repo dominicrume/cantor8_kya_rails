@@ -70,6 +70,8 @@ FENCES = [
     (INBOUND, 'assertMsg "naira credited is short of the amount quoted (bank feed)"', "testBankFeedCannotConfirmAShortCredit"),
     (INBOUND, 'assertMsg "naira credited is short of the amount quoted"', "testShortNairaCreditIsRefused"),
     (INBOUND, "naira has not been confirmed credited",         "testReleaseWithoutTheBankConfirmationIsRefused"),
+    (INBOUND, 'assertMsg "naira does not equal the crypto amount times the rate"', "testQuotedCryptoMustEqualNairaOverRate"),
+    (INBOUND, 'assertMsg "released amount does not match the crypto amount quoted"', "testCannotReleaseMoreThanWasQuoted"),
     (INBOUND, "receiving wallet does not match",               "testCustomerCannotChangeTheReceivingWalletAtRelease"),
     (INBOUND, "sending on a different network",                "testCannotReleaseOnADifferentNetwork"),
     (INBOUND, "rate is outside the band",                      "testInboundRateMustBeInsideTheBand"),

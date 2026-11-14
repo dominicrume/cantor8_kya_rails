@@ -1,0 +1,107 @@
+-- N1: the operator on its own must not be able to create a desk contract.
+--
+-- Found on 14 November 2026. Quote, InboundDeal, SupplyLeg, DepositInstruction,
+-- Release and Settlement had `signatory operator` and nothing else, so the
+-- operator could create a confirmed deal directly and skip the principal's
+-- book, and with it every rule the book enforces. The threat model called
+-- T9, T11 and T12 "defended". They were defended only if the operator chose
+-- to go through the book.
+--
+-- Each script below does three things to one template:
+--   1. the operator alone tries to create it, and must be REFUSED;
+--   2. the operator and the principal together create it, and must SUCCEED.
+--      That is the control. Without it, a refusal might only mean a typo in
+--      the fields, and the test would pass for the wrong reason;
+--   3. both sign but name no principal in the contract, and must be REFUSED
+--      (`ensure isSome principal`). Without that clause, an Optional field
+--      would reopen the gap, because the operator could leave it blank.
+module KyaOperatorAloneTest where
+
+import DA.Time (addRelTime, hours)
+import Daml.Script
+import KyaCycle
+import KyaInbound
+import KyaQuote
+
+data Parties = Parties with
+  operator  : Party
+  principal : Party
+  customer  : Party
+
+parties : Script Parties
+parties = script do
+  operator  <- allocateParty "Operator"
+  principal <- allocateParty "Principal"
+  customer  <- allocateParty "Customer"
+  pure Parties with operator; principal; customer
+
+-- Run one create three ways. `make` builds the contract for a given
+-- Optional principal; InboundDeal passes the same party either way and is
+-- handled by its own script below.
+alone : Parties -> (Optional Party -> Commands (ContractId a)) -> Script ()
+alone p make = do
+  submitMustFail p.operator (make (Some p.principal))
+  _ <- submitMulti [p.operator, p.principal] [] (make (Some p.principal))
+  submitMultiMustFail [p.operator, p.principal] [] (make None)
+
+testOperatorAloneCannotCreateAQuote : Script ()
+testOperatorAloneCannotCreateAQuote = script do
+  p <- parties
+  now <- getTime
+  alone p (\pr -> createCmd Quote with
+    operator = p.operator; customer = p.customer; reference = "R1"
+    rate = 1250.0; expectedAmount = 10.0; payoutAccount = "ACC"
+    expiresAt = addRelTime now (hours 1); principal = pr)
+
+testOperatorAloneCannotCreateASettlement : Script ()
+testOperatorAloneCannotCreateASettlement = script do
+  p <- parties
+  now <- getTime
+  alone p (\pr -> createCmd Settlement with
+    operator = p.operator; customer = p.customer; reference = "R1"
+    payoutAccount = "ACC"; paidAmount = 10.0; depositRef = "D1"
+    settledAt = now; principal = pr)
+
+testOperatorAloneCannotCreateADepositInstruction : Script ()
+testOperatorAloneCannotCreateADepositInstruction = script do
+  p <- parties
+  alone p (\pr -> createCmd DepositInstruction with
+    operator = p.operator; customer = p.customer; quoteRef = "R1"
+    asset = "USDT"; network = "TRC20"; address = "ADDR"; memo = None
+    depositFeed = None; confirmed = True; txReference = "made up"
+    principal = pr)
+
+testOperatorAloneCannotCreateASupplyLeg : Script ()
+testOperatorAloneCannotCreateASupplyLeg = script do
+  p <- parties
+  now <- getTime
+  alone p (\pr -> createCmd SupplyLeg with
+    operator = p.operator; offTaker = "OT"; asset = "USDT"; network = "TRC20"
+    toAddress = "ADDR"; amount = 1000.0; expectedNaira = 1.0
+    sentAt = now; nairaReceived = False; principal = pr)
+
+testOperatorAloneCannotCreateARelease : Script ()
+testOperatorAloneCannotCreateARelease = script do
+  p <- parties
+  now <- getTime
+  alone p (\pr -> createCmd Release with
+    operator = p.operator; customer = p.customer; reference = "R1"
+    asset = "USDT"; network = "TRC20"; toWallet = "W"; amount = 1000000.0
+    bankReference = "made up"; releasedAt = now; principal = pr)
+
+-- InboundDeal already carried a non-optional `principal`, so there is no
+-- Optional to leave blank. Two steps: alone is refused, both together work.
+testOperatorAloneCannotCreateAnInboundDeal : Script ()
+testOperatorAloneCannotCreateAnInboundDeal = script do
+  p <- parties
+  now <- getTime
+  let deal = createCmd InboundDeal with
+        operator = p.operator; principal = p.principal; customer = p.customer
+        reference = "R1"; payIntoAccount = "ACC"; nairaAmount = 1.0
+        rate = 0.0001; asset = "USDT"; network = "TRC20"
+        customerWallet = "W"; expiresAt = addRelTime now (hours 1)
+        nairaConfirmed = True; bankReference = "made up"; bankFeed = None
+        cryptoAmount = Some 1.0
+  submitMustFail p.operator deal
+  _ <- submitMulti [p.operator, p.principal] [] deal
+  pure ()
