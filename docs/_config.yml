@@ -5,9 +5,10 @@
 # private message, a room briefing with private contacts and notes on visas and
 # rates were all answering HTTP 200 on the public site.
 #
-# THIS FILE STOPS THE SITE SERVING THEM. IT DOES NOT MAKE THEM PRIVATE. The
-# repository itself is public, so these files are still readable on github.com
-# and in git history. tests/pages_private_lint.py fails if this list shrinks.
+# UPDATE, 14 November 2026: the files were then moved out of the repository
+# entirely and removed from git history, so this list is now a second lock, in
+# case one is ever added back. tests/pages_private_lint.py fails if this list
+# shrinks, or if any of them reappears in the repository.
 exclude:
   - drafts
   - outreach

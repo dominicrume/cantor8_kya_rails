@@ -35,7 +35,7 @@ a comment went onto somebody else's funding proposal quoting their own sentence
 and linking a document nine commits behind a tree in which three reviewers had
 just corrected claims in that very file. It held up. That is luck, not a method.
 
-    python3 tools/before_posting.py docs/drafts/reply-leonid-9114-b.md docs/drafts/sources/leonid-9114-13.txt
+    python3 tools/before_posting.py ~/kya-private/docs/drafts/reply-leonid-9114-b.md ~/kya-private/docs/drafts/sources/leonid-9114-13.txt
 
 It refuses a draft whose quote is in no source, whose link names a file that is
 missing, uncommitted or unpushed, and whose affiliation claim carries no URL read

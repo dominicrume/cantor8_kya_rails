@@ -14,7 +14,7 @@
 **NOT SUBMITTED.** `cip-0000` says to float an idea on `cip-discuss` before
 writing a full CIP, and that has not been done. This exists so the float has
 something behind it if anyone asks, and so the shape can be argued with early
-rather than after a month of writing. See `docs/outreach/float-on-cip-discuss.md`.
+rather than after a month of writing. The thread it refers to is kept outside this repository.
 
 # 1. Abstract
 

@@ -293,7 +293,7 @@ else:
           "the measurement is %d days old, inside the 45-day limit" % age)
 
     want30, wantall = dl["window_30d"]["downloads"], dl["all_time"]
-    DOWNLOAD_PROSE = ["STATUS.md", "docs/opportunities.md", "docs/accomplished.md",
+    DOWNLOAD_PROSE = ["STATUS.md", "docs/accomplished.md",
                       "docs/evidence/index.md", "docs/dev-fund-proposal.md"]
     # \s+ not a literal space: "226\nin the thirty days" is the same claim and
     # the first version of this regex silently skipped the one file where the

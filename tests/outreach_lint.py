@@ -76,25 +76,25 @@ def check(ok, what):
 # Whatever is currently drafted to send. Renamed when it goes out, so this
 # list is the outbox rather than an archive: a lint that checks a sent message
 # is checking something nobody can act on.
-TARGETS = [p for p in [
-    os.path.join(ROOT, "docs", "outreach", "sent-2026-09-13.md"),
-    os.path.join(ROOT, "docs", "outreach",
-                 "post-what-a-ledger-does-not-record.md"),
-    os.path.join(ROOT, "docs", "outreach", "ask-cantor8-for-devnet.md"),
-    os.path.join(ROOT, "docs", "outreach", "webinar-wednesday-16-sept.md"),
-    os.path.join(ROOT, "docs", "outreach", "float-on-cip-discuss.md"),
-    os.path.join(ROOT, "docs", "outreach", "integration-plan.md"),
-    os.path.join(ROOT, "docs", "outreach", "ask-back.md"),
-    os.path.join(ROOT, "docs", "outreach", "pr-860-next-step.md"),
-    os.path.join(ROOT, "docs", "outreach", "five-firms.md"),
-    os.path.join(ROOT, "docs", "outreach", "linkedin-federico.md"),
-] if os.path.exists(p)]
+# The private folder, outside the repository. Drafts moved there on 14 November
+# 2026, so a clone has none of them and this lint must not pretend otherwise:
+# it checks what is present and says what is not.
+PRIVATE = os.environ.get("KYA_PRIVATE") or os.path.expanduser("~/kya-private")
+FIXTURE = os.path.join(ROOT, "tests", "fixtures", "outreach", "sent-sample.md")
+OUTBOX = ["sent-2026-09-13.md", "post-what-a-ledger-does-not-record.md",
+          "ask-cantor8-for-devnet.md", "webinar-wednesday-16-sept.md",
+          "float-on-cip-discuss.md", "integration-plan.md", "ask-back.md",
+          "pr-860-next-step.md", "five-firms.md", "linkedin-federico.md"]
+TARGETS = [p for p in [FIXTURE] + [os.path.join(PRIVATE, "docs", "outreach", n)
+                                    for n in OUTBOX] if os.path.exists(p)]
 
 # Words the RECIPIENT used, which a reply has to contain or it is not a reply
 # to them. Keyed by file, because the rule only applies to a reply: a new topic
 # has no addressee, and demanding somebody's vocabulary in a post they have not
 # written yet is the check misfiring rather than the draft being wrong.
 THEIRS = {
+    "sent-sample.md": ["deterministic settlement", "agentic registry",
+                       "porting to Canton", "RejectedAttempt", "trade-off"],
     "sent-2026-09-13.md": ["deterministic settlement", "agentic registry",
                            "porting to Canton", "RejectedAttempt", "trade-off"],
     "post-what-a-ledger-does-not-record.md": [],

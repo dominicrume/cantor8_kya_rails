@@ -495,7 +495,7 @@ MUTATIONS = [
     # Both first drafts were a page long and used none of the other person's
     # vocabulary. These are the two ways that comes back.
     ("a reply we are about to send grows back to a page",
-     "docs/outreach/sent-2026-09-13.md",
+     "tests/fixtures/outreach/sent-sample.md",
      "Fair. Plainly.",
      "Fair. Plainly. " + ("The mechanism is worth setting out at length here "
                           "because the detail matters and there is a great "
@@ -503,7 +503,7 @@ MUTATIONS = [
      "python3 tests/outreach_lint.py"),
 
     ("a reply stops using the words the other person used",
-     "docs/outreach/sent-2026-09-13.md",
+     "tests/fixtures/outreach/sent-sample.md",
      "Your agentic registry says what an agent may do.",
      "Your system says what an agent may do.",
      "python3 tests/outreach_lint.py"),

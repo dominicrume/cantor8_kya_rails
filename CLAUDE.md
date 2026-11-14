@@ -284,7 +284,7 @@ Hard rules for any AI touching this code:
   * told the owner to click "Approve" on digital-asset/dpm#334 without checking
     he had collaborator access. He did not; the button was greyed out.
   * repeated "Lukasz and Andrew are in #sig-security with you" from
-    docs/outreach/contracts-and-the-clock.md. Nothing in the tree evidences it.
+    docs/outreach/contracts-and-the-clock.md (a file now kept outside the repository). Nothing in the tree evidences it.
   * printed a forum draft for pasting whose first sentence was already false,
     because #866's vote had closed and failed four days earlier.
   * reported a commit as landed on an exit code of 0. Nothing was staged, so no

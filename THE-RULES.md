@@ -46,8 +46,8 @@ What it forbids, concretely:
 - **Chasing.** An update is welcome; "did you see this?" is a debt collector.
   Every message says what it adds and asks for nothing.
 - **Publishing what we learned about people whose help we want.** The Dev Fund
-  measurements in `docs/dev-fund-reality.md` are true and useful and stay
-  internal. Knowing a thing does not require saying it out loud.
+  measurements in `dev-fund-reality.md` are true and useful and stay
+  internal: since 14 November 2026 that file lives outside this repository. Knowing a thing does not require saying it out loud.
 - **Being wrong in public about somebody else's code.** A false finding filed
   against a stranger's repository is the single most expensive mistake
   available here. Verify by hand, check the DAR hash changed, and say what the

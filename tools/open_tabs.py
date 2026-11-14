@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Open the four things in DO-THIS.md that a person has to do by hand.
+"""Open the four things in DO-THIS.md (kept outside the repo) that a person has to do by hand.
 
 Nothing here touches the repository or the network. It opens browser tabs and
 prints which block of text belongs in each one, because the failure mode on a
@@ -22,22 +22,22 @@ TABS = [
         "Canton Foundation Slack Request",
         "https://forms.monday.com/forms/1d6ba9aa5f15edece06d93a2a6645634?r=use1",
         "Company: Vorem. General channels: none. SIGs: regulatory-compliance, "
-        "security, daml-tooling, dapp-integration. Full sheet: DO-THIS.md section 1.",
+        "security, daml-tooling, dapp-integration. Full sheet: DO-THIS.md section 1, in your private folder (KYA_PRIVATE, default ~/kya-private).",
     ),
     (
         "Reply to Vacuumlabs (51 days, zero replies)",
         "https://forum.canton.network/t/9084",
-        "Paste: the '## THE POST' section of docs/outreach/forum-reply-vacuumlabs.md",
+        "Paste: the '## THE POST' section of ~/kya-private/docs/outreach/forum-reply-vacuumlabs.md",
     ),
     (
         "Reply to Federico (your own thread, 34 days silent)",
         "https://forum.canton.network/t/how-do-you-prove-your-app-didnt-do-something/9114",
-        "Paste: the '## THE POST' section of docs/outreach/forum-reply-federico.md",
+        "Paste: the '## THE POST' section of ~/kya-private/docs/outreach/forum-reply-federico.md",
     ),
     (
         "New thread, App Development",
         "https://forum.canton.network/c/app-development",
-        "Title and body: docs/outreach/forum-new-thread-denominator.md. "
+        "Title and body: ~/kya-private/docs/outreach/forum-new-thread-denominator.md. "
         "Tags daml, canton.",
     ),
 ]
