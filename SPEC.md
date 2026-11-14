@@ -262,9 +262,19 @@ and `seal`, and the full body of only some of them.
   verifier **MUST** check the document against its own declared rule: one
   claiming to show every refusal that also withholds one is refused.
 
-A verifier establishes that nothing was removed, that positions run 1..n with
-every `prev` matching the seal before it, and that each shown body re-seals to
-the seal printed beside it.
+A verifier establishes that positions run 1..n with every `prev` matching the
+seal before it, that each shown body re-seals to the seal printed beside it,
+and that each shown body's own `n` and `prev` agree with the entry that carries
+it. That is INTERNAL CONSISTENCY. It is not proof that nothing was removed.
+
+*Corrected 14 November 2026.* This paragraph said a verifier "establishes that
+nothing was removed". It did not even establish internal consistency: a forger
+could delete an entry, renumber the envelope and re-seal each shown body, and
+the document passed, because a body's own `n` and `prev` were never compared to
+the envelope's. They are now. A forger who ALSO rewrites every body's `n` and
+`prev` and re-seals still produces a document that passes every check here,
+because a seal is not a signature. Only a head held outside the document (6c)
+can show that an entry was removed.
 
 It does **not** establish a withheld entry's outcome. The body is absent, so
 the label cannot be recomputed. The declared rule is what makes it checkable
@@ -278,8 +288,9 @@ shown what a disclosure gives away before sending it.
 
 ## 6c. Non-equivocation: proving nobody changed the set afterwards
 
-6b proves nothing was removed from a disclosure. It does not prove nothing
-was hidden inside one.
+6b shows a disclosure is internally consistent, so a clumsy removal is visible.
+It does not prove nothing was removed, and it does not prove nothing was
+hidden inside one.
 
 A withheld entry still declares its `outcome`, but its body is gone, so
 nothing can contradict the declaration. The `disclosing` rule in 6b catches a

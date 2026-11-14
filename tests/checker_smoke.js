@@ -333,6 +333,44 @@ print(json.dumps(disclose(c.receipts)))
     check(/does <b>not<\/b> hold/.test(v.innerHTML) && v.className.includes('bad'),
           'a refusal removed and the counts corrected is still caught');
 
+    // THE THOROUGH DELETION, found on 14 November 2026. Remove a shown refusal,
+    // renumber the envelope, point each entry at its new predecessor, re-seal
+    // every shown body against it, and fix the count, the totals and the head.
+    // Before the body's own n and prev were compared to the envelope's, the
+    // page called this document intact. Fixtures are sealed with Node's
+    // crypto, as above: what is under test is what the page concludes.
+    const forgedWithout = (fixN, fixPrev) => {
+      const t = JSON.parse(JSON.stringify(DOC));
+      t.entries.splice(at, 1);
+      let prev = 'GENESIS';
+      t.entries.forEach((e, i) => {
+        e.n = i + 1; e.prev = prev;
+        if (e.body) {
+          if (fixN) e.body.n = i + 1;
+          if (fixPrev) e.body.prev = prev;
+          const sorted = {}; Object.keys(e.body).sort()
+            .forEach(k => { sorted[k] = e.body[k]; });
+          e.seal = crypto.createHash('sha256')
+            .update(JSON.stringify(sorted) + prev).digest('hex');
+        }
+        prev = e.seal;
+      });
+      t.count = t.entries.length;
+      t.shown = t.entries.filter(e => e.body).length;
+      t.head = t.entries[t.entries.length - 1].seal;
+      delete t.outcomes;       // a document with no digest is a smaller claim
+      return t;
+    };
+    v = await verdictFor('thorough.json', JSON.stringify(forgedWithout(false, false)));
+    check(/does <b>not<\/b> hold/.test(v.innerHTML) && /moved or renumbered/.test(v.innerHTML),
+          'a thorough deletion that left the bodies alone is caught in the browser');
+    v = await verdictFor('half-fixed.json', JSON.stringify(forgedWithout(true, false)));
+    check(/does <b>not<\/b> hold/.test(v.innerHTML) && /different predecessor/.test(v.innerHTML),
+          '  and one that fixed each body\'s n but not its link is caught too');
+    v = await verdictFor('fully-forged.json', JSON.stringify(forgedWithout(true, true)));
+    check(!/does <b>not<\/b> hold/.test(v.innerHTML),
+          '  a forger who rewrites every body and re-seals still passes: a seal is not a signature, and only an externally held head can stop that');
+
     // The links alone catch that deletion, so the position check was not what
     // caught it: with the position check removed, the mutation harness still
     // found this suite green, and reported BLIND. What the numbering actually
@@ -384,6 +422,37 @@ print(json.dumps(disclose(c.receipts)))
     v = await verdictFor('held.json', JSON.stringify(held));
     check(/promises to show every refusal/.test(v.innerHTML),
           'withholding a refusal under a promise to show them all is caught');
+  }
+
+  // CANONICAL FORM, character by character. The browser and the Python package
+  // must produce the same bytes for the same receipt or a chain sealed in one
+  // reads as BROKEN in the other, a false accusation. Found on 14 November
+  // 2026: Python's json.dumps(ensure_ascii=True) writes U+007F as \u007f, and
+  // the page's escape range began at U+0080 and left the raw byte, so a chain
+  // containing DEL verified in Python and failed here. Go already escapes
+  // everything above 0x7E (impl/go/canonical.go). The characters are the edges
+  // of each escaping rule, not a sample.
+  {
+    const probe = [0x00, 0x1f, 0x20, 0x22, 0x5c, 0x7e, 0x7f, 0x80, 0xff, 0x100,
+                   0x20ac, 0xffff].map(c => String.fromCharCode(c)).concat(['\ud83d\ude00']);
+    const py = require('child_process').spawnSync('python3', ['-c', `
+import json, sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'pkg', 'src'))})
+from knowyouragenticai_receipts import canonical
+print(json.dumps([canonical({"k": c}) for c in json.load(sys.stdin)]))
+`], {input: JSON.stringify(probe), encoding: 'utf8'});
+    check(py.status === 0, 'the python canonical form of the probe characters is available');
+    const want = py.status === 0 ? JSON.parse(py.stdout) : [];
+    // The page's own functions, sliced out of the page exactly as harness() does.
+    const pageCanon = {};
+    vm.createContext(pageCanon);
+    vm.runInContext(fromPage('function escapeNonAscii', "+'}'; }"), pageCanon);
+    const got = probe.map(c => pageCanon.stableStringify({k: c}));
+    const bad = probe.map((c, i) => got[i] === want[i] ? null : 'U+' +
+      c.codePointAt(0).toString(16).padStart(4, '0')).filter(Boolean);
+    check(bad.length === 0 && want.length === probe.length,
+          'the page and the python package canonicalise ' + probe.length +
+          ' edge characters identically' + (bad.length ? ' -- they differ at ' + bad.join(', ') : ''));
   }
 
   // A plain chain wrapped as {entries: [...]} is NOT a disclosure. It has no

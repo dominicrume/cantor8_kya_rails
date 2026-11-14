@@ -477,7 +477,10 @@ const tagClass = r => NEUTRAL[r.outcome] ? 'rule' : (GOOD[r.outcome] ? 'ok' : 'n
 // and tests/conformance.js did not notice because it carried its OWN copy of
 // this function with the escaping already in it.
 function escapeNonAscii(s){
-  return s.replace(/[\u0080-\uffff]/g,
+  // U+007F too, from 14 November 2026: Python's json.dumps(ensure_ascii=True)
+  // writes DEL as \u007f, so a range starting at U+0080 left the raw byte and
+  // a chain containing DEL verified in Python and read BROKEN here.
+  return s.replace(/[\u007f-\uffff]/g,
     c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
 }
 function stableStringify(o){ if(o===null||typeof o!=='object') return escapeNonAscii(JSON.stringify(o));
@@ -528,6 +531,14 @@ async function checkDisclosure(doc){
         return {ok:false, why:'entry '+at+' was edited after it was sealed'};
       if(e.body.outcome !== e.outcome)
         return {ok:false, why:'entry '+at+' states one outcome and its body says another'};
+      // Added 14 November 2026, matching disclose.py: the body's own n and prev
+      // must agree with the envelope's, or a deleted entry can be hidden by
+      // renumbering the envelope and re-sealing the shown bodies.
+      if(e.body.n !== e.n)
+        return {ok:false, why:'entry '+at+"'s body says it is entry "+e.body.n+
+          ', so it was moved or renumbered'};
+      if(e.body.prev !== prev)
+        return {ok:false, why:'entry '+at+"'s body links to a different predecessor than the disclosure says"};
     } else if(!e.withheld){
       return {ok:false, why:'entry '+at+' has no body and does not say it is withheld'};
     }
@@ -542,6 +553,35 @@ async function checkDisclosure(doc){
         return {ok:false, why:'entry '+e.n+' is withheld and says it is '+e.outcome+
           ', but this document promises to show every refusal'};
     }
+  }
+  // SPEC 6d. `topology`, optional. It pins an independence assertion to one
+  // named configuration at one named time. Absent means a smaller claim was
+  // made, not a worse document, so absent checks nothing and implies nothing.
+  //
+  // The shape is checked and NOTHING MORE. This verifier does not hold the
+  // topology export, so it cannot confirm the digest, and it could not
+  // confirm independence even if it did: Canton separates cryptographic
+  // identities from real-world ownership, so distinct node ids are not
+  // distinct operators. Georgi Radev established that on forum topic 9323 on
+  // 2026-11-04 and tonozzibeverley953 proposed this field on 2026-11-13.
+  if(doc.topology !== undefined){
+    const t = doc.topology;
+    if(t===null || typeof t!=='object' || Array.isArray(t))
+      return {ok:false, why:'topology is present but is not an object'};
+    for(const k of ['digest','exportedAt','validFrom','validTo']){
+      if(typeof t[k] !== 'string' || !t[k])
+        return {ok:false, why:'topology is missing '+k+
+          ', and all four fields are required when it is present'};
+    }
+    if(!/^sha256:[0-9a-f]{64}$/.test(t.digest))
+      return {ok:false, why:'topology.digest must be sha256: and 64 lowercase hex'};
+    if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(t.exportedAt))
+      return {ok:false, why:'topology.exportedAt must be RFC 3339 with a Z offset'};
+    if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(t.validFrom))
+      return {ok:false, why:'topology.validFrom must be RFC 3339 with a Z offset'};
+    if(t.validTo !== 'OPEN' &&
+       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(t.validTo))
+      return {ok:false, why:'topology.validTo must be RFC 3339 with a Z offset, or OPEN'};
   }
   // SPEC 6c. The outcomes digest. `disclosing` above catches a withheld
   // entry that ADMITS it was refused. It cannot catch one relabelled
@@ -578,7 +618,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g,
 function receiptCard(r, broken){
   const d=document.createElement('div');
   d.className='r '+(r.outcome==='REFUSED'?'refused ':'')+(broken?'broken':'');
-  d.innerHTML='<span class="tag '+(broken?'bad':tagClass(r))+'">'+(broken?'SEAL BROKEN':r.outcome)+'</span>'+
+  d.innerHTML='<span class="tag '+(broken?'bad':tagClass(r))+'">'+(broken?'SEAL BROKEN':esc(r.outcome))+'</span>'+
     '<b>#'+esc(r.n)+' '+esc(r.what)+'</b><br>'+esc(subject(r))+
     ' &middot; '+esc(r.at)+
     '<br><span class="rule">rule: '+esc(r.rule)+'</span>'+

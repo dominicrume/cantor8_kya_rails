@@ -14,7 +14,29 @@ PAGES = ["step-3-verify/verifier.html", "docs/index.html"]
 # Functions that escape, or that cannot carry markup.
 # fmt() escapes first and then renders only *bold*, _italic_ and `code` from
 # the already-escaped text, so it is safe by construction.
-SAFE = ("esc", "fmt", "Number", "String", "money", "JSON", "encodeURIComponent")
+SAFE = ("esc", "fmt", "Number", "String", "money", "JSON", "encodeURIComponent",
+        "tagClass")
+
+def in_ternaries(rhs):
+    """Identifiers in the branches of a parenthesised `+(a ? b : c)`.
+
+    Found on 14 November 2026: `+(broken ? 'SEAL BROKEN' : r.outcome)+` put an
+    unescaped receipt field into innerHTML and the lint passed, for two
+    reasons. The pattern for `+` wanted an identifier straight after it, and
+    here a bracket follows. And any `esc(r...)` ANYWHERE on the same line was
+    accepted as escaping every `r` field on it, so a later `esc(r.rule)`
+    excused an earlier raw `r.outcome`. Each interpolation now has to be
+    escaped where it stands.
+    """
+    out = []
+    for m in re.finditer(r"\+\s*\(", rhs):
+        depth, j = 1, m.end()
+        while j < len(rhs) and depth:
+            depth += {"(": 1, ")": -1}.get(rhs[j], 0)
+            j += 1
+        out += re.findall(r"[?:]\s*([A-Za-z_][\w.\[\]]*)", rhs[m.end():j - 1])
+    return out
+
 
 bad = []
 for rel in PAGES:
@@ -35,10 +57,9 @@ for rel in PAGES:
                  re.finditer(r"\+\s*([A-Za-z_][\w.\[\]]*)", rhs)]
         found += [(m.group(1), "${}") for m in
                   re.finditer(r"\$\{\s*([A-Za-z_][\w.\[\]]*)", rhs)]
+        found += [(v, "+( ? : )") for v in in_ternaries(rhs)]
         for v, how in found:
             if v.startswith(SAFE):
-                continue
-            if re.search(r"esc\(\s*" + re.escape(v.split(".")[0]), line):
                 continue
             bad.append("%s:%d interpolates %r unescaped (via %s)" % (rel, i, v, how))
 

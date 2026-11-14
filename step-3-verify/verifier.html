@@ -384,7 +384,10 @@ const tagClass = r => NEUTRAL[r.outcome] ? 'rule' : (GOOD[r.outcome] ? 'ok' : 'n
 // and tests/conformance.js did not notice because it carried its OWN copy of
 // this function with the escaping already in it.
 function escapeNonAscii(s){
-  return s.replace(/[\u0080-\uffff]/g,
+  // U+007F too, from 14 November 2026: Python's json.dumps(ensure_ascii=True)
+  // writes DEL as \u007f, so a range starting at U+0080 left the raw byte and
+  // a chain containing DEL verified in Python and read BROKEN here.
+  return s.replace(/[\u007f-\uffff]/g,
     c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
 }
 function stableStringify(o){ if(o===null||typeof o!=='object') return escapeNonAscii(JSON.stringify(o));
@@ -435,6 +438,14 @@ async function checkDisclosure(doc){
         return {ok:false, why:'entry '+at+' was edited after it was sealed'};
       if(e.body.outcome !== e.outcome)
         return {ok:false, why:'entry '+at+' states one outcome and its body says another'};
+      // Added 14 November 2026, matching disclose.py: the body's own n and prev
+      // must agree with the envelope's, or a deleted entry can be hidden by
+      // renumbering the envelope and re-sealing the shown bodies.
+      if(e.body.n !== e.n)
+        return {ok:false, why:'entry '+at+"'s body says it is entry "+e.body.n+
+          ', so it was moved or renumbered'};
+      if(e.body.prev !== prev)
+        return {ok:false, why:'entry '+at+"'s body links to a different predecessor than the disclosure says"};
     } else if(!e.withheld){
       return {ok:false, why:'entry '+at+' has no body and does not say it is withheld'};
     }
@@ -514,7 +525,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g,
 function receiptCard(r, broken){
   const d=document.createElement('div');
   d.className='r '+(r.outcome==='REFUSED'?'refused ':'')+(broken?'broken':'');
-  d.innerHTML='<span class="tag '+(broken?'bad':tagClass(r))+'">'+(broken?'SEAL BROKEN':r.outcome)+'</span>'+
+  d.innerHTML='<span class="tag '+(broken?'bad':tagClass(r))+'">'+(broken?'SEAL BROKEN':esc(r.outcome))+'</span>'+
     '<b>#'+esc(r.n)+' '+esc(r.what)+'</b><br>'+esc(subject(r))+
     ' &middot; '+esc(r.at)+
     '<br><span class="rule">rule: '+esc(r.rule)+'</span>'+

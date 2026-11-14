@@ -216,6 +216,78 @@ ok, why = check_disclosure(t)
 check(not ok and "numbered" in why,
       "renumbering entries while leaving the links intact is caught (%s)" % why[:52])
 
+# THE THOROUGH DELETION. Found on 14 November 2026 by a review that built it
+# and watched check_disclosure return (True, "") with a refusal missing. Remove
+# a shown refusal, renumber the envelope, point each entry at its new
+# predecessor, re-seal every shown body against that predecessor, and correct
+# the count, the shown total, the head and the outcomes digest. Every rule
+# above passes, because none of them compared a shown body's OWN n and prev to
+# the envelope's. They are compared now.
+from knowyouragenticai_receipts.disclose import seal                        # noqa: E402
+
+
+def forged_without(source, drop, fix_n, fix_prev):
+    """`source` with entry `drop` removed and everything else made consistent.
+    fix_n and fix_prev say whether the forger also rewrote the body's own
+    position and link, which the seal covers and an unsigned seal permits."""
+    t = copy.deepcopy(source)
+    del t["entries"][drop]
+    prev = "GENESIS"
+    for k, e in enumerate(t["entries"], start=1):
+        e["n"], e["prev"] = k, prev
+        if "body" in e:
+            if fix_n:
+                e["body"]["n"] = k
+            if fix_prev:
+                e["body"]["prev"] = prev
+            e["seal"] = seal(e["body"], prev)
+        prev = e["seal"]
+    t["count"] = len(t["entries"])
+    t["shown"] = sum(1 for e in t["entries"] if "body" in e)
+    t["head"] = t["entries"][-1]["seal"]
+    t["outcomes"] = outcome_digest(t["entries"])
+    return t
+
+
+drop = refused_index(doc)
+ok, why = check_disclosure(forged_without(doc, drop, False, False))
+check(not ok and "moved or renumbered" in why,
+      "a thorough deletion that left the bodies alone is caught (%s)" % why[:56])
+ok, why = check_disclosure(forged_without(doc, drop, True, False))
+check(not ok and "different predecessor" in why,
+      "  and one that fixed each body's n but not its link is caught (%s)" % why[:50])
+ok, why = check_disclosure(forged_without(doc, drop, True, True))
+check(ok, "a forger who rewrites every body's n and prev AND re-seals still "
+          "verifies: nothing inside the document can stop that, because a seal "
+          "is not a signature (%r)" % why)
+check("anchor" in (check_disclosure.__doc__ or "").lower()
+      or "anchor" in (__import__("knowyouragenticai_receipts.disclose",
+                                 fromlist=["x"]).__doc__ or "").lower(),
+      "  and the module says the head must be held somewhere the forger "
+      "does not control")
+
+# ISOLATING THE POSITION CHECK. The renumbering test above stopped isolating it
+# on 14 November 2026: once a shown body's own n is compared to the envelope's,
+# renumbering the envelope disagrees with the bodies too, so deleting the
+# position check left every suite green and the mutation harness reported it
+# BLIND. This document agrees with itself everywhere (bodies renumbered to
+# match, every body re-sealed, links and digest recomputed). The only thing
+# wrong is that entry 1 is numbered 10, so only the position check can say so.
+t = copy.deepcopy(doc)
+prev = "GENESIS"
+for offset, e in enumerate(t["entries"]):
+    e["n"], e["prev"] = offset + 10, prev
+    if "body" in e:
+        e["body"]["n"], e["body"]["prev"] = offset + 10, prev
+        e["seal"] = seal(e["body"], prev)
+    prev = e["seal"]
+t["head"] = t["entries"][-1]["seal"]
+t["outcomes"] = outcome_digest(t["entries"])
+ok, why = check_disclosure(t)
+check(not ok and "is numbered" in why,
+      "a self-consistent document whose numbering starts at 10 is caught by "
+      "the position check alone (%s)" % why[:52])
+
 t = copy.deepcopy(doc)
 t["entries"].reverse()
 check(not check_disclosure(t)[0], "reordering is caught")
@@ -317,5 +389,6 @@ if fails:
     for f in fails:
         print("  - " + f)
     sys.exit(1)
-print("the refusals can be handed over on their own, nothing can be removed")
-print("from them without detection, and the accepted payments stay shut.")
+print("the refusals can be handed over on their own, a clumsy removal from them")
+print("is detected, and the accepted payments stay shut. A forger who re-seals")
+print("the whole document is not detected: only a head held elsewhere is.")

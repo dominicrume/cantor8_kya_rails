@@ -65,7 +65,9 @@ WITHHELD = "withheld"
 EVERY_REFUSAL = "every entry whose outcome is not ACCEPTED"
 
 # Never withheld, whatever the chooser says. Position and links are what prove
-# nothing was removed; the outcome is what stops a refusal being concealed.
+# a removal visible (no seal is a signature, so only a head held outside the
+# document proves nothing was removed); the outcome is what stops a refusal
+# being concealed.
 ALWAYS_SHOWN = ("n", "outcome", "prev", "seal")
 
 
@@ -203,6 +205,17 @@ def _check_body(e: Mapping[str, Any], index: int, prev: str) -> str:
         return "entry %d was edited after it was sealed" % index
     if body.get("outcome") != e.get("outcome"):
         return "entry %d states one outcome and its body says another" % index
+    # Added 14 November 2026. The envelope's n and prev were checked, and the
+    # body was re-sealed against the envelope's prev, but the body's OWN n and
+    # prev were never compared to the envelope's. A forger could delete an
+    # entry, renumber the envelope, re-seal each shown body against its new
+    # predecessor, and the document verified with a refusal missing.
+    if body.get("n") != e.get("n"):
+        return ("entry %d's body says it is entry %s, so it was moved or "
+                "renumbered" % (index, body.get("n")))
+    if body.get("prev") != prev:
+        return ("entry %d's body links to a different predecessor than the "
+                "disclosure says" % index)
     return ""
 
 
