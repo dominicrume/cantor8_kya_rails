@@ -43,7 +43,7 @@ declared in its first line.
 
 | What | Evidence | How to check it yourself |
 |---|---|---|
-| The spending rules are enforced in Daml, not in Python | 32 fences across 5 contracts | `python3 tests/fence_lint.py` |
+| The spending rules are enforced in Daml, not in Python | 34 fences across 5 contracts | `python3 tests/fence_lint.py` |
 | Every fence is load-bearing | 82 mutations, each requires a **named** test to go red | `python3 tests/mutation_suite.py` |
 | The ledger behaves under attack | 171 Daml test scripts across two packages, 68 and 103 | `daml test --all` in `step-1-mandate/test` |
 | A refusal commits as a contract and moves no money | `TryCharge` / `ChargeRefused` in `KyaMandate.daml` | `testRefusalIsOnLedgerAndNothingMoved` |
@@ -53,8 +53,8 @@ declared in its first line.
 | **A second journal cannot be opened behind the auditor's back** | the auditor is a SIGNATORY, not an observer, so a create needs their authority. No contract keys required | `testASecondJournalIsPrevented` |
 | An auditor can name a **withheld** refusal from the ledger alone | `AttemptJournal` count plus `missingRefusals`, 14 scripts |
 | **A record survives the work reverting** | Two-phase `Attempt`: opened in its own transaction, consumed by the work. An attempt left open is the evidence. 15 scripts | `daml test --files daml/AttemptTest.daml` in `step-0-refusal/test` |
-| A resolution cannot lie about what the attempt was | **salted** sha256 commitment, length-prefixed | `testTheResolutionCannotLieAboutTheAttempt` |
-| An open attempt does not leak what was attempted | the salt is held off-ledger, so the digest hides as well as binds | `testTheCommitmentHidesAndNotJustBinds` |
+| A **refusal** cannot lie about what the attempt was | **salted** sha256 commitment, length-prefixed. Corrected 14 November 2026: a settlement no longer carries a description, so it is no longer bound to the commitment at all (it never was bound to its target, finding N3). Declared, not fixed | `testTheResolutionCannotLieAboutTheAttempt` |
+| An allowed attempt does not leak what was attempted to the auditor or the guardian | **Corrected 14 November 2026.** This row said the salt was held off the ledger. It was not: `Open` took the salt, action and detail as arguments and the auditor and guardian received them in plain text, as did `Allow` and `SettleAttempt`. Daml Script cannot see exercise arguments, so every test passed. Fixed: `Open` takes only a digest computed off the ledger, `Allow` takes nothing, `SettleAttempt` takes only its target. The refusal path reveals the action to the auditor on purpose | `python3 tools/who_sees_the_attempt_arguments.py` (it has two controls and starts its own sandbox) |
 | **Destroying the evidence requires the guardian** | the guardian is a signatory of every `Attempt`, so owner and actor together cannot archive one. Every legitimate ending also mints a `Resolution` marker | `testArchivingAnAttemptLeavesANumberedHole` |
 | **An asset cannot move outside the journal** | the guardian is a signatory of the asset, and its authority exists only inside an attempt resolution. Enforced by Daml's authorization model, not by convention | `testTheAssetCannotMoveOutsideTheJournal` |
 | **One journal serialises every attempt; N shards do not** | `testOneJournalSerialisesAndTwoShardsDoNot` holds the original contract id and uses it twice: one journal refuses, two shards allow both | `daml test --files daml/ShardedTest.daml` |

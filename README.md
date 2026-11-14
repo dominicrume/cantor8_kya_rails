@@ -78,23 +78,23 @@ Two more fences on the same choice, beyond what D1 asks for:
 total cap still has room.
 
 **Every fence is proven load-bearing, not just present.** `tests/mutation.py`
-deletes each of the 32 `assertMsg` fences in turn, rebuilds, and requires a
-*named* test to go red. All 32 do — so no fence is decoration, and none is
+deletes each of the 34 `assertMsg` fences in turn, rebuilds, and requires a
+*named* test to go red. All 34 do — so no fence is decoration, and none is
 enforced only by a test that would pass without it:
 
 ```
 $ python3 tests/mutation.py
-baseline: 173 scripts green
+baseline: 184 scripts green
   ok    charge would exceed the cap          -> testOverCapRefusedByTheCapAssertion goes red
   ok    payee is not on the allow-list       -> testPayoutRedirectionRefused goes red
-  ...  32 of 32
+  ...  34 of 34
 every fence is covered: deleting any one of them turns a test red.
 ```
 
 One command runs the ledger side end to end:
 
 ```bash
-python3 tests/daml_tests.py                # 173 of 173 attack scripts
+python3 tests/daml_tests.py                # 184 of 184 attack scripts
 ```
 
 Nothing above is enforced in Python. The Python mirror in `step-2-agent/agent.py`
@@ -172,12 +172,12 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **173 / 173** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
+| Attack suite green | **184 / 184** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.2.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
 | The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |
 | The tests are themselves tested | `tests/mutation_suite.py` breaks **82** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
-| Every fence mutation-tested | all **32** in the Daml: delete any one and a *named* test goes red. `tests/mutation_py.py` does the same for the refusals at the edges, and now covers **1 of 1** — the journal's, because the webhook adapters it also covered moved to the kya-desk repository with the desk. The count is small and stated rather than rounded: it was 30 of 30 when there were thirty edges, and a repository that quotes yesterday's number is the thing this column exists to prevent |
+| Every fence mutation-tested | all **34** in the Daml: delete any one and a *named* test goes red. `tests/mutation_py.py` does the same for the refusals at the edges, and now covers **1 of 1** — the journal's, because the webhook adapters it also covered moved to the kya-desk repository with the desk. The count is small and stated rather than rounded: it was 30 of 30 when there were thirty edges, and a repository that quotes yesterday's number is the thing this column exists to prevent |
 | One bad line cannot end the model's session | `tests/mcp_smoke.py` feeds 15 malformed JSON-RPC lines **between** the good ones. Each gets its proper code (-32700 / -32600 / -32601), and the request after them all is still answered |
 | The chain is bound to its origin | **NOT YET TRUE.** The design publishes the head on Canton, and a fully forged chain verifies green in all four implementations, which is exactly why an anchor matters. No anchor has ever been written to a ledger, so today a forged chain is caught by nothing. `KyaAnchor.daml` is exercised in `daml test` only |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, positive amount — five `assertMsg` fences in the `Charge` choice body. Revoke is not one of them and should not be: it is a **consuming** choice, so it archives the mandate and there is no contract left to charge. That is a stronger guarantee than an assertion, and the distinction is worth stating rather than rounding off |
