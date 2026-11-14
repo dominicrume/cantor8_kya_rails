@@ -1,0 +1,19 @@
+# What GitHub Pages must NOT serve. Added 14 November 2026.
+#
+# Pages publishes everything under docs/ unless told otherwise, and until today
+# it was not told. Unsent drafts, the CV, the application, a third party's
+# private message, a room briefing with private contacts and notes on visas and
+# rates were all answering HTTP 200 on the public site.
+#
+# THIS FILE STOPS THE SITE SERVING THEM. IT DOES NOT MAKE THEM PRIVATE. The
+# repository itself is public, so these files are still readable on github.com
+# and in git history. tests/pages_private_lint.py fails if this list shrinks.
+exclude:
+  - drafts
+  - outreach
+  - room-briefing-18-oct.html
+  - opportunities.md
+  - conversations.md
+  - teaching-the-three-answers.md
+  - dev-fund-reality.md
+  - moving-to-a-vorem-org.md

@@ -64,6 +64,9 @@ jobs:
       - name: no unescaped interpolation reaches the DOM
         run: python3 tests/xss_lint.py
 
+      - name: the public site does not serve the private working files
+        run: python3 tests/pages_private_lint.py
+
       - name: the published package and the repository are the same format
         run: |
           python3 tests/package_smoke.py

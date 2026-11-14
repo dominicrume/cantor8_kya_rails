@@ -148,6 +148,8 @@ SUITES = [
      "the installable package refuses what it should refuse"),
     ("python3 tests/package_failure_paths_smoke.py", "The rules",
      "the package's failure paths each do what they say"),
+    ("python3 tests/pages_private_lint.py", "The rules",
+     "the public site does not serve the private working files"),
 
     ("python3 tests/mutation_py.py", "The tests, tested",
      "every refusal at the edges is covered by a named test"),
