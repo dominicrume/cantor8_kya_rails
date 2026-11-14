@@ -450,3 +450,30 @@ it just looks like one, which is worse than an honest grouping.
 | 3 | The journal is appended to (T22 residual) | **not defended** — proved by a test, not denied; the ledger is what holds |
 | 9 | The journal is edited or truncated (T22) | **defended** — seal-chained, and the server refuses to start |
 | 1 | Deals lost on restart (was: everything in memory) | **fixed** — this was T9 reintroduced by a laptop lid |
+
+## Declared limits from the review of 14 November 2026
+
+A review of this repository's own Daml, run on 14 November 2026, found eight
+things. Two were fixed the same day. Six are written down here, in the open,
+with where they are, why they matter and what would close them. None of them
+is hidden by a test that passes: each is a place where the code does what it
+says and the claim around it is smaller than it sounds.
+
+| ID | What it means | Where | State |
+|---|---|---|---|
+| N1 | The operator alone could create the six desk contracts and skip the rules in front of them | `KyaQuote`, `KyaCycle`, `KyaInbound` | **Fixed.** The principal co-signs. `KyaOperatorAloneTest.daml` |
+| N2 | The auditor and guardian were sent the salt, action and detail of allowed attempts | `Journal.Open`, `Allow`, `SettleAttempt` | **Fixed.** `tools/who_sees_the_attempt_arguments.py` |
+| N3 | A settlement is not tied to what was committed, because `target` is not bound to the commitment | `Attempt.daml`, `SettleAttempt` | **Declared.** Removing the preimage from `SettleAttempt` was the price of N2 |
+| N4 | The agent chooses whether a refusal is recorded at all: `Charge` aborts and leaves nothing, `TryCharge` records one, and the caller picks | `KyaMandate.daml:147` and `:192` | **Declared.** A refusal that is never recorded cannot be found. Closing it needs the guard to be the only door, which is the journal design |
+| N5 | One bank or chain reference can confirm several deals, and one deal can be confirmed twice with different references | `KyaInbound.daml:142`, `:172`, `KyaCycle.daml:114` | **Open.** Each check is only "not empty". One real credit can back two releases. Needs a uniqueness design across deals, so it is not a one-line fence |
+| N6 | Revoking a feed does not reach deals already open, because the feed is copied into each deal when it opens | `SetBankFeed` `KyaInbound.daml:85`, `SetDepositFeed` `KyaCycle.daml:67` | **Open.** A compromised feed keeps its rights on every deal opened before the revoke. Fixing it changes a fence, so it needs the owner's decision |
+| N7 | A sharded attempt loses which shard it came from | `Sharded.OpenOn` creates an `Attempt` carrying only `n` | **Open, low.** The pair (shard, n) cannot be recovered from the `Attempt` or its `Resolution` in the two-phase flow |
+| N8 | A schedule with a zero or negative period is accepted, so every run can fire at once | `Scheduled.daml`, `DueEvery` | **Open, low.** No `ensure` on `period` |
+
+Three further limits belong beside these and are recorded elsewhere. The
+commitment's shape is checked and its meaning is not (`SHORTCUTS.md`). The
+upgrade from 1.1.0 changes signatories, so old 1.1.0 desk contracts could not
+be upgraded (`docs/upgrade-path.md`). Fences that are uncovered by mutation in
+the Daml are listed by `tools/daml_mutate.py`, which reported 13 in
+`step-1-mandate` and 7 in `step-0-refusal` after the day's fixes.
+
