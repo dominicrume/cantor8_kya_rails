@@ -67,6 +67,7 @@ jobs:
       - name: the published package and the repository are the same format
         run: |
           python3 tests/package_smoke.py
+          python3 tests/package_failure_paths_smoke.py
           cd pkg && PYTHONPATH=src python3 -m knowyouragenticai_receipts
 
       - name: any implementation can be graded through a pipe
