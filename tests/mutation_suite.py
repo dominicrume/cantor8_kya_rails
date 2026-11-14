@@ -334,8 +334,8 @@ MUTATIONS = [
 
     ("a README count drifts from the file that produces it",
      "README.md",
-     "**32** in the Daml",
-     "**31** in the Daml",
+     "**34** in the Daml",
+     "**33** in the Daml",
      "python3 tests/balance_lint.py"),
 
     ("the DevNet check goes back to a hardcoded threshold",

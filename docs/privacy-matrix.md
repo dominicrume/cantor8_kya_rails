@@ -13,19 +13,19 @@ a claim and one read out of the contracts is a fact.*
 | --- | --- | --- | --- |
 | `ChainAnchor` | `principal` | — | **everyone else** |
 | `DepositBook` | `principal` | `operator` | `depositFeed`, **everyone else** |
-| `DepositInstruction` | `operator` | `customer`, `depositFeed` | **everyone else** |
+| `DepositInstruction` | `operator`, `principal` | `customer`, `depositFeed` | **everyone else** |
 | `OffTakerBook` | `principal` | `operator` | **everyone else** |
-| `SupplyLeg` | `operator` | — | **everyone else** |
+| `SupplyLeg` | `operator`, `principal` | — | **everyone else** |
 | `NairaBook` | `principal` | `operator` | `bankFeed`, **everyone else** |
-| `InboundDeal` | `operator` | `customer`, `principal`, `bankFeed` | **everyone else** |
-| `Release` | `operator` | `customer` | **everyone else** |
+| `InboundDeal` | `operator`, `principal` | `customer`, `principal`, `bankFeed` | **everyone else** |
+| `Release` | `operator`, `principal` | `customer` | **everyone else** |
 | `ChargeRecord` | `owner`, `spender` | `payee` | **everyone else** |
 | `ChargeRefused` | `owner`, `spender` | `optional [] (\a -> [a]) auditor` | `payee`, **everyone else** |
 | `KyaMandate` | `owner`, `spender` | — | **everyone else** |
 | `KyaMandateProposal` | `owner` | `spender` | `auditor`, **everyone else** |
-| `Settlement` | `operator` | `customer` | **everyone else** |
+| `Settlement` | `operator`, `principal` | `customer` | **everyone else** |
 | `PayoutBook` | `principal` | `operator` | **everyone else** |
-| `Quote` | `operator` | `customer` | **everyone else** |
+| `Quote` | `operator`, `principal` | `customer` | **everyone else** |
 
 ## What the exclusions buy
 
