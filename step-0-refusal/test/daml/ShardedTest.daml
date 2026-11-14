@@ -76,11 +76,11 @@ testOneJournalSerialisesAndTwoShardsDoNot = script do
       attempts = 0
       refusals = []
 
-  _ <- submit [o, a] do exerciseCmd j Allow with action = "pay"
+  _ <- submit [o, a] do exerciseCmd j Allow
 
   -- The second attempt cannot use the id it was given. It must wait for the
   -- first to finish and hand it a new one. THAT is the contention.
-  submitMustFail [o, a] do exerciseCmd j Allow with action = "pay"
+  submitMustFail [o, a] do exerciseCmd j Allow
 
   -- Two shards, same pair of parties.
   s <- openSet 2
@@ -232,10 +232,9 @@ testTheGuardStillHoldsThroughAShard = script do
 
   (attempt, _) <- submit [s.owner, s.actor] do
     exerciseCmd a0 OpenOn with
-      salt = aSalt; action = "withdraw"; detail = "amount=1"
+      commitment = attemptCommitment (aSalt) ("withdraw") ("amount=1")
   _ <- submit [s.owner, s.actor] do
     exerciseCmd attempt SettleAttempt with
-      salt = aSalt; action = "withdraw"; detail = "amount=1"
       target = toInterfaceContractId @Journalled wallet
   [(_, w)] <- query @Wallet s.owner
   w.balance === 99.0
@@ -259,4 +258,20 @@ testASetNeedsAtLeastOneShard = script do
       owner = o; actor = a; guardian = g
       auditor = Some d
       shardCount = 0
+  pure ()
+
+
+-- 8. OpenOn takes a digest, and refuses anything that is not one. Added with
+--    the change that moved the commitment off the ledger (14 November 2026):
+--    the fence was written without a test, and the mutation tool reported it
+--    as uncovered within the hour.
+testOpenOnRefusesAValueThatIsNotADigest : Script ()
+testOpenOnRefusesAValueThatIsNotADigest = script do
+  s <- openSet 2
+  let [a0, _] = s.shards
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd a0 OpenOn with commitment = "not a digest"
+  (_, _) <- submit [s.owner, s.actor] do
+    exerciseCmd a0 OpenOn with
+      commitment = attemptCommitment aSalt "withdraw" "amount=1"
   pure ()

@@ -107,18 +107,17 @@ template JournalShard
     -- else. Same two-phase guarantee as the unsharded journal.
     choice OpenOn : (ContractId Attempt, ContractId JournalShard)
       with
-        salt : Text
-        action : Text
-        detail : Text
+        commitment : Text
+          -- ^ Computed off the ledger; see `Open` in Journal.daml.
       controller owner, actor
       do
-        assertMsg "an attempt needs a salt, or the commitment does not hide"
-          (DA.Text.length salt >= 32)
+        assertMsg "a commitment is a 64 character sha256 digest"
+          (DA.Text.length commitment == 64)
         now <- getTime
         let n = attempts + 1
         attempt <- create Attempt with
           owner; actor; guardian; auditor; n
-          commitment = attemptCommitment salt action detail
+          commitment
           openedAt = now
         shard' <- create this with attempts = n
         pure (attempt, shard')

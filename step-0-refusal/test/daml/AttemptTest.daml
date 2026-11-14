@@ -54,9 +54,7 @@ testOpeningTakesTheNumberFirst = script do
   s <- twoSetup
   (attempt, j1) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "withdraw"
-      detail = "amount=900000"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("withdraw") ("amount=900000")
   seen <- submit s.auditor do
     exerciseCmd j1 Expect
   seen === (1, [])
@@ -74,9 +72,7 @@ testTheRecordSurvivesARevert = script do
   s <- twoSetup
   (attempt, j1) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "withdraw"
-      detail = "amount=900000"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("withdraw") ("amount=900000")
 
   -- Second transaction: settle the attempt, then the real work fails. An
   -- empty action breaks RefusalRecord's `ensure`, standing in for anything
@@ -84,9 +80,6 @@ testTheRecordSurvivesARevert = script do
   now <- getTime
   submitMustFail [s.owner, s.actor] $
     exerciseCmd attempt SettleAttempt with
-        salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-        action = "withdraw"
-        detail = "amount=900000"
         target = toInterfaceContractId @Journalled s.wallet
       *> createCmd RefusalRecord with
            owner = s.owner
@@ -119,14 +112,9 @@ testSettlingRevealsNothing = script do
   s <- twoSetup
   (attempt, _) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "pay"
-      detail = "40000 to supplier-12"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("pay") ("40000 to supplier-12")
   submit [s.owner, s.actor] do
     exerciseCmd attempt SettleAttempt with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "pay"
-      detail = "40000 to supplier-12"
       target = toInterfaceContractId @Journalled s.wallet
   open <- query @Attempt s.auditor
   length open === 0
@@ -140,9 +128,7 @@ testRefusingDisclosesTheRefusal = script do
   s <- twoSetup
   (attempt, _) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "withdraw"
-      detail = "amount=900000"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("withdraw") ("amount=900000")
   (record, _) <- submit [s.owner, s.actor] do
     exerciseCmd attempt RefuseAttempt with
       salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
@@ -164,9 +150,7 @@ testTheResolutionCannotLieAboutTheAttempt = script do
   s <- twoSetup
   (attempt, _) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "withdraw"
-      detail = "amount=900000"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("withdraw") ("amount=900000")
 
   -- A refusal describing a different amount.
   submitMustFail [s.owner, s.actor] do
@@ -184,13 +168,14 @@ testTheResolutionCannotLieAboutTheAttempt = script do
       detail = "amount=900000"
       rule = "above the per-day ceiling"
 
-  -- A settlement describing something else.
-  submitMustFail [s.owner, s.actor] do
-    exerciseCmd attempt SettleAttempt with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "withdraw"
-      detail = "amount=10"
-      target = toInterfaceContractId @Journalled s.wallet
+  -- There was a third case here: "a settlement describing something else".
+  -- Removed on 14 November 2026. SettleAttempt no longer takes a description,
+  -- because the auditor observes the attempt and received it (N2), so there is
+  -- nothing for a settlement to lie about and nothing for a test to refuse.
+  -- What this gives up: a settlement is no longer tied to the commitment at
+  -- all. It was tied only by the caller knowing a string, since `target` was
+  -- never bound to it (finding N3), so the loss is smaller than it sounds,
+  -- and it is a declared limit, not a fix.
 
   -- The truth still works.
   (_, _) <- submit [s.owner, s.actor] do
@@ -217,9 +202,7 @@ testAnOpenAttemptRevealsNothingButItsExistence = script do
   s <- twoSetup
   (attempt, _) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "pay"
-      detail = "90000 USD to merchant-4471"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("pay") ("90000 USD to merchant-4471")
   Some a <- queryContractId s.auditor attempt
   a.n === 1
   -- The only payload is a digest, and it is not the plaintext.
@@ -234,9 +217,7 @@ testAStrangerSeesNoAttempt = script do
   stranger <- allocateParty "Stranger2"
   (attempt, _) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "withdraw"
-      detail = "amount=1"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("withdraw") ("amount=1")
   submitMustFail stranger do
     exerciseCmd attempt Opened
   seen <- query @Attempt stranger
@@ -250,9 +231,7 @@ testAbandoningNeedsAReason = script do
   s <- twoSetup
   (attempt, _) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "withdraw"
-      detail = "amount=1"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("withdraw") ("amount=1")
   submitMustFail [s.owner, s.actor] do
     exerciseCmd attempt AbandonAttempt with reason = ""
   submit [s.owner, s.actor] do
@@ -269,29 +248,29 @@ testTheAuditorCanAccountForEveryAttempt = script do
   s <- twoSetup
 
   (a1, j1) <- submit [s.owner, s.actor] do
-    exerciseCmd s.journal Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "one"
+    exerciseCmd s.journal Open with commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("pay") ("one")
   submit [s.owner, s.actor] do
-    exerciseCmd a1 SettleAttempt with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "one"; target = toInterfaceContractId @Journalled s.wallet
+    exerciseCmd a1 SettleAttempt with target = toInterfaceContractId @Journalled s.wallet
 
   (a2, j2) <- submit [s.owner, s.actor] do
-    exerciseCmd j1 Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "two"
+    exerciseCmd j1 Open with commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("pay") ("two")
   (_, _) <- submit [s.owner, s.actor] do
     exerciseCmd a2 RefuseAttempt with
       salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
       action = "pay"; detail = "two"; rule = "allow-list"
 
   (a3, j3) <- submit [s.owner, s.actor] do
-    exerciseCmd j2 Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "three"
+    exerciseCmd j2 Open with commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("pay") ("three")
   now <- getTime
   submitMustFail [s.owner, s.actor] $
-    exerciseCmd a3 SettleAttempt with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "three"; target = toInterfaceContractId @Journalled s.wallet
+    exerciseCmd a3 SettleAttempt with target = toInterfaceContractId @Journalled s.wallet
       *> createCmd RefusalRecord with
            owner = s.owner; actor = s.actor
            action = ""; detail = "reverted"; rule = "x"
            refusedAt = now; auditor = None
 
   (a4, j4) <- submit [s.owner, s.actor] do
-    exerciseCmd j3 Open with salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"; action = "pay"; detail = "four"
+    exerciseCmd j3 Open with commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("pay") ("four")
   submit [s.owner, s.actor] do
     exerciseCmd a4 AbandonAttempt with reason = "operator cancelled"
 
@@ -334,16 +313,35 @@ testTheCommitmentHidesAndNotJustBinds = script do
   assertMsg "salt length is not pinned into the digest"
     (attemptCommitment "aa" "b" "c" /= attemptCommitment "a" "ab" "c")
 
--- 12. A salt too short to be unguessable is refused at open time, rather
---     than silently producing a commitment that does not hide.
+-- 12. A salt too short to be unguessable is refused when the attempt is
+--     RESOLVED as a refusal. It used to be refused at open time, but Open no
+--     longer sees the salt (it takes the digest, computed off the ledger), so
+--     the only place the salt reaches the ledger is the refusal, and that is
+--     where it is checked.
 testAShortSaltIsRefused : Script ()
 testAShortSaltIsRefused = script do
   s <- twoSetup
-  submitMustFail [s.owner, s.actor] do
+  (attempt, _) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "tooshort"
-      action = "withdraw"
-      detail = "amount=1"
+      commitment = attemptCommitment "tooshort" "withdraw" "amount=1"
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd attempt RefuseAttempt with
+      salt = "tooshort"; action = "withdraw"; detail = "amount=1"
+      rule = "allow-list"
+  pure ()
+
+-- 12b. Open takes a digest and refuses anything that is not one. The fence was
+--      added on 14 November 2026 with the change that moved the commitment
+--      off the ledger, without a test, and the mutation tool reported it
+--      uncovered. A control follows: a real digest is accepted.
+testOpenRefusesAValueThatIsNotADigest : Script ()
+testOpenRefusesAValueThatIsNotADigest = script do
+  s <- twoSetup
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd s.journal Open with commitment = "not a digest"
+  (_, _) <- submit [s.owner, s.actor] do
+    exerciseCmd s.journal Open with
+      commitment = attemptCommitment "f3a81c0d9e2b47a65d18c3f0b7e94a2c" "withdraw" "amount=1"
   pure ()
 
 -- 13. The archive hole, and the reason Resolution exists.
@@ -357,21 +355,14 @@ testArchivingAnAttemptLeavesANumberedHole = script do
   s <- twoSetup
   (a1, j1) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "pay"
-      detail = "one"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("pay") ("one")
   _ <- submit [s.owner, s.actor] do
     exerciseCmd a1 SettleAttempt with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "pay"
-      detail = "one"
       target = toInterfaceContractId @Journalled s.wallet
 
   (a2, j2) <- submit [s.owner, s.actor] do
     exerciseCmd j1 Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "pay"
-      detail = "two"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("pay") ("two")
 
   -- The operator tries to destroy the evidence. It now FAILS. Adding the
   -- guardian as a signatory of the Attempt closed this: archiving needs
@@ -410,14 +401,9 @@ testAResolutionRevealsOnlyTheOutcome = script do
   s <- twoSetup
   (attempt, _) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "pay"
-      detail = "90000 USD to merchant-4471"
+      commitment = attemptCommitment ("f3a81c0d9e2b47a65d18c3f0b7e94a2c") ("pay") ("90000 USD to merchant-4471")
   marker <- submit [s.owner, s.actor] do
     exerciseCmd attempt SettleAttempt with
-      salt = "f3a81c0d9e2b47a65d18c3f0b7e94a2c"
-      action = "pay"
-      detail = "90000 USD to merchant-4471"
       target = toInterfaceContractId @Journalled s.wallet
   Some r <- queryContractId s.auditor marker
   r.n === 1

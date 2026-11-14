@@ -59,11 +59,10 @@ testTheJournalledPathWorks = script do
 
   (attempt, j1) <- submit [e.owner, e.actor] do
     exerciseCmd e.journal Open with
-      salt = aSalt; action = "withdraw"; detail = "amount=1"
+      commitment = attemptCommitment (aSalt) ("withdraw") ("amount=1")
 
   _ <- submit [e.owner, e.actor] do
     exerciseCmd attempt SettleAttempt with
-      salt = aSalt; action = "withdraw"; detail = "amount=1"
       target = toInterfaceContractId @Journalled wallet
 
   -- The work happened: a new wallet at 99.
@@ -111,11 +110,10 @@ testAnUnguardedAssetIsRejectedAtResolution = script do
 
   (attempt, _) <- submit [e.owner, e.actor] do
     exerciseCmd e.journal Open with
-      salt = aSalt; action = "withdraw"; detail = "amount=1"
+      commitment = attemptCommitment (aSalt) ("withdraw") ("amount=1")
 
   submitMustFail [e.owner, e.actor] do
     exerciseCmd attempt SettleAttempt with
-      salt = aSalt; action = "withdraw"; detail = "amount=1"
       target = toInterfaceContractId @Journalled loose
 
 -- 4. The limit of the whole design, tested rather than asserted.
@@ -166,7 +164,7 @@ testARefusedAttemptNeverTouchesTheAsset = script do
 
   (attempt, j1) <- submit [e.owner, e.actor] do
     exerciseCmd e.journal Open with
-      salt = aSalt; action = "withdraw"; detail = "amount=900000"
+      commitment = attemptCommitment (aSalt) ("withdraw") ("amount=900000")
 
   (record, _) <- submit [e.owner, e.actor] do
     exerciseCmd attempt RefuseAttempt with

@@ -50,14 +50,14 @@ testBothPathsCount : Script ()
 testBothPathsCount = script do
   s <- setup
   j1 <- submit [s.owner, s.actor] do
-    exerciseCmd s.journal Allow with action = "withdraw"
+    exerciseCmd s.journal Allow
   (_, j2) <- submit [s.owner, s.actor] do
     exerciseCmd j1 Refuse with
       action = "withdraw"
       detail = "amount=900000"
       rule = "above the per-day ceiling"
   j3 <- submit [s.owner, s.actor] do
-    exerciseCmd j2 Allow with action = "withdraw"
+    exerciseCmd j2 Allow
   Some journal <- queryContractId s.owner j3
   journal.attempts === 3
   journal.refusals === [2]
@@ -75,7 +75,7 @@ testTheAuditorReadsTheCountWithoutTheOperator = script do
       detail = "ccy=USD"
       rule = "counterparty is not on the allow-list"
   j2 <- submit [s.owner, s.actor] do
-    exerciseCmd j1 Allow with action = "settle"
+    exerciseCmd j1 Allow
   seen <- submit s.auditor do
     exerciseCmd j2 Expect
   seen === (2, [1])
@@ -90,7 +90,7 @@ testAWithheldRefusalIsDetectable = script do
     exerciseCmd s.journal Refuse with
       action = "withdraw"; detail = "amount=1"; rule = "cap"
   j2 <- submit [s.owner, s.actor] do
-    exerciseCmd j1 Allow with action = "withdraw"
+    exerciseCmd j1 Allow
   (r3, j3) <- submit [s.owner, s.actor] do
     exerciseCmd j2 Refuse with
       action = "withdraw"; detail = "amount=2"; rule = "cap"
@@ -127,7 +127,7 @@ testTheAuditorCannotSeeWhatWasAllowed : Script ()
 testTheAuditorCannotSeeWhatWasAllowed = script do
   s <- setup
   j1 <- submit [s.owner, s.actor] do
-    exerciseCmd s.journal Allow with action = "pay the supplier 40000"
+    exerciseCmd s.journal Allow
   seen <- submit s.auditor do
     exerciseCmd j1 Expect
   seen === (1, [])
@@ -163,7 +163,7 @@ testTheOwnerCanReadTheirOwnCount = script do
       attempts = 0
       refusals = []
   j1 <- submit [owner, actor] do
-    exerciseCmd j Allow with action = "rebalance"
+    exerciseCmd j Allow
   seen <- submit owner do
     exerciseCmd j1 Expect
   seen === (1, [])
@@ -211,7 +211,7 @@ testASecondJournalIsPrevented : Script ()
 testASecondJournalIsPrevented = script do
   s <- setup
   _ <- submit [s.owner, s.actor] do
-    exerciseCmd s.journal Allow with action = "withdraw"
+    exerciseCmd s.journal Allow
 
   -- The operator tries to open a second journal behind the auditor's back.
   -- This now FAILS. Before 21 October it succeeded.
@@ -281,7 +281,7 @@ testTheCountCannotBeRewound : Script ()
 testTheCountCannotBeRewound = script do
   s <- setup
   j1 <- submit [s.owner, s.actor] do
-    exerciseCmd s.journal Allow with action = "withdraw"
+    exerciseCmd s.journal Allow
   (_, j2) <- submit [s.owner, s.actor] do
     exerciseCmd j1 Refuse with
       action = "withdraw"; detail = "amount=7"; rule = "cap"
@@ -294,9 +294,9 @@ testTheCountCannotBeRewound = script do
   gone <- queryContractId s.owner s.journal
   gone === None
   submitMustFail [s.owner, s.actor] do
-    exerciseCmd s.journal Allow with action = "withdraw"
+    exerciseCmd s.journal Allow
   submitMustFail [s.owner, s.actor] do
-    exerciseCmd j1 Allow with action = "withdraw"
+    exerciseCmd j1 Allow
 
 -- 10. A journal claiming more refusals than attempts cannot be created. The
 --     `ensure` is the only thing standing between the auditor and a
@@ -333,7 +333,7 @@ testAnUnjournalledAttemptIsStillInvisible : Script ()
 testAnUnjournalledAttemptIsStillInvisible = script do
   s <- setup
   j1 <- submit [s.owner, s.actor] do
-    exerciseCmd s.journal Allow with action = "withdraw"
+    exerciseCmd s.journal Allow
 
   -- The operator writes a RefusalRecord directly, going around the journal
   -- entirely. It succeeds, because Refusal.daml is a standalone template and
@@ -378,7 +378,7 @@ testAnAllowedAttemptThatRevertsIsLost : Script ()
 testAnAllowedAttemptThatRevertsIsLost = script do
   s <- setup
   j1 <- submit [s.owner, s.actor] do
-    exerciseCmd s.journal Allow with action = "withdraw"
+    exerciseCmd s.journal Allow
 
   -- One transaction: the journal increments, then the work fails. An empty
   -- `action` breaks RefusalRecord's `ensure`, standing in for any later step
@@ -386,7 +386,7 @@ testAnAllowedAttemptThatRevertsIsLost = script do
   -- monadic: two commands in one submission are one transaction.
   now <- getTime
   submitMustFail [s.owner, s.actor] $
-    exerciseCmd j1 Allow with action = "withdraw"
+    exerciseCmd j1 Allow
       *> createCmd RefusalRecord with
            owner = s.owner
            actor = s.actor

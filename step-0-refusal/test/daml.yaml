@@ -8,6 +8,6 @@ dependencies:
   - daml-script
 data-dependencies:
   - ../interface/.daml/dist/canton-journal-interface-1.0.0.dar
-  - ../.daml/dist/canton-refusal-record-1.0.0.dar
+  - ../.daml/dist/canton-refusal-record-1.1.0.dar
 build-options:
   - --target=2.1

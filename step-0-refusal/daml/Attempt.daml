@@ -241,6 +241,10 @@ template Attempt
         rule : Text
       controller owner, actor
       do
+        -- The salt is checked HERE and not at Open, because Open no longer
+        -- sees it. A short salt still makes the commitment guessable.
+        assertMsg "an attempt needs a salt, or the commitment does not hide"
+          (T.length salt >= 32)
         assertMsg
           "the refusal does not match what the attempt committed to"
           (attemptCommitment salt action detail == commitment)
@@ -266,11 +270,15 @@ template Attempt
     -- The caller does its real work in this same transaction. If that work
     -- reverts, this choice reverts with it and the attempt stays open, which
     -- is the entire point.
+    --
+    -- It takes no salt, action or detail. It used to, to prove the settlement
+    -- matched the commitment, and the auditor observes this contract, so the
+    -- auditor received the very thing this design exists to keep from them.
+    -- The check protected little: `target` is not bound to the commitment
+    -- (finding N3), so it proved the caller knew a string, not that this work
+    -- was the work that was committed to.
     choice SettleAttempt : ContractId Resolution
       with
-        salt : Text
-        action : Text
-        detail : Text
         target : ContractId Journalled
           -- ^ The application's own contract. Its work runs HERE, inside
           -- this choice, because this is the only place the guardian's
@@ -278,9 +286,6 @@ template Attempt
           -- rather than recommended.
       controller owner, actor
       do
-        assertMsg
-          "the settlement does not match what the attempt committed to"
-          (attemptCommitment salt action detail == commitment)
         assertGuarded target
         exercise target Perform
         now <- getTime

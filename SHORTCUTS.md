@@ -49,6 +49,15 @@ computation out of the thing enforcing it.
 
 Added 19 October 2026.
 
+**Reversed 14 November 2026.** The reasoning above was wrong about where the
+load-bearing computation is. What binds a refusal is the check at RESOLUTION,
+which still reproduces the digest on the ledger. Computing it at `Open` was
+only an encoding, and doing it there sent the salt, action and detail to the
+auditor and the guardian as choice arguments. `Open` now takes the digest,
+computed by the caller (`python3 tools/who_sees_the_attempt_arguments.py`
+checks the Python computation against the ledger's). Left standing so the
+reversal can be read next to the decision it reverses.
+
 ## A vetted template can never gain or lose a contract key
 
 Canton 3.5.1 release notes, Smart Contract Upgrades, verbatim:
