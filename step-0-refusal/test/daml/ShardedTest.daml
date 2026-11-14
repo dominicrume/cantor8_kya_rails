@@ -4,6 +4,7 @@
 module ShardedTest where
 
 import DA.Assert ((===))
+import DA.Text qualified as T
 import Daml.Script
 
 import Attempt
@@ -271,6 +272,8 @@ testOpenOnRefusesAValueThatIsNotADigest = script do
   let [a0, _] = s.shards
   submitMustFail [s.owner, s.actor] do
     exerciseCmd a0 OpenOn with commitment = "not a digest"
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd a0 OpenOn with commitment = T.implode (replicate 64 "z")
   (_, _) <- submit [s.owner, s.actor] do
     exerciseCmd a0 OpenOn with
       commitment = attemptCommitment aSalt "withdraw" "amount=1"

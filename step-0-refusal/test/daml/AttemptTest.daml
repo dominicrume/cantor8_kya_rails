@@ -339,6 +339,12 @@ testOpenRefusesAValueThatIsNotADigest = script do
   s <- twoSetup
   submitMustFail [s.owner, s.actor] do
     exerciseCmd s.journal Open with commitment = "not a digest"
+  -- The right length is not enough. 64 letter z was accepted until the shape
+  -- check existed, and so was 64 uppercase hex, which sha256 never writes here.
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd s.journal Open with commitment = T.implode (replicate 64 "z")
+  submitMustFail [s.owner, s.actor] do
+    exerciseCmd s.journal Open with commitment = T.implode (replicate 64 "A")
   (_, _) <- submit [s.owner, s.actor] do
     exerciseCmd s.journal Open with
       commitment = attemptCommitment "f3a81c0d9e2b47a65d18c3f0b7e94a2c" "withdraw" "amount=1"

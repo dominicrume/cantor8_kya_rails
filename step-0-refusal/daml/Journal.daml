@@ -272,7 +272,7 @@ template AttemptJournal
       controller owner, actor
       do
         assertMsg "a commitment is a 64 character sha256 digest"
-          (T.length commitment == 64)
+          (isDigest commitment)
         now <- getTime
         let n = attempts + 1
         attempt <- create Attempt with

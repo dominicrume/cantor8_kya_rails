@@ -137,6 +137,16 @@ attemptCommitment salt action detail =
     show (T.length salt) <> ":" <> salt <>
     show (T.length action) <> ":" <> action <> detail))
 
+-- | Is this text a sha256 digest the way `attemptCommitment` writes one: 64
+-- lowercase hex digits. `Open` used to check only the length, so 64 letter z
+-- was accepted, and an attempt opened with it could never be refused honestly,
+-- because no salt, action and detail hash to it (found 14 November 2026).
+-- Shape is all the ledger can check. It cannot know that the caller really
+-- hashed what they say they did, only that the value could be a hash.
+isDigest : Text -> Bool
+isDigest t =
+  T.length t == 64 && all (`elem` T.explode "0123456789abcdef") (T.explode t)
+
 -- | How an attempt ended. Deliberately says nothing about WHAT it was.
 data Outcome
   = Settled

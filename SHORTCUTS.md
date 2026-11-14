@@ -140,3 +140,19 @@ says it will not allow.
 
 These modules stayed only for Canton's upgrade check, per CLAUDE.md. That is
 a reason to keep them, not a reason to leave a hole in them unrecorded.
+
+
+## The commitment's shape is checked, not its meaning
+`Open` and `OpenOn` require the commitment to be 64 lowercase hex digits
+(`isDigest` in Attempt.daml). The ledger cannot check more. An operator who
+opens an attempt with a made-up digest gets an attempt no salt, action and
+detail hash to, so it can never be refused honestly, only abandoned or settled,
+and the auditor then sees an outcome marker and nothing else. Found by a red
+team on 14 November 2026, who also showed the `salt >= 32` rule in
+`RefuseAttempt` protects only the refusal path: it stops the operator refusing
+with a short salt, not exposing themselves by committing with one. What this
+means for the claim "a refusal cannot lie": it holds for refusals the operator
+chooses to write. Whether a refusal is written at all is the operator's choice
+(finding N4).
+
+Added 14 November 2026.
