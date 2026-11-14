@@ -16,7 +16,7 @@ signatories of the journal, are informees of that exercise and were sent all
 three in plain text. `Allow` took an action and discarded it, and that was
 delivered too. `SettleAttempt` took them again. A scratch version of this
 tool, run on a local sandbox against the code as committed that morning
-(d2ff08b), found the salt, the action and the detail all present in the
+(f49ac18), found the salt, the action and the detail all present in the
 auditor's and the guardian's streams. This version measures the fixed API.
 
 WHAT IT DOES. Starts a real Canton sandbox, then for a fresh set of parties:

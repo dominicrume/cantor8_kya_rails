@@ -142,7 +142,7 @@ python3 tools/dashboard.py
 ```
 
 The commit is
-[f3b693a](https://github.com/dominicrume/cantor8_kya_rails/commit/f3b693a).
+[43ed104](https://github.com/dominicrume/cantor8_kya_rails/commit/43ed104).
 Its message says what was wrong, in the open, with the reason, because a
 correction found by a reader costs more than one declared by the author.
 

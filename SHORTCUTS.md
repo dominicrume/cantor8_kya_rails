@@ -18,7 +18,7 @@
 
 2026-09-08 | REPAID same day: all three OpenZeppelin findings records are built, sealed and committed, and each reproduced its hand-typed row exactly. Original entry: two of the three were not built yet. `docs/findings/` holds `access-control-v1` (7 fences, sealed and verifiable); `canton-token-template` (32) and `canton-stablecoin` (30) are a full build-and-test per fence and were still running. The findings doc and the README name only the record that exists. | an hour of machine time, not a decision | run `tools/assurance.py` against both and commit the records beside the first.
 
-2026-09-11 | REPAID: a mutated balances file was committed and pushed. A backgrounded `tests/mutation_suite.py` hit its timeout and was killed mid-row, leaving `docs/devnet-balances.json` reading 0.3 CC for the unverified account -- the opposite of the D1 claim, and 5.3 against a 5.0 opening. Only `fence_lint` guarded the commit, so `a48ffdf` carried it to GitHub, where the README table beside it still said 0.0. Found four commits later by the mutation harness reporting the row STALE. Restored from `a48ffdf~1`; `tools/pre-commit` now runs `balance_lint` before `fence_lint`, so a file left mutated -- or a README count that drifted -- refuses the commit the way a missing Daml fence already did. The killed-run class has now cost two files in one night; the fix is the hook, not more care.
+2026-09-11 | REPAID: a mutated balances file was committed and pushed. A backgrounded `tests/mutation_suite.py` hit its timeout and was killed mid-row, leaving `docs/devnet-balances.json` reading 0.3 CC for the unverified account -- the opposite of the D1 claim, and 5.3 against a 5.0 opening. Only `fence_lint` guarded the commit, so `14ace14` carried it to GitHub, where the README table beside it still said 0.0. Found four commits later by the mutation harness reporting the row STALE. Restored from `14ace14~1`; `tools/pre-commit` now runs `balance_lint` before `fence_lint`, so a file left mutated -- or a README count that drifted -- refuses the commit the way a missing Daml fence already did. The killed-run class has now cost two files in one night; the fix is the hook, not more care.
 
 2026-09-12 | `charge()` on the real rail now exercises `TryCharge` instead of `Charge`, and **has never been run against DevNet**. `tests/devnet_parse_smoke.py` covers our half — the response parsing, the rule read off the contract, the refusal that carries no reference when nothing committed — with recorded-shape transactions. It does not cover whether Canton returns transactions of that shape, or whether a `ChargeRefused` contract created inside a choice appears in the response the way `_created` assumes. | `C8_CLIENT_SECRET` is not in this shell, so DevNet cannot be reached. Wiring it and testing the parsing is worth more than leaving the refusal unrecorded, but calling it proven would be the exact overclaim this file exists to prevent. | run `python3 tools/prove_refusal_on_devnet.py` once the secret is back. It deploys 1.1.1 as an upgrade of the vetted 1.1.0, spends inside the cap, attempts a charge over it, and refuses to write anything unless a `ChargeRefused` contract id comes back with the cap rule on it. `--dry-run` drives every step with a fake ledger and is in the float, so the tool cannot rot before the secret arrives; `tests/devnet_run_smoke.py` proves the four different failures that all say REFUSED are told apart. Record the contract id here afterwards. Same visit as redeploying 1.1.1 and re-measuring the float.
 
@@ -26,7 +26,7 @@
 
 2026-09-12 | REPAID, and it should never have been a shortcut: the customer screen served **real, spendable crypto addresses**. `TR7NHqj...gjLj6t` (written short on purpose: the full string is the USDT TRC20 contract address, where coin is unrecoverable, and `tests/no_real_addresses.py` refuses a spendable one anywhere in the tree including this log); the Bitcoin one was the BIP-173 example. That screen renders a QR code, "Send exactly", a copy button and two warnings about choosing the right network, all of which make it read as real, and nothing anywhere said it was a demo. CLAUDE.md has required since the first commit that anything mocked be labelled MOCKED in code and in the demo. It sat for two weeks and survived three audits, including two run the same day it was found. Now: every address is structurally invalid and fails its own chain's checksum, so a wallet refuses it; the screen carries a DEMO ONLY banner above the amount; and `tests/no_real_addresses.py` decodes Base58Check, EIP-55 and bech32 across the whole tree, with positive controls proving the validators and the walk can both say yes.
 
-2026-09-26 | CORRECTION to commit 921128b. That commit says the Dev Fund's integration milestone "had not happened, and the reason was in the code rather than in the outreach". **That is false, and it is the comfortable half of the truth.** The code was one reason nobody could say yes: `ChargeRefused` sat inside `KyaMandate` with `payee` and `amount` on it, so a lending or collateral app could not depend on it. But checking the record rather than asserting it: **nobody has ever been asked to integrate.** `docs/outreach/` (kept outside this repository since 14 November 2026) contained no message to anyone proposing they adopt the pattern, `docs/conversations.md` holds three rows and none of them is an integration conversation, and the one rule that file states about asking is "not *would you use this*". So the honest version is that both were missing, and the outreach was missing more completely: the code made a yes awkward, while the absence of an ask made a yes impossible. Writing it the other way round turned a distribution problem into an engineering problem, which is the more comfortable one to have and the one an engineer reaches for. | it was an assertion about cause, made without looking, in a commit message | the milestone needs two integrations and there is still no plan for when to ask or whom. Decide that before building anything else for it. `canton-refusal-record` makes a yes cheap; it does not make anyone say it.
+2026-09-26 | CORRECTION to commit 7a00bc5. That commit says the Dev Fund's integration milestone "had not happened, and the reason was in the code rather than in the outreach". **That is false, and it is the comfortable half of the truth.** The code was one reason nobody could say yes: `ChargeRefused` sat inside `KyaMandate` with `payee` and `amount` on it, so a lending or collateral app could not depend on it. But checking the record rather than asserting it: **nobody has ever been asked to integrate.** `docs/outreach/` (kept outside this repository since 14 November 2026) contained no message to anyone proposing they adopt the pattern, `docs/conversations.md` holds three rows and none of them is an integration conversation, and the one rule that file states about asking is "not *would you use this*". So the honest version is that both were missing, and the outreach was missing more completely: the code made a yes awkward, while the absence of an ask made a yes impossible. Writing it the other way round turned a distribution problem into an engineering problem, which is the more comfortable one to have and the one an engineer reaches for. | it was an assertion about cause, made without looking, in a commit message | the milestone needs two integrations and there is still no plan for when to ask or whom. Decide that before building anything else for it. `canton-refusal-record` makes a yes cheap; it does not make anyone say it.
 
 2026-09-26 | Two smaller overstatements in the same work, both now fixed in `step-0-refusal/README.md`. "Nobody could take the pattern without taking your whole mandate" was too strong: anyone could copy fifteen lines. What they could not do was DEPEND on it. And the three-row example table mixed two rows lifted verbatim from the test suite with one invented for illustration, without saying which was which, which invites a reader to check one and trust the rest. The rows are labelled now.
 
@@ -79,7 +79,7 @@ Recorded 22 October 2026, after a correction in `#sig-security` sent us to
 read the 3.5.1 notes properly. Worth knowing before anyone proposes an
 upgrade to pick up keys, because the answer is that it cannot be an upgrade.
 
-2026-11-10 | CORRECTION to commit 49aa8e6, whose message says the DARs were
+2026-11-10 | CORRECTION to commit e7a872e, whose message says the DARs were
 pushed over OCI by hand "because dpm cannot". **That is false and the
 repository already knew it.** `tools/oci_push_dar.py`'s own docstring records
 that dpm 1.0.21 works and that the cause was a local `~/.docker/config.json`
@@ -154,5 +154,35 @@ with a short salt, not exposing themselves by committing with one. What this
 means for the claim "a refusal cannot lie": it holds for refusals the operator
 chooses to write. Whether a refusal is written at all is the operator's choice
 (finding N4).
+
+Added 14 November 2026.
+
+
+## History was rewritten on 14 November 2026, to remove private files
+Unsent drafts, outreach notes, the CV and application, source captures
+(including a third party's private message), a room briefing and notes on
+visas and rates had been in this public repository since August, and served on
+the public site until that day. They were moved to a folder outside the
+repository and removed from every commit with `git filter-branch`, then
+`main` and the two tags (`action-v1.0.0`, `daml-v1.0.0`) were force-pushed.
+
+What changed: 288 commits became 257, because 31 commits touched nothing but
+private files. Every commit hash changed. Eleven citations of old hashes in
+nine files were remapped by author date and subject; none pointed at a dropped
+commit. The final tree is byte-identical to the one before the rewrite, and
+the tagged code is unchanged, so the published DARs still rebuild from their
+tags. `docs/drafts/posted.log` stayed, with its history, because it is the
+honesty record three tools read.
+
+What this does NOT do. A rewrite is not erasure. Anyone who cloned or
+forked before 14 November, and any archive or search index that copied the
+repository, still has the old history. GitHub may keep unreachable commits
+reachable by their hash until it garbage-collects them, and only GitHub Support
+can purge them sooner. At the time of the rewrite the repository had 0 forks,
+0 stars and 0 watchers. Anything in the removed files that mattered to a
+third party, or was a credential, must be treated as exposed regardless.
+
+A full backup of the old history is kept privately, outside the repository.
+Old links of the form `.../commit/<old hash>` will not resolve.
 
 Added 14 November 2026.

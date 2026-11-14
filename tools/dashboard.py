@@ -186,7 +186,7 @@ def run(cmd):
         # off by one, in a tree that was about to be committed.
         #
         # SHORTCUTS.md already records this class costing two files in one
-        # night, one of which reached GitHub in a48ffdf. The hook and the
+        # night, one of which reached GitHub in 14ace14. The hook and the
         # marker directory were the fix for a killed run. Nobody noticed that
         # the dashboard was the thing doing the killing.
         #

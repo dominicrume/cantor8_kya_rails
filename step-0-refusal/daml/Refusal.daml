@@ -14,7 +14,7 @@
 --
 -- Deliberately not the EU AI Act. Annex III does not list payments or
 -- treasury, so Article 12 almost certainly does not bind a spend-limited
--- agent at all. That framing was removed from every other file in f6b7041
+-- agent at all. That framing was removed from every other file in cf8333d
 -- and this header was missed.
 --
 -- Note this is specific to ledgers that do not commit failed transactions.
