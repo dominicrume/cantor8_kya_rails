@@ -373,7 +373,7 @@ const GOOD = {ACCEPTED:1, COVERED:1};
 // not a failure, and painting it red says something was refused when nothing
 // was. Same mistake as COVERED, which used to render red for the same reason:
 // a set of good outcomes is not the same thing as a set of outcomes.
-const NEUTRAL = {POLICY:1};
+const NEUTRAL = {POLICY:1, SCOPE:1, 'NOT SEEN':1};
 const tagClass = r => NEUTRAL[r.outcome] ? 'rule' : (GOOD[r.outcome] ? 'ok' : 'no');
 
 // SPEC.md section 4: non-ASCII MUST be escaped to \uXXXX. JSON.stringify emits

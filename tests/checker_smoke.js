@@ -227,6 +227,13 @@ function verdictFor(name, text) {
   // nothing was -- the same mistake COVERED used to make.
   const pol = {outcome: 'POLICY', currency: 'USD', amount: '100.00', payee: 'acme'};
   check(colour(pol) === 'rule', 'a POLICY entry is neither green nor red');
+  // Entries a mutation record carries about its OWN scope. SCOPE says what was
+  // recognised and NOT SEEN is a line the tool did not test. Neither is a
+  // finding, so neither may be painted red, and neither is green: a record
+  // that coloured them either way would misstate what it is.
+  check(colour({outcome: 'SCOPE'}) === 'rule', 'a SCOPE entry is neither green nor red');
+  check(colour({outcome: 'NOT SEEN'}) === 'rule', 'a NOT SEEN entry is neither green nor red');
+  check(colour({outcome: 'UNCOVERED'}) === 'no', 'while an UNCOVERED fence is still a finding, painted red');
   check(/^limit /.test(render(pol)),
         'a policy renders as a LIMIT, not as money that moved to the payee');
 
