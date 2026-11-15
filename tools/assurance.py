@@ -36,14 +36,25 @@ from kya_chain import Chain                                    # noqa: E402
 import daml_mutate                                             # noqa: E402
 
 
-def toolchain():
+def toolchain(src=None):
     """What answered. A finding is only as good as the thing that produced it,
-    so the version goes inside the seal rather than beside it."""
-    ok, out = daml_mutate.daml(["version"], ROOT)
+    so the version goes inside the seal rather than beside it.
+
+    Asked about the SUBJECT's directory, because the subject decides which
+    assistant builds it. This used to ask from this repository's root, which
+    answered "daml 3.4.x" for a package that was built with dpm 3.5.8, so a
+    sealed record named a toolchain that had not run.
+    """
+    where = src or ROOT
+    tool, _why = daml_mutate.toolchain_for(where)
+    ok, out = daml_mutate.daml(["version"], where)
     for line in out.splitlines():
-        if "default SDK version" in line or "project SDK version" in line:
+        if tool == "dpm" and line.strip().startswith("*"):
+            return "dpm " + line.strip().lstrip("* ").split()[0]
+        if any(w in line for w in ("package SDK version", "project SDK version",
+                                   "default SDK version")):
             return "daml " + line.strip().split()[0]
-    return "daml (version not reported)"
+    return "%s (version not reported)" % tool
 
 
 def subject_commit(path):
@@ -94,6 +105,43 @@ def stamp_one(chain, row, subject, tools):
     )
 
 
+def ascii_only(text):
+    """The record format refuses non-ASCII (SPEC section 5). A line of someone
+    else's source can hold any character, so make it safe rather than crash."""
+    return text.encode("ascii", "replace").decode("ascii")
+
+
+def stamp_unseen(chain, src, under, subject, tools):
+    """One NOT SEEN receipt per check-like line the tool does not test, with the
+    reason. A record that listed only what was tested would read as complete."""
+    unseen = daml_mutate.unseen_all(src, under)
+    for path, line, why, text in unseen:
+        chain.stamp(
+            what=ascii_only(text.strip())[:120] or "check-like line",
+            amount=str(line),
+            payee=ascii_only(os.path.relpath(path, src)),
+            rule=ascii_only(why)[:160],
+            outcome="NOT SEEN",
+            approved_by="discovery: a check-like line this tool does not test",
+            ledger=tools, currency="N/A", instrument=subject)
+    return len(unseen)
+
+
+def stamp_scope(chain, n_fences, n_unseen, n_defs, subject, tools):
+    """The closing receipt: what this record covers and what it does not.
+    `helper_defs` counts lines of check helpers' own definitions, which are
+    never mutated; leaving that number out would make the totals look like
+    they accounted for every check word in the source when they did not."""
+    named = ",".join(sorted(daml_mutate.SETTINGS["known"])) or "none"
+    chain.stamp(
+        what="scope of this record", amount=str(n_fences), payee="all",
+        rule=("recognised=%d;not_seen=%d;helper_defs=%d;constructs=all;"
+              "discovery=daml_fences" % (n_fences, n_unseen, n_defs))[:160],
+        outcome="SCOPE",
+        approved_by=ascii_only("named check helpers: " + named)[:120],
+        ledger=tools, currency="N/A", instrument=subject)
+
+
 def summary(rows):
     counts = {}
     for state, _w, _d in rows:
@@ -127,11 +175,15 @@ def run(src, test, subject, out_path, under=None):
           % (len(found), len(base)))
 
     rows = daml_mutate.run_all(found, src, test, base)
-    tools = toolchain()
+    tools = toolchain(src)
 
     chain = Chain()
     for row in rows:
         stamp_one(chain, row, subject, tools)
+    if daml_mutate.SETTINGS["constructs"] == "all":
+        n_unseen = stamp_unseen(chain, src, under, subject, tools)
+        n_defs = len(daml_mutate.helper_defs_all(src, under))
+        stamp_scope(chain, len(rows), n_unseen, n_defs, subject, tools)
 
     ok, bad = chain.verify()
     if not ok:
@@ -170,11 +222,13 @@ def main(argv):
     ap.add_argument("--test", required=True, help="the package holding the test scripts")
     ap.add_argument("--for", dest="subject", help="who or what this is about")
     ap.add_argument("--out", default="findings.json", help="where to write the record")
+    daml_mutate.add_options(ap)
     ap.add_argument("--under", help="mutate only files under this path inside --src; "
                                     "the project still builds from --src. A library whose "
                                     "tests live in the same tree needs this, or the run "
                                     "mutates the tests it is measuring.")
     a = ap.parse_args(argv)
+    daml_mutate.configure(a)
     subject = a.subject or os.path.basename(os.path.abspath(a.src))
     return run(a.src, a.test, subject, a.out, a.under)
 

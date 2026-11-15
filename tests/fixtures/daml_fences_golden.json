@@ -1,0 +1,339 @@
+{
+ "about": "fences() as the legacy discovery found them at 456df2a, before the construct set was generalised. The default mode of tools/daml_mutate.py must keep returning exactly this.",
+ "fences": {
+  "step-1-mandate": [
+   [
+    "daml/KyaAnchor.daml",
+    65,
+    "ensure ledger /= \"\""
+   ],
+   [
+    "daml/KyaCycle.daml",
+    51,
+    "assertMsg \"no approved address for that asset on that network\" (matches /= [])"
+   ],
+   [
+    "daml/KyaCycle.daml",
+    59,
+    "assertMsg \"this network requires a memo or tag and none was given\" (not needsMemo || not (isNone memo))"
+   ],
+   [
+    "daml/KyaCycle.daml",
+    76,
+    "assertMsg \"asset, network and address are all required\" (asset /= \"\" && network /= \"\" && address /= \"\")"
+   ],
+   [
+    "daml/KyaCycle.daml",
+    95,
+    "ensure isSome principal"
+   ],
+   [
+    "daml/KyaCycle.daml",
+    113,
+    "assertMsg \"no deposit feed is configured for this desk\" (depositFeed /= None)"
+   ],
+   [
+    "daml/KyaCycle.daml",
+    114,
+    "assertMsg \"a transaction reference is required; a screenshot is not a confirmation\" (txRef /= \"\")"
+   ],
+   [
+    "daml/KyaCycle.daml",
+    115,
+    "assertMsg \"deposit amount must be positive\" (seenAmount > 0.0)"
+   ],
+   [
+    "daml/KyaCycle.daml",
+    140,
+    "assertMsg \"amount must be positive\" (amount > 0.0)"
+   ],
+   [
+    "daml/KyaCycle.daml",
+    141,
+    "assertMsg \"off-taker wallet is not approved for that asset and network\" ((offTaker, asset, network, toAddress) `elem` wallets)"
+   ],
+   [
+    "daml/KyaCycle.daml",
+    171,
+    "ensure isSome principal"
+   ],
+   [
+    "daml/KyaCycle.daml",
+    186,
+    "assertMsg \"naira received is short of the amount agreed\" (received >= expectedNaira)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    68,
+    "assertMsg \"naira amount must be positive\" (nairaAmount > 0.0)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    69,
+    "assertMsg \"rate must be positive\" (rate > 0.0)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    70,
+    "assertMsg \"rate is outside the band the principal set\" (rate >= rateFloor && rate <= rateCeiling)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    74,
+    "assertMsg \"naira does not equal the crypto amount times the rate\" (optional False (\\c -> c > 0.0 && abs (c * rate - nairaAmount) < 0.01) cryptoAmount)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    75,
+    "assertMsg \"that is not one of the desk's approved naira accounts\" (payIntoAccount `elem` accounts)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    76,
+    "assertMsg \"the desk cannot send that asset on that network\" ((asset, network) `elem` canSend)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    77,
+    "assertMsg \"a receiving wallet must be given when the rate is agreed\" (customerWallet /= \"\")"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    101,
+    "assertMsg \"a rate band must be positive and the right way round\" (floor > 0.0 && ceiling >= floor)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    142,
+    "assertMsg \"a bank reference is required; a screenshot is not a confirmation\" (bankRef /= \"\")"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    143,
+    "assertMsg \"naira credited is short of the amount quoted\" (credited >= nairaAmount)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    171,
+    "assertMsg \"no bank feed is configured for this desk\" (bankFeed /= None)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    172,
+    "assertMsg \"a bank reference is required (bank feed); a screenshot is not a confirmation\" (bankRef /= \"\")"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    173,
+    "assertMsg \"naira credited is short of the amount quoted (bank feed)\" (credited >= nairaAmount)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    185,
+    "assertMsg \"quote expired\" (now < expiresAt)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    186,
+    "assertMsg \"naira has not been confirmed credited by the principal\" nairaConfirmed"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    187,
+    "assertMsg \"receiving wallet does not match the one fixed when the rate was agreed\" (toWallet == customerWallet)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    188,
+    "assertMsg \"sending on a different network from the one quoted\" (onNetwork == network)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    189,
+    "assertMsg \"amount must be positive\" (amount > 0.0)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    190,
+    "assertMsg \"released amount does not match the crypto amount quoted\" (amount == optional (nairaAmount / rate) identity cryptoAmount)"
+   ],
+   [
+    "daml/KyaInbound.daml",
+    214,
+    "ensure isSome principal"
+   ],
+   [
+    "daml/KyaMandate.daml",
+    141,
+    "ensure cap > 0.0 && spent >= 0.0 && spent <= cap"
+   ],
+   [
+    "daml/KyaMandate.daml",
+    155,
+    "assertMsg \"mandate expired\" (now < expiresAt)"
+   ],
+   [
+    "daml/KyaMandate.daml",
+    156,
+    "assertMsg \"amount must be positive\" (amount > 0.0)"
+   ],
+   [
+    "daml/KyaMandate.daml",
+    157,
+    "assertMsg \"charge would exceed the cap\" (spent + amount <= cap)"
+   ],
+   [
+    "daml/KyaMandate.daml",
+    158,
+    "assertMsg \"payee is not on the allow-list\" (payee `elem` allowed)"
+   ],
+   [
+    "daml/KyaMandate.daml",
+    171,
+    "assertMsg \"charge would exceed the period limit\" withinPeriod"
+   ],
+   [
+    "daml/KyaMandate.daml",
+    232,
+    "assertMsg \"new cap below what is already spent\" (newCap >= spent)"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    42,
+    "ensure isSome principal"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    86,
+    "assertMsg \"payout account has not been approved by the principal\" (payoutAccount `elem` approved)"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    87,
+    "assertMsg \"rate is outside the band the principal set\" (rate >= rateFloor && rate <= rateCeiling)"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    98,
+    "assertMsg \"account is already approved\" (account `notElem` approved)"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    99,
+    "assertMsg \"an account must have a name\" (account /= \"\")"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    106,
+    "assertMsg \"a rate band must be positive and the right way round\" (floor > 0.0 && ceiling >= floor)"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    128,
+    "ensure rate > 0.0 && expectedAmount > 0.0"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    149,
+    "assertMsg \"quote expired\" (now < expiresAt)"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    153,
+    "assertMsg \"deposit does not carry this quote's reference\" (depositRef == reference)"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    154,
+    "assertMsg \"amount does not match the quote\" (amount == expectedAmount)"
+   ],
+   [
+    "daml/KyaQuote.daml",
+    157,
+    "assertMsg \"payout account does not match the account named in the quote\" (claimedAccount == payoutAccount)"
+   ]
+  ],
+  "step-0-refusal": [
+   [
+    "daml/Attempt.daml",
+    197,
+    "ensure n >= 1"
+   ],
+   [
+    "daml/Attempt.daml",
+    239,
+    "ensure n >= 1 && commitment /= \"\""
+   ],
+   [
+    "daml/Attempt.daml",
+    256,
+    "assertMsg \"an attempt needs a salt, or the commitment does not hide\""
+   ],
+   [
+    "daml/Attempt.daml",
+    258,
+    "assertMsg"
+   ],
+   [
+    "daml/Attempt.daml",
+    317,
+    "assertMsg \"an abandonment needs a reason\" (reason /= \"\")"
+   ],
+   [
+    "daml/Journal.daml",
+    171,
+    "ensure attempts >= 0 && length refusals <= attempts"
+   ],
+   [
+    "daml/Journal.daml",
+    274,
+    "assertMsg \"a commitment is a 64 character sha256 digest\""
+   ],
+   [
+    "daml/Refusal.daml",
+    85,
+    "ensure action /= \"\" && rule /= \"\""
+   ],
+   [
+    "daml/Scheduled.daml",
+    48,
+    "ensure what /= \"\""
+   ],
+   [
+    "daml/Scheduled.daml",
+    63,
+    "assertMsg \"a cancellation needs a reason\" (reason /= \"\")"
+   ],
+   [
+    "daml/Scheduled.daml",
+    91,
+    "ensure what /= \"\" && runsLeft >= 0"
+   ],
+   [
+    "daml/Scheduled.daml",
+    99,
+    "assertMsg (\"schedule already finished: \" <> what) (runsLeft > 0)"
+   ],
+   [
+    "daml/Scheduled.daml",
+    118,
+    "assertMsg \"ending a schedule needs a reason\" (reason /= \"\")"
+   ],
+   [
+    "daml/Sharded.daml",
+    75,
+    "ensure shardCount >= 1"
+   ],
+   [
+    "daml/Sharded.daml",
+    104,
+    "ensure shard >= 0 && attempts >= 0 && length refusals <= attempts"
+   ],
+   [
+    "daml/Sharded.daml",
+    114,
+    "assertMsg \"a commitment is a 64 character sha256 digest\""
+   ]
+  ]
+ }
+}

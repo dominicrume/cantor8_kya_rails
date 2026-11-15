@@ -150,6 +150,12 @@ SUITES = [
      "the package's failure paths each do what they say"),
     ("python3 tests/pages_private_lint.py", "The rules",
      "the public site does not serve the private working files"),
+    ("python3 tests/daml_fences_smoke.py", "The tests, tested",
+     "the mutation harness finds the checks it claims to, and lists what it cannot"),
+    ("python3 tests/daml_constructs_parity_lint.py", "The rules",
+     "the README names exactly the constructs the harness recognises"),
+    ("python3 tests/daml_mutate_fixture_run.py", "The tests, tested",
+     "the harness gives the right verdict on a package whose answers are known"),
 
     ("python3 tests/mutation_py.py", "The tests, tested",
      "every refusal at the edges is covered by a named test"),

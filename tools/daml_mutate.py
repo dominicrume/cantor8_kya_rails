@@ -40,6 +40,19 @@ import sys
 
 FENCE = re.compile(r"^\s*(assertMsg|ensure)\b")
 
+try:
+    import daml_fences
+except ImportError:                     # run as a script from another directory
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import daml_fences
+
+# OPT-IN SETTINGS. The default is the legacy behaviour, exactly as published:
+# two constructs, one test package, one build. People use this tool as
+# `uses: ...@main`, so a change of default would change their fence counts with
+# no change of their own. Anything else is asked for on the command line.
+SETTINGS = {"constructs": "legacy", "known": frozenset(),
+            "rebuild": [], "tests": []}
+
 
 def toolchain_for(cwd):
     """("daml"|"dpm", why). Which assistant can build the package in `cwd`.
@@ -121,13 +134,57 @@ def sources(pkg, under=None):
 
 
 def fences(pkg, under=None):
-    """(path, line number, text) for every assertMsg and ensure in the source."""
+    """(path, line number, text) for every check in the source.
+
+    Legacy mode: every assertMsg and ensure. With `--constructs all`: also
+    require, requireMatchExpected, assert, unless ... fail and the rest, found
+    by tools/daml_fences.py after blanking comments and strings.
+    """
+    if SETTINGS["constructs"] == "all":
+        return fences_all(pkg, under)
     found = []
     for path in sources(pkg, under):
         for n, line in enumerate(open(path).read().splitlines(), 1):
             if FENCE.match(line):
                 found.append((path, n, line.strip()))
     return found
+
+
+def known_checks(pkg, under=None):
+    """The helper names that count as checks: the ones the caller named, plus
+    any the package itself defines with a body that can refuse."""
+    texts = [open(p, encoding="utf-8").read() for p in sources(pkg, under)]
+    return frozenset(SETTINGS["known"]) | daml_fences.defined_helpers(texts)
+
+
+def fences_all(pkg, under=None):
+    """Every recognised check, by the generalised discovery."""
+    known, found = known_checks(pkg, under), []
+    for path in sources(pkg, under):
+        src = open(path, encoding="utf-8").read()
+        lines = src.splitlines()
+        hits, _unseen = daml_fences.discover(src, known=known)
+        found += [(path, n, lines[n - 1].strip()) for n, _k, _e in hits]
+    return found
+
+
+def helper_defs_all(pkg, under=None):
+    """(path, line, helper name) for lines of check helpers' own definitions."""
+    out = []
+    for path in sources(pkg, under):
+        out += [(path, n, name) for n, name in
+                daml_fences.helper_def_lines(open(path, encoding="utf-8").read())]
+    return out
+
+
+def unseen_all(pkg, under=None):
+    """(path, line, reason, text) for every check-like line NOT recognised."""
+    known, out = known_checks(pkg, under), []
+    for path in sources(pkg, under):
+        _hits, unseen = daml_fences.discover(
+            open(path, encoding="utf-8").read(), known=known)
+        out += [(path, n, why, text) for n, why, text in unseen]
+    return out
 
 
 def passing(out):
@@ -147,10 +204,20 @@ def build_and_test(src, test):
     within one step of being filed against their repository as a finding.
     """
     ok, out = daml(["build"], src)
+    for more in SETTINGS["rebuild"]:          # packages bundling the one mutated
+        if not ok:
+            break
+        ok, out = daml(["build"], more)
     if not ok:
         return False, set(), out
-    _test_rc, out = daml(["test"], test)      # non-zero here means a test FAILED
-    return True, passing(out), out
+    names = set()
+    packs = [test] + SETTINGS["tests"]
+    for pack in packs:
+        _test_rc, out = daml(["test"], pack)  # non-zero here means a test FAILED
+        found = passing(out)
+        names |= found if len(packs) == 1 else {
+            "%s::%s" % (os.path.basename(os.path.normpath(pack)), n) for n in found}
+    return True, names, out
 
 
 def verdict(base, after, compiled):
@@ -206,16 +273,38 @@ def neutered(lines, i):
     return None
 
 
+def plan_one(original, lines, lineno, known):
+    """(replacement line, start index, end index) or an error string.
+
+    Legacy: the line must still match FENCE. With `--constructs all`: the line
+    must still be a recognised check, found again in the file as it is now, and
+    the span is the one discovery reports.
+    """
+    if SETTINGS["constructs"] != "all":
+        if not FENCE.match(lines[lineno - 1]):
+            return "line %d is no longer a fence" % lineno
+        dead = neutered(lines, lineno - 1)
+        if dead is None:
+            return "line %d does not match a fence shape" % lineno
+        start, end = span(lines, lineno - 1)
+        return dead, start, end
+    hits, _unseen = daml_fences.discover(original, known=known)
+    mine = [h for h in hits if h[0] == lineno]
+    if not mine:
+        return "line %d is no longer a recognised check" % lineno
+    return (daml_fences.neuter(lines[lineno - 1], mine[0][1]),
+            lineno - 1, mine[0][2] - 1)
+
+
 def check_one(path, lineno, text, src, test, base):
     """Neuter one fence, rebuild, run, restore. Returns (state, detail)."""
     original = open(path).read()
     lines = original.splitlines()
-    if not FENCE.match(lines[lineno - 1]):
-        return "STALE", "line %d is no longer a fence" % lineno
-    dead = neutered(lines, lineno - 1)
-    if dead is None:
-        return "STALE", "line %d does not match a fence shape" % lineno
-    start, end = span(lines, lineno - 1)
+    plan = plan_one(original, lines, lineno,
+                    known_checks(src) if SETTINGS["constructs"] == "all" else None)
+    if isinstance(plan, str):
+        return "STALE", plan
+    dead, start, end = plan
     try:
         open(path, "w").write("\n".join(lines[:start] + [dead] + lines[end:]) + "\n")
         compiled, after, _ = build_and_test(src, test)
@@ -353,10 +442,88 @@ def heal_and_report(src):
     return 0
 
 
+def add_options(ap):
+    """The opt-in flags, shared with tools/assurance.py so both mean the same."""
+    ap.add_argument("--constructs", choices=("legacy", "all"), default="legacy",
+                    help="legacy: assertMsg and ensure (the default, unchanged). "
+                         "all: also require, requireMatchExpected, assert, "
+                         "unless/when ... fail")
+    ap.add_argument("--known-checks", action="append",
+                    help="comma-separated helper names that ARE checks, e.g. "
+                         "require,require',requireMatchExpected (a library helper "
+                         "cannot be told from a user-defined one by its name)")
+    ap.add_argument("--rebuild", action="append",
+                    help="a package to rebuild after --src, in order: one that "
+                         "bundles the mutated package (repeatable)")
+    ap.add_argument("--also-test", action="append",
+                    help="another test package to run (repeatable)")
+
+
+def configure(a):
+    """Turn the opt-in flags into SETTINGS. Nothing here runs unless asked for,
+    so a call with only --src and --test behaves exactly as it always did."""
+    SETTINGS["constructs"] = a.constructs
+    SETTINGS["known"] = frozenset(
+        n for chunk in (a.known_checks or []) for n in chunk.split(",") if n)
+    SETTINGS["rebuild"] = list(a.rebuild or [])
+    SETTINGS["tests"] = list(a.also_test or [])
+
+
+def list_only(a):
+    """`--list`: discovery and nothing else. No build, no mutation, no test.
+
+    It prints what would be mutated AND every check-like line that would not,
+    with the reason, because a count of what was found says nothing about what
+    was missed.
+    """
+    found = [f for f in fences(a.src, a.under) if not a.only or a.only in f[2]]
+    for path, n, text in found:
+        print("  RECOGNISED  %s:%d  %s" % (os.path.relpath(path, a.src), n, text[:60]))
+    if SETTINGS["constructs"] == "all":
+        unseen = unseen_all(a.src, a.under)
+        for path, n, why, text in unseen:
+            print("  NOT SEEN    %s:%d  %s  [%s]" % (os.path.relpath(path, a.src), n, text[:44], why[:40]))
+        defs = helper_defs_all(a.src, a.under)
+        for path, n, name in defs:
+            print("  HELPER DEF  %s:%d  the body of `%s`, never mutated" % (os.path.relpath(path, a.src), n, name))
+        print("%d recognised, %d check-like line(s) not seen, %d line(s) in helper "
+              "definitions left alone." % (len(found), len(unseen), len(defs)))
+    else:
+        print("%d recognised (legacy: assertMsg and ensure only)." % len(found))
+    return 0
+
+
+def say_what_was_not_seen(a):
+    """Before any mutation: how many check-like lines the run will NOT test."""
+    if SETTINGS["constructs"] != "all":
+        return
+    unseen = unseen_all(a.src, a.under)
+    print("  %d check-like line(s) are NOT SEEN and will not be tested "
+          "(run with --list to read them)." % len(unseen))
+
+
+def baseline(a, n_fences):
+    """The passing scripts before any mutation, or None if the project does not
+    build and test cleanly (nothing below would mean anything)."""
+    print("baseline: building %s, testing %s" % (a.src, a.test))
+    compiled, base, out = build_and_test(a.src, a.test)
+    if not compiled or not base:
+        print("  the project does not build and test cleanly before any mutation.")
+        print(out[-1500:])
+        return None
+    print("  %d script(s) pass. Now deleting %d fence(s), one at a time.\n"
+          % (len(base), n_fences))
+    return base
+
+
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--src", required=True, help="the Daml package holding the contracts")
     ap.add_argument("--test", required=True, help="the package holding the test scripts")
+    add_options(ap)
+    ap.add_argument("--list", action="store_true",
+                    help="discovery only: print what would be mutated and what "
+                         "would not, and exit. Builds nothing.")
     ap.add_argument("--only", help="only fences whose text contains this")
     ap.add_argument("--under", help="mutate only files under this path inside --src "
                                     "(the project still builds from --src)")
@@ -364,22 +531,21 @@ def main(argv):
                     help="put back whatever an interrupted run left mutated in --src, and exit")
     a = ap.parse_args(argv)
 
+    configure(a)
     if a.heal:
         return heal_and_report(a.src)
+    if a.list:
+        return list_only(a)
 
     found = [f for f in fences(a.src, a.under) if not a.only or a.only in f[2]]
     if not found:
         print("No fences found in %s. Nothing was tested." % a.src)
         return 1
 
-    print("baseline: building %s, testing %s" % (a.src, a.test))
-    compiled, base, out = build_and_test(a.src, a.test)
-    if not compiled or not base:
-        print("  the project does not build and test cleanly before any mutation.")
-        print(out[-1500:])
+    say_what_was_not_seen(a)
+    base = baseline(a, len(found))
+    if base is None:
         return 2
-    print("  %d script(s) pass. Now deleting %d fence(s), one at a time.\n"
-          % (len(base), len(found)))
 
     rows = run_all(found, a.src, a.test, base)
     return report(rows, len(base))

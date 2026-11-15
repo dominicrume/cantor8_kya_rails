@@ -1,0 +1,11 @@
+# A tiny library with checks whose coverage is known in advance. Used by
+# tests/daml_mutate_fixture_run.py to prove the harness finds what it claims.
+sdk-version: 3.4.11
+name: mutate-fixture-lib
+source: daml
+version: 1.0.0
+dependencies:
+  - daml-prim
+  - daml-stdlib
+build-options:
+  - --target=2.1

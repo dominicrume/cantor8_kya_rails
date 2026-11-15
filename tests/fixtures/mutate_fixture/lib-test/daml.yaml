@@ -1,0 +1,12 @@
+sdk-version: 3.4.11
+name: mutate-fixture-lib-test
+source: daml
+version: 0.0.0
+dependencies:
+  - daml-prim
+  - daml-stdlib
+  - daml-script
+data-dependencies:
+  - ../lib/.daml/dist/mutate-fixture-lib-1.0.0.dar
+build-options:
+  - --target=2.1

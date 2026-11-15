@@ -111,6 +111,12 @@ jobs:
       - name: an audit's findings cannot be softened after the fact
         run: python3 tests/assurance_smoke.py
 
+      - name: the mutation harness finds the checks it claims to, and lists what it cannot
+        # Pure text in, lists out: needs no Daml SDK, so it runs in every clone.
+        run: |
+          python3 tests/daml_fences_smoke.py
+          python3 tests/daml_constructs_parity_lint.py
+
       - name: the rules an agent ran under cannot be widened after the fact
         run: python3 tests/policy_smoke.py
 
@@ -266,6 +272,11 @@ jobs:
         # simply was not called. The README listed it under "all of which run
         # in CI" while it did not.
         run: python3 tests/daml_tests.py
+
+      - name: the mutation harness gives the right verdict on a package whose answers are known
+        # Builds a real Daml package with five checks, two of them deliberately
+        # untested, and requires each verdict to match what the fixture says.
+        run: python3 tests/daml_mutate_fixture_run.py
 
       - name: the float adds up, and every number the README shows is still true
         # Lives in THIS job, not the conformance one, because

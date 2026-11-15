@@ -260,8 +260,14 @@ MUTATIONS = [
 
     ("the policy renders as a refusal on the public page",
      "step-3-verify/verifier.html",
+     "const NEUTRAL = {POLICY:1, SCOPE:1, 'NOT SEEN':1};",
+     "const NEUTRAL = {SCOPE:1, 'NOT SEEN':1};",
+     "node tests/checker_smoke.js"),
+
+    ("a record's own scope entries are painted as findings",
+     "step-3-verify/verifier.html",
+     "const NEUTRAL = {POLICY:1, SCOPE:1, 'NOT SEEN':1};",
      "const NEUTRAL = {POLICY:1};",
-     "const NEUTRAL = {};",
      "node tests/checker_smoke.js"),
 
     ("the action stops calling a file that exists",
@@ -603,6 +609,86 @@ MUTATIONS = [
      '        assertMsg "charge would exceed the cap" (spent + amount <= cap)',
      "",
      "python3 tests/fence_lint.py"),
+
+    # The discovery step of the Daml mutation harness (tools/daml_fences.py).
+    # Each row breaks one decision in it, and tests/daml_fences_smoke.py must
+    # notice. They exist because a harness that finds checks wrongly reports a
+    # package as covered or uncovered for reasons that have nothing to do with
+    # the package, and nobody downstream can tell.
+    ("discovery stops blanking block comments",
+     "tools/daml_fences.py",
+     "            j = _block_end(src, i)",
+     "            j = i + 1",
+     "python3 tests/daml_fences_smoke.py"),
+
+    ("discovery stops blanking line comments",
+     "tools/daml_fences.py",
+     '        elif c == "-" and _dashes_start_comment(src, i):',
+     '        elif c == "-" and False:',
+     "python3 tests/daml_fences_smoke.py"),
+
+    ("discovery stops blanking string contents",
+     "tools/daml_fences.py",
+     "        elif c == '\"':",
+     "        elif c == '\"' and False:",
+     "python3 tests/daml_fences_smoke.py"),
+
+    ("discovery reads the operator --> as a comment",
+     "tools/daml_fences.py",
+     "    return j - i >= 2 and before not in OPS and after not in OPS",
+     "    return j - i >= 2",
+     "python3 tests/daml_fences_smoke.py"),
+
+    ("discovery ends a statement one line too late",
+     "tools/daml_fences.py",
+     "        if len(lines[j]) - len(lines[j].lstrip()) <= base:",
+     "        if len(lines[j]) - len(lines[j].lstrip()) < base:",
+     "python3 tests/daml_fences_smoke.py"),
+
+    ("discovery mutates a helper's own definition",
+     "tools/daml_fences.py",
+     "        skip.update(range(a, b))",
+     "        pass",
+     "python3 tests/daml_fences_smoke.py"),
+
+    ("discovery treats an unnamed library helper as a check",
+     "tools/daml_fences.py",
+     "    if kind in HELPERS and kind not in known:",
+     "    if False:",
+     "python3 tests/daml_fences_smoke.py"),
+
+    ("discovery treats a flow-control when as a check",
+     "tools/daml_fences.py",
+     '    if kind in ("unless", "when") and not FAILS.search(mtext):',
+     "    if False:",
+     "python3 tests/daml_fences_smoke.py"),
+
+    ("discovery makes require vacuous with the wrong text",
+     "tools/daml_fences.py",
+     '                     "assert": "assert True"}.get(kind, "pure ()")',
+     '                     "assert": "assert True"}.get(kind, "assert True")',
+     "python3 tests/daml_fences_smoke.py"),
+
+    ("discovery gives a bound result the wrong reason",
+     "tools/daml_fences.py",
+     '    for pattern, why in ((BOUND, "bound result: deleting it would not compile"),',
+     '    for pattern, why in ((BOUND, "unknown"),',
+     "python3 tests/daml_fences_smoke.py"),
+
+    # These two are caught by the known-answer run, which builds a real package,
+    # so each takes a few minutes. They are here because the all-constructs path
+    # in daml_mutate.py is the one place no pure-text test reaches.
+    ("the harness ignores --constructs all",
+     "tools/daml_mutate.py",
+     "        return fences_all(pkg, under)",
+     "        return []",
+     "python3 tests/daml_mutate_fixture_run.py"),
+
+    ("the harness stops detecting a helper the package defines",
+     "tools/daml_mutate.py",
+     '    return frozenset(SETTINGS["known"]) | daml_fences.defined_helpers(texts)',
+     '    return frozenset(SETTINGS["known"])',
+     "python3 tests/daml_mutate_fixture_run.py"),
 ]
 
 

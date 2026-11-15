@@ -1,0 +1,43 @@
+-- Known answers for the mutation harness. Each check below has a fixed fate:
+--
+--   ensure balance >= 0.0          COVERED   (testNegativeBalanceRefused)
+--   require "amount positive"      COVERED   (testZeroAmountRefused)
+--   require "cannot overdraw"      COVERED   (testOverdrawRefused)
+--   require "daily limit"          UNCOVERED (no test spends above 1000)
+--   unless ... abort "reserved"    UNCOVERED (no test uses the reserved amount)
+--
+-- and one line the harness cannot test, which it must list as NOT SEEN:
+--   `unit <- require ...`          a bound result: deleting it would not compile
+--
+-- `require` is defined HERE, so the harness must detect it as a check helper by
+-- itself, and must NOT mutate its own body (that would make every call vacuous).
+module Vault where
+
+import DA.Action (unless)
+
+require : Text -> Bool -> Update ()
+require msg ok = unless ok $ abort msg
+
+template Vault
+  with
+    owner : Party
+    balance : Decimal
+  where
+    signatory owner
+    ensure balance >= 0.0
+
+    choice Withdraw : ContractId Vault
+      with amount : Decimal
+      controller owner
+      do
+        require "amount positive" (amount > 0.0)
+        require "cannot overdraw" (amount <= balance)
+        require "daily limit" (amount <= 1000.0)
+        unless (amount /= 12345.0) $ abort "reserved"
+        unit <- require "bound result" True
+        -- Clamped, not subtracted. With `balance - amount` an overdraw made the
+        -- balance negative and `ensure balance >= 0.0` refused it too, so the
+        -- overdraw check was masked and the harness correctly called it
+        -- UNCOVERED. The first version of this fixture said it was covered; the
+        -- fixture was wrong and the harness was right.
+        create this with balance = max 0.0 (balance - amount)

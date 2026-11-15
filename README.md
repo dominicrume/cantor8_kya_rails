@@ -176,7 +176,7 @@ country and deciding whether to trust the person who produced it.
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.2.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
 | The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |
-| The tests are themselves tested | `tests/mutation_suite.py` breaks **82** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
+| The tests are themselves tested | `tests/mutation_suite.py` breaks **95** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **34** in the Daml: delete any one and a *named* test goes red. `tests/mutation_py.py` does the same for the refusals at the edges, and now covers **1 of 1** — the journal's, because the webhook adapters it also covered moved to the kya-desk repository with the desk. The count is small and stated rather than rounded: it was 30 of 30 when there were thirty edges, and a repository that quotes yesterday's number is the thing this column exists to prevent |
 | One bad line cannot end the model's session | `tests/mcp_smoke.py` feeds 15 malformed JSON-RPC lines **between** the good ones. Each gets its proper code (-32700 / -32600 / -32601), and the request after them all is still answered |
 | The chain is bound to its origin | **NOT YET TRUE.** The design publishes the head on Canton, and a fully forged chain verifies green in all four implementations, which is exactly why an anchor matters. No anchor has ever been written to a ledger, so today a forged chain is caught by nothing. `KyaAnchor.daml` is exercised in `daml test` only |
@@ -581,13 +581,42 @@ Everything above needs somebody to run it. This does not:
 
 ```yaml
 - uses: digital-asset/setup-daml@main          # or however you install the SDK
-- uses: dominicrume/cantor8_kya_rails@main
+- uses: dominicrume/cantor8_kya_rails@action-v1.0.0
   with:
     src: simple-token
     test: simple-token-test
 ```
 
-On every pull request it makes each `assertMsg` and `ensure` vacuous in turn,
+Pin the tag, not `main`. `main` changes; the tag does not. This README used to
+say `@main`, and anyone who copied it would have had their fence counts change
+whenever the harness did.
+
+**What each version sees.** The released Action (`action-v1.0.0`) finds only
+`assertMsg` and `ensure`. The harness in this repository can be asked, on the
+command line, to find more: `python3 tools/daml_mutate.py --constructs all`.
+It is off by default and the Action does not turn it on, so nothing a user
+already runs has changed.
+
+<!-- constructs:begin -->
+With `--constructs all` it recognises these, and lists every check-like line it
+does not, with a reason:
+
+- standard library: `assertMsg`, `ensure`, `assert`, `assertDeadlineExceeded`,
+  `assertWithinDeadline`, `unless`, `when`
+- library helpers, only when you name them with `--known-checks` or the package
+  defines one whose body can refuse: `require`, `require'`,
+  `requireMatchExpected`, `requireSuccess`
+<!-- constructs:end -->
+
+A helper's own definition is never mutated, because that would make every call
+to it vacuous at once. A result bound with `<-` is listed as not seen, because
+deleting it would not compile. A record written with `--constructs all` ends
+with a `SCOPE` receipt stating how many checks were recognised and how many
+check-like lines were not, so "covered 24 of 62" can be told from "covered 24 of
+the 24 the tool could see".
+
+On every pull request it makes each `assertMsg` and `ensure` (the released tag's
+construct set) vacuous in turn,
 rebuilds the DAR, re-runs your suite, and writes a table of the fences no test
 noticed into the job summary. The sealed record uploads as the
 `daml-fence-assurance` artifact, and its head seal is printed in the summary so

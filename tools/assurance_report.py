@@ -27,8 +27,36 @@ LABEL = {
 }
 
 
+FENCE_OUTCOMES = ("COVERED", "UNCOVERED", "NOT TESTABLE", "NOT CHECKED")
+
+
 def counts(receipts):
     return Counter(r["outcome"] for r in receipts)
+
+
+def fence_count(receipts):
+    """Receipts that are about a fence. A record may also carry NOT SEEN and
+    SCOPE receipts (written with --constructs all); counting those as fences
+    would report checks nobody ran."""
+    c = counts(receipts)
+    return sum(c.get(k, 0) for k in FENCE_OUTCOMES)
+
+
+def scope_lines(receipts):
+    """What the record covers and what it does not, when it says. A record
+    without a SCOPE receipt predates the generalised discovery and is described
+    as such, never as complete."""
+    scope = [r for r in receipts if r["outcome"] == "SCOPE"]
+    if not scope:
+        return []
+    c = counts(receipts)
+    seen = fence_count(receipts)
+    return ["Scope: %d recognised; **%d check-like line(s) were not seen** and "
+            "are listed in the record as NOT SEEN, each with a reason. "
+            "Covered %d of the %d the tool could see." % (
+                seen, c.get("NOT SEEN", 0), c.get("COVERED", 0), seen),
+            "Helper names declared to be checks by whoever ran it: %s."
+            % scope[0]["approved_by"].replace("named check helpers: ", ""), ""]
 
 
 def table(receipts):
@@ -49,7 +77,8 @@ def lines(receipts, path):
     subject = receipts[0].get("instrument", "the package")
     tools = receipts[0].get("ledger", "unknown toolchain")
     out = ["## Fence assurance — %s" % subject, "",
-           "%d fence(s) checked with %s." % (len(receipts), tools), ""]
+           "%d fence(s) checked with %s." % (fence_count(receipts), tools), ""]
+    out += scope_lines(receipts)
     for k in ("COVERED", "UNCOVERED", "NOT TESTABLE", "NOT CHECKED"):
         if c.get(k):
             out.append("- **%d** %s" % (c[k], LABEL[k]))
@@ -93,7 +122,7 @@ def main(argv):
             f.write(text + "\n")
 
     c = counts(receipts)
-    emit("fences", len(receipts))
+    emit("fences", fence_count(receipts))
     emit("covered", c.get("COVERED", 0))
     emit("uncovered", c.get("UNCOVERED", 0))
     emit("head", receipts[-1]["seal"])
