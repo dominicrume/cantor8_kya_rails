@@ -12,6 +12,14 @@ whose removal leaves every test passing is reported as uncovered.
 
 ---
 
+> **Correction, 15 November 2026.** The table below is the 7 September run.
+> Its **69 / 52** total includes `access-control-v1`, a package that no longer
+> exists at `canton-contracts` HEAD, and it is not the current headline. Since
+> the 9 October re-run on the two template repositories at pinned commits the
+> headline is **49 of 62** (see below). It also counted only `assertMsg` and
+> `ensure`, which is a small part of how OpenZeppelin's current library writes
+> its checks. Left in place so the change can be read next to what it changes.
+
 ## Results
 
 | Repository | Package | Fences | Scripts | Covered | **Uncovered** | Broke | Stale |

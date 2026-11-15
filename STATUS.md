@@ -44,7 +44,7 @@ declared in its first line.
 | What | Evidence | How to check it yourself |
 |---|---|---|
 | The spending rules are enforced in Daml, not in Python | 34 fences across 5 contracts | `python3 tests/fence_lint.py` |
-| Every fence is load-bearing | 82 mutations, each requires a **named** test to go red | `python3 tests/mutation_suite.py` |
+| Every fence is load-bearing | 95 mutations, each requires a **named** test to go red | `python3 tests/mutation_suite.py` |
 | The ledger behaves under attack | 171 Daml test scripts across two packages, 68 and 103 | `daml test --all` in `step-1-mandate/test` |
 | A refusal commits as a contract and moves no money | `TryCharge` / `ChargeRefused` in `KyaMandate.daml` | `testRefusalIsOnLedgerAndNothingMoved` |
 | The format is implemented three times and they agree | 20 conformance vectors, Python + JavaScript + Go | `python3 tests/conformance.py`, `node tests/conformance.js`, `cd impl/go && go run .` |
@@ -67,7 +67,8 @@ declared in its first line.
 | The limit of that enforcement is stated and tested | a submitter holding BOTH actor and guardian authority bypasses it. This is a control under segregation of duties and a convention without it | `testSubmittingAsTheGuardianDefeatsIt` | `daml test --files daml/JournalTest.daml` in `step-0-refusal/test` |
 | The suite is green locally AND in CI | 43/43 locally, and run `42808582420` on 10 November is the first all-green public build since 3 November. Before it, **the build was RED from 4 to 10 November** and nothing noticed: `complexity_lint` failed on eleven functions, and the Python 3.8 and 3.9 jobs failed because `ubuntu-latest` moved to 26.04 and has no build for either. The failure emails arrived and went unread. `tools/pre-commit` ran two of the three lints CI runs, so every commit passed locally and broke on push | `python3 tools/dashboard.py` locally, and the Actions tab for the truth |
 | Two OpenZeppelin Canton packages have untested fences | **49 of 62**, at pinned commits `c96456f` and `fbc6392` | `docs/findings-openzeppelin.md`, sealed records in `docs/findings/` |
-| OpenZeppelin's newer code is clean | `scoped-authorization-grant-v1`: 1 fence, 45 scripts, covered | same tool, SDK 3.5.8 via dpm |
+| One OpenZeppelin package had its only visible fence covered | **Corrected 15 November 2026.** This row said "OpenZeppelin's newer code is clean" on the strength of ONE fence (`scoped-authorization-grant-v1`, 45 scripts). That generalised from a single data point, and the tool could then read only `assertMsg` and `ensure`, while most of their library's checks are written as `require`, `requireMatchExpected` and `unless ... fail`. It says nothing about the rest of their code | same tool, SDK 3.5.8 via dpm, as it was on that day |
+| The mutation harness can read more than `assertMsg` and `ensure` | `--constructs all` recognises `assert`, `require`, `require'`, `requireMatchExpected`, `requireSuccess`, `unless`/`when` ... fail and the standard library's deadline checks; it lists every check-like line it does NOT recognise, with a reason, and a record ends with a `SCOPE` receipt. **Off by default, and the released Action does not turn it on.** Limits: case arms, expression-bodied helpers and bound results are listed, not tested | `python3 tests/daml_fences_smoke.py` (no SDK), `python3 tests/daml_mutate_fixture_run.py` (builds a package whose answers are known; the old harness saw 1 of its 5 checks) |
 | Three pull requests merged into a repository we do not own | Canton Developer Hub #156, #160, #168 | GitHub |
 
 ## MOCKED — labelled as such in code and in any demo
