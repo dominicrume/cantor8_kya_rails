@@ -1,6 +1,6 @@
 # Status: what is proven, what is mocked, what is pending
 
-*Last measured 2026-11-10. Regenerate the numbers with `python3 tools/dashboard.py`,
+*Rows carry their own dates. Last full sweep: 2026-11-15, 50 of 50 suites green. Regenerate the numbers with `python3 tools/dashboard.py`,
 the champion figures with `python3 tools/champions.py`, the vote state with
 `python3 tools/vote_pipeline.py`, and the download figures with
 `python3 tools/downloads.py`.*

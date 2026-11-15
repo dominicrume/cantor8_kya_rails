@@ -45,6 +45,18 @@ meant to outlive the code that wrote them, so that bar is high.
   lifts the JavaScript out of that file rather than transcribing it, so a
   drift between the two implementations fails the build.
 
+### Fixed
+
+- **`check_disclosure()` now compares each shown body's own `n` and `prev` to
+  the entry that carries it.** Found on 14 November 2026. A forger could delete
+  an entry, renumber the envelope and re-seal each shown body, and the document
+  verified with a refusal missing, because the body's own position and link
+  were never compared. They are now, and `verifier.html` does the same.
+  A forger who also rewrites every body and re-seals still passes: a seal is
+  not a signature, and only a head held outside the document shows that an
+  entry was removed. SPEC 6b now says so. **Not released.** PyPI still has
+  1.2.0 without this fix, and nothing here approves a release.
+
 ## [1.2.0] — released to PyPI 2026-10-22
 
 *Written 2026-09-13 and released on 2026-10-22. This heading said

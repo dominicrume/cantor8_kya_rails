@@ -47,3 +47,7 @@ step-0-refusal/test/.daml/
 # has never seen it, so they are tracked and reviewed like any other source.
 # Added 2026-11-09. settings.json stays ignored, for the reason above.
 !.claude/skills/
+
+# Sandbox logs. They changed on every run, nothing reads them, and they hid
+# real changes in the working tree.
+log/
