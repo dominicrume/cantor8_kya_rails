@@ -278,6 +278,11 @@ jobs:
         # untested, and requires each verdict to match what the fixture says.
         run: python3 tests/daml_mutate_fixture_run.py
 
+      - name: breaking the harness's own all-constructs path makes the known-answer run go red
+        # These two mutation rows need the Daml SDK, so the job without it
+        # reports them NOT RUN. This is the job that has it.
+        run: python3 tests/mutation_suite.py "the harness"
+
       - name: the float adds up, and every number the README shows is still true
         # Lives in THIS job, not the conformance one, because
         # daml_script_count() counts scripts by RUNNING them and returns -1

@@ -938,6 +938,34 @@ def restore(backups, progress=None, expected=None):
                        cwd=ROOT, capture_output=True)
 
 
+# Rows whose catching test builds a real Daml package, so it cannot run without
+# the SDK. They used to run in a job that has none, where the runner printed
+# SKIPPED and exited 0 and the suite then reported the mutation as BLIND: a
+# check that cannot run looking like a check that failed. They are now a third
+# state, NOT RUN, named in the report, and the CI job that has the SDK runs them
+# explicitly (`python3 tests/mutation_suite.py "the harness"`).
+NEEDS_SDK = "daml_mutate_fixture_run.py"
+NOT_RUN = []
+
+
+def needs_sdk(row):
+    return NEEDS_SDK in row[4]
+
+
+def split_sdk(rows):
+    """The rows that can run here. Without the SDK the SDK rows move to NOT_RUN
+    and are reported by name; if nothing else was asked for, refuse (None)."""
+    if shutil.which("daml") is not None:
+        return rows
+    NOT_RUN[:] = [m for m in rows if needs_sdk(m)]
+    rest = [m for m in rows if not needs_sdk(m)]
+    if NOT_RUN and not rest:
+        print("Every mutation selected needs the Daml SDK, which is not on PATH.")
+        print("Nothing was tested.")
+        return None
+    return rest
+
+
 def selected(only):
     """The rows a filter names, or a refusal.
 
@@ -946,7 +974,9 @@ def selected(only):
     worthless: a mistyped filter reported success. Returning None makes it an
     exit code instead.
     """
-    rows = [m for m in MUTATIONS if not only or only in m[0] or only in m[1]]
+    rows = split_sdk([m for m in MUTATIONS if not only or only in m[0] or only in m[1]])
+    if rows is None:
+        return None
     if rows:
         return rows
     print("No mutation matches %r. Nothing was tested." % only)
@@ -990,6 +1020,17 @@ def _listing(rows, results, kind):
     return [r[0] for r, v in zip(rows, results) if v == kind]
 
 
+def say_not_run():
+    """Name every mutation that was skipped, and say that skipped is not passed."""
+    if not NOT_RUN:
+        return
+    print("%d mutation(s) NOT RUN: they need the Daml SDK, which is not on PATH here:"
+          % len(NOT_RUN))
+    for m in NOT_RUN:
+        print("  -", m[0])
+    print("They run in the CI job that has the SDK. Not run is not passed.\n")
+
+
 def report(rows, results):
     blind, stale = _listing(rows, results, "blind"), _listing(rows, results, "stale")
     print()
@@ -1004,6 +1045,7 @@ def report(rows, results):
         for label in blind:
             print("  -", label)
         print("\nEach is something that could ship while every test stayed green.")
+    say_not_run()
     if blind or stale:
         return 1
     print("every one of these breaks something a suite notices.")
