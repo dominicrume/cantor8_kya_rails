@@ -27,11 +27,11 @@ writes the log is the party the question is about.
 
 Know Your AgenticAI writes a receipt for every attempt, refusals included, and
 seals each one onto the last. Anyone can check the chain by dropping the file
-on a web page. No wallet, no install, no account, no node. The head is
-anchored on Canton, so a chain rewritten from scratch would have nowhere to
-hide. **The anchor has never been created on any ledger.** `KyaAnchor.daml`
-passes `daml test` and no `ChainAnchor` contract has ever existed outside it.
-Until one does, this is a design and not a defence.
+on a web page. No wallet, no install, no account, no node. **The head
+is not anchored anywhere yet.** The design publishes it on Canton, so a chain
+rewritten from scratch would have nowhere to hide. `KyaAnchor.daml` passes
+`daml test`, and no `ChainAnchor` contract has ever existed outside it. Until
+one does, this is a design and not a defence.
 
 And the refusal itself is written to the ledger, which is the part that was
 missing. The normal way to enforce a spending rule is to abort the
@@ -42,8 +42,9 @@ refusals were us writing about ourselves, which is backwards.
 [`TryCharge`](step-1-mandate/daml/KyaMandate.daml) runs the same rules and,
 when one says no, commits a `ChargeRefused` contract and moves no money. The
 contract id and the record time come from the ledger. A refusal that happened
-cannot then be invented, deleted, backdated or reordered, and removing one is
-itself a recorded event.
+cannot then be invented, backdated or reordered, and removing one is itself a
+recorded event. Deletion is not prevented: ledger pruning is an open question,
+listed in [the threat model](docs/threat-model.md).
 
 **It is not a wallet, a registry or a rail, and it does not try to be.** Those
 exist and are built by people with banking licences. This is the layer
@@ -174,14 +175,14 @@ country and deciding whether to trust the person who produced it.
 | --- | --- |
 | Attack suite green | **184 / 184** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.2.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
-| Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 16 vectors exist because we asked which wrong implementations still passed, and two did |
+| Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 20 vectors exist because we asked which wrong implementations still passed, and two did |
 | The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |
 | The tests are themselves tested | `tests/mutation_suite.py` breaks **95** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **34** in the Daml: delete any one and a *named* test goes red. `tests/mutation_py.py` does the same for the refusals at the edges, and now covers **1 of 1** — the journal's, because the webhook adapters it also covered moved to the kya-desk repository with the desk. The count is small and stated rather than rounded: it was 30 of 30 when there were thirty edges, and a repository that quotes yesterday's number is the thing this column exists to prevent |
 | One bad line cannot end the model's session | `tests/mcp_smoke.py` feeds 15 malformed JSON-RPC lines **between** the good ones. Each gets its proper code (-32700 / -32600 / -32601), and the request after them all is still answered |
 | The chain is bound to its origin | **NOT YET TRUE.** The design publishes the head on Canton, and a fully forged chain verifies green in all four implementations, which is exactly why an anchor matters. No anchor has ever been written to a ledger, so today a forged chain is caught by nothing. `KyaAnchor.daml` is exercised in `daml test` only |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, positive amount — five `assertMsg` fences in the `Charge` choice body. Revoke is not one of them and should not be: it is a **consuming** choice, so it archives the mandate and there is no contract left to charge. That is a stronger guarantee than an assertion, and the distinction is worth stating rather than rounding off |
-| Deployed on Cantor8 DevNet | Built: `kya-rails-mandate` **1.1.1** on SDK 3.4.11 (103/103 scripts in that package; 123 across both). Vetted on DevNet: **1.1.0**, as an upgrade of 1.0.0 — 1.1.1 is built and tested but not yet uploaded, and this row will say so until it is. The mandate templates carry package `df5a02e88a68…` from 1.0.0; `KyaAnchor` arrived in 1.1.0 as `fd3f43a273be…`, and both are vetted |
+| Deployed on Cantor8 DevNet | Built: `kya-rails-mandate` **1.1.1** on SDK 3.4.11 (112/112 scripts in the mandate tests today; 184 across both packages). Vetted on DevNet: **1.1.0**, as an upgrade of 1.0.0 — 1.1.1 is built and tested but not yet uploaded, and this row will say so until it is. The mandate templates carry package `df5a02e88a68…` from 1.0.0; `KyaAnchor` arrived in 1.1.0 as `fd3f43a273be…`, and both are vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
 | Receipt chain | 6 receipts, 2 accepted, 4 refused, chain verifies end to end |
 | Tamper evident | edit one receipt, every later seal breaks |
@@ -409,7 +410,7 @@ python3 tests/mutation_py.py     # same, for every refusal the sealed journal ra
 python3 tests/anchor_smoke.py    # the agent anchors the chain it wrote, or says it did not
 python3 tests/standalone_smoke.py # the handed-out file is self-contained and current
 python3 tests/complexity_lint.py # no function over the ceiling without a written reason
-python3 tests/daml_tests.py                               # 171 scripts, rebuilt from source
+python3 tests/daml_tests.py                               # 184 scripts, rebuilt from source
 python3 tools/before_contributing.py digital-asset/dpm    # gate before opening anything in a repo that is not ours
 python3 tools/post_queue.py                               # walks every pending draft: checks it, copies it, opens the page
 python3 tools/post_queue.py --dry-run                     # the same, touching no clipboard and opening no browser

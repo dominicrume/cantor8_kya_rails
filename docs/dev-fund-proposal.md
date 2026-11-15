@@ -326,7 +326,7 @@ is a *distribution* fact, not an adoption one, and the two should not be confuse
 
 The honest position: the format has three implementations and the applicant
 wrote all three. Nobody outside is running it yet. The package that implements
-this format, `knowyouragenticai-receipts`, has **488 downloads all time,
+this format, `knowyouragenticai-receipts`, has **514 downloads all time,
 excluding mirrors**, measured 12 November 2026 (`python3 tools/downloads.py`).
 A thirty-day figure was quoted here until today and has been removed: it is a
 rolling window, it read 226 on 10 November and 205 on 12 November with nobody

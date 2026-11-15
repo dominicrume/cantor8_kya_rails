@@ -413,9 +413,12 @@ A consumer-side counter for adapter output is at
 `tools/refusal_detector.py` in the same repository: Python standard library
 only, and it reads no payload.
 
-**What has not been done.** None of this has run on DevNet or MainNet. The
-author has never held a DevNet credential. Everything above is local Daml
-script execution and should be weighed as a specification with a working
+**What has not been done.** The refusal journal has run only on a local Canton
+sandbox, not on DevNet or MainNet. Correction of 15 November 2026: an earlier
+version of this paragraph said the author had never held a DevNet credential.
+That was wrong. The separate spending-mandate package was vetted on DevNet and
+moved real Canton Coin on 31 August 2026 (see the repository README). Everything
+about the journal above is local Daml script execution and should be weighed as a specification with a working
 reference implementation rather than as deployed software. That is stated here
 rather than discovered later.
 
