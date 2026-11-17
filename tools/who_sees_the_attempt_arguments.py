@@ -51,7 +51,8 @@ import json
 import os
 import sys
 
-from canton_sandbox import REFUSAL_CHAIN, Sandbox, build_chain, have_daml
+from canton_sandbox import (REFUSAL_CHAIN, Sandbox, build_chain, have_daml,
+                            when_packages_ready)
 import can_the_auditor_tell as T
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -157,7 +158,8 @@ def report(p):
 def play():
     names = ("owner", "actor", "guardian", "auditor")
     p = {n: T.party(n) for n in names}
-    journal = T.build(p["owner"], p["actor"], p["guardian"], p["auditor"])
+    journal = when_packages_ready(
+        lambda: T.build(p["owner"], p["actor"], p["guardian"], p["auditor"]))
     T.say("CONTROLS")
     ok, seen = play_controls(p, T.journal_of(p["owner"])[0] or journal)
     for who in ("owner", "auditor", "guardian"):

@@ -154,6 +154,8 @@ SUITES = [
      "the mutation harness finds the checks it claims to, and lists what it cannot"),
     ("python3 tests/daml_constructs_parity_lint.py", "The rules",
      "the README names exactly the constructs the harness recognises"),
+    ("python3 tests/sandbox_ready_smoke.py", "The tests, tested",
+     "the sandbox tools wait for the DAR to be ready, only for that, and not for ever"),
     ("python3 tests/daml_mutate_fixture_run.py", "The tests, tested",
      "the harness gives the right verdict on a package whose answers are known"),
 

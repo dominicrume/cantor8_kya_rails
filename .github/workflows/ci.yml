@@ -117,6 +117,10 @@ jobs:
           python3 tests/daml_fences_smoke.py
           python3 tests/daml_constructs_parity_lint.py
 
+      - name: the sandbox tools wait for the DAR to be ready, only for that, and not for ever
+        # No ledger needed: a fake clock, so nothing sleeps.
+        run: python3 tests/sandbox_ready_smoke.py
+
       - name: the rules an agent ran under cannot be widened after the fact
         run: python3 tests/policy_smoke.py
 

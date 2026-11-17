@@ -55,7 +55,8 @@ import time
 import urllib.error
 import urllib.request
 
-from canton_sandbox import REFUSAL_CHAIN, Sandbox, build_chain, have_daml
+from canton_sandbox import (REFUSAL_CHAIN, Sandbox, build_chain, have_daml,
+                            when_packages_ready)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DAR = os.path.join(ROOT, "step-0-refusal", "test", ".daml", "dist",
@@ -247,7 +248,7 @@ def scenario(label, choice, how_many, attack=None):
     guardian = party("Guardian")
     auditor = party("Auditor")
 
-    cid = build(owner, actor, guardian, auditor)
+    cid = when_packages_ready(lambda: build(owner, actor, guardian, auditor))
     for i in range(1, how_many + 1):
         cid = refuse(owner, actor, cid, choice, i)
 

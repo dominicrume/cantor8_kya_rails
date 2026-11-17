@@ -54,6 +54,36 @@ def say(msg):
     print(msg, flush=True)
 
 
+# What the ledger answers while the DAR given to `daml sandbox --dar` is still
+# being uploaded and vetted. Canton writes its port file BEFORE that finishes,
+# so a command sent the moment the port file appears can arrive too early. Found
+# 17 November 2026: the same tool passed in a working tree and failed twice from
+# a fresh clone, once with each of these two answers. The DAR was byte for byte
+# the same in both, so the difference was timing, not the code.
+NOT_READY = ("PACKAGE_NAMES_NOT_FOUND", "JSON_API_PACKAGE_SELECTION_FAILED",
+             "not consistently vetted")
+
+
+def when_packages_ready(attempt, timeout=120, pause=2,
+                        sleep=time.sleep, clock=time.monotonic):
+    """Run attempt() until it stops failing because the DAR is not ready yet.
+
+    Only the answers in NOT_READY are retried, and only for `timeout` seconds. A
+    command that fails for any other reason fails at once, so a real error is
+    never hidden behind a wait. The caller's attempt() must be safe to repeat,
+    which a command the ledger refused is: nothing was created.
+    """
+    started = clock()
+    while True:
+        try:
+            return attempt()
+        except SystemExit as err:
+            late = clock() - started >= timeout
+            if late or not any(m in str(err.code) for m in NOT_READY):
+                raise
+            sleep(pause)
+
+
 def have_daml():
     if shutil.which("daml") is None:
         say("daml is not on PATH. Install the Daml SDK, then re-run.")
