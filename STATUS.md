@@ -1,6 +1,6 @@
 # Status: what is proven, what is mocked, what is pending
 
-*Rows carry their own dates. Last full sweep: 2026-11-15, 50 of 50 suites green. Regenerate the numbers with `python3 tools/dashboard.py`,
+*Rows carry their own dates. Last full sweep: 2026-11-20, 52 of 52 suites green. Regenerate the numbers with `python3 tools/dashboard.py`,
 the champion figures with `python3 tools/champions.py`, the vote state with
 `python3 tools/vote_pipeline.py`, and the download figures with
 `python3 tools/downloads.py`.*
@@ -70,6 +70,7 @@ declared in its first line.
 | One OpenZeppelin package had its only visible fence covered | **Corrected 15 November 2026.** This row said "OpenZeppelin's newer code is clean" on the strength of ONE fence (`scoped-authorization-grant-v1`, 45 scripts). That generalised from a single data point, and the tool could then read only `assertMsg` and `ensure`, while most of their library's checks are written as `require`, `requireMatchExpected` and `unless ... fail`. It says nothing about the rest of their code | same tool, SDK 3.5.8 via dpm, as it was on that day |
 | The mutation harness can read more than `assertMsg` and `ensure` | `--constructs all` recognises `assert`, `require`, `require'`, `requireMatchExpected`, `requireSuccess`, `unless`/`when` ... fail and the standard library's deadline checks; it lists every check-like line it does NOT recognise, with a reason, and a record ends with a `SCOPE` receipt. **Off by default, and the released Action does not turn it on.** Limits: case arms, expression-bodied helpers and bound results are listed, not tested | `python3 tests/daml_fences_smoke.py` (no SDK), `python3 tests/daml_mutate_fixture_run.py` (builds a package whose answers are known; the old harness saw 1 of its 5 checks) |
 | Three pull requests merged into a repository we do not own | Canton Developer Hub #156, #160, #168 | GitHub |
+| A dedicated synchronizer's per-party traffic report can be checked against what each party holds | Built 20 November 2026 for the gap CIP-0129 states: "these reports rely on the operator being honest". `python3 tools/check_traffic_report.py --demo` catches a misdirection that leaves the total unchanged and names exactly the two parties; `python3 tests/traffic_report_smoke.py` is 22 checks, and eleven deliberate breakages of the tool were each caught. On MOCKED data only | `tools/check_traffic_report.py`, `tests/traffic_report_smoke.py` |
 
 ## MOCKED — labelled as such in code and in any demo
 
@@ -78,6 +79,7 @@ declared in its first line.
 | `MockLedger` in `step-2-agent` | Lets the demo run offline with no credential | Nothing. It is the offline rail on purpose, and `tests/fence_parity.py` holds it to the Daml |
 | The example disclosure `docs/examples/settlement-refusals.json` | Invented figures, stated in the file and in the forum post that shared it | Nothing. A demo file with real customer data would be worse |
 | The float table in the README | A **recorded** measurement from the 2026-08-31 DevNet run, not a live read | `python3 tests/devnet_topup.py` with a credential |
+| The report and party records in `tools/check_traffic_report.py` | CIP-0129 defines no report format, and this repository has no export from a real validator, so both are ASSUMED and the demo data is invented | A published report schema, and an exporter for a real validator's own traffic receipts |
 
 ## PENDING — the honest gaps, worst first
 
@@ -95,6 +97,7 @@ declared in its first line.
 | **Two reviewers are owed a reply** | Georgi Radev answered a direct question on 27 October and has had nothing back for four days. Leonid corrected the Motivation on 30 October. Both corrections are built and pushed in `418e98f`, so both replies can now report finished work rather than a plan | Nothing. The text is drafted |
 | **cip-discuss message #909 describes a draft that has changed** | The list was shown a draft on 29 October that now has a second conformance requirement and a narrowed Motivation. A reader who checks the file against the message finds a mismatch | Nothing technical |
 | **`outcomes` is not anchored anywhere** | SPEC 6c says plainly that the digest proves nothing until it is pinned to an origin the producer does not control | A ledger, which needs the credential |
+| **The traffic-report check has never seen a real report** | A MATCH means the operator and a party agree, not that either is right, and a party that supplies no record is unchecked, so the rest of a report still rests on the operator. It does not touch the CC burned, discounts or reward weights | A real dedicated synchronizer's report, and a validator's own export of its traffic |
 | **No revenue.** Nothing has been invoiced or received | | |
 
 ## NOT CLAIMED

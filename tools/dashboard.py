@@ -156,6 +156,8 @@ SUITES = [
      "the README names exactly the constructs the harness recognises"),
     ("python3 tests/sandbox_ready_smoke.py", "The tests, tested",
      "the sandbox tools wait for the DAR to be ready, only for that, and not for ever"),
+    ("python3 tests/traffic_report_smoke.py", "Operators checked",
+     "a misdirected traffic report is caught from the parties' own records, on mocked data"),
     ("python3 tests/daml_mutate_fixture_run.py", "The tests, tested",
      "the harness gives the right verdict on a package whose answers are known"),
 
