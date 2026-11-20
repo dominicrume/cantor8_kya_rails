@@ -65,6 +65,9 @@ def numbers_and_branches():
           "a record with no gaps says so and shows no gap section")
     check("could not be tested" not in P.render(record(MIXED)),
           "the could-not-be-tested card is absent when nothing was untestable")
+    clean = P.render(record([m for m in MIXED if m[3] == "COVERED"]))
+    check('stat bad' not in clean, "a clean run does not show its zero in the warning colour")
+    check('stat bad' in P.render(record(MIXED)), "a run with gaps does show the count in the warning colour")
     skipped = MIXED + [("ensure f", 3, "B.daml", "NOT TESTABLE", "no test package")]
     check("could not be tested" in P.render(record(skipped)),
           "the card appears when a check could not be tested")

@@ -105,7 +105,7 @@ def stat(css, number, label):
 
 
 def stats(counts):
-    parts = [stat("bad", counts["UNCOVERED"], "no test notices if it is removed"),
+    parts = [stat("bad" if counts["UNCOVERED"] else "ok", counts["UNCOVERED"], "no test notices if it is removed"),
              stat("ok", counts["COVERED"], "a named test fails without it")]
     if counts["NOT TESTABLE"]:
         parts.append(stat("", counts["NOT TESTABLE"], "could not be tested"))

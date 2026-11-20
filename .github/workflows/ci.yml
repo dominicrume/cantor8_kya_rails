@@ -121,6 +121,10 @@ jobs:
         # No ledger needed: a fake clock, so nothing sleeps.
         run: python3 tests/sandbox_ready_smoke.py
 
+      - name: the review MCP server never touches the customer's project
+        # MOCKED runner: the plumbing in seconds, no Daml SDK needed.
+        run: python3 tests/check_mcp_smoke.py
+
       - name: the review page tells the record's truth and refuses one that does not verify
         run: python3 tests/assurance_page_smoke.py
 
