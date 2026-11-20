@@ -92,6 +92,15 @@ baseline: 184 scripts green
 every fence is covered: deleting any one of them turns a test red.
 ```
 
+> **Correction, 20 November 2026.** "Every fence" above means the 34 `assertMsg`
+> fences in `tests/mutation.py`. Run on `step-1-mandate` at `31be749`, the same
+> harness the free GitHub Action uses also reads `ensure` clauses and finds **50**
+> checks, **37** with a named test that goes red and **13** with none, including
+> `ensure cap > 0.0 && spent >= 0.0 && spent <= cap`. Some of the 13 may be
+> deliberate duplicates of another check; that has not been sorted yet. The sealed
+> record is [`docs/findings/kya-rails-mandate-2026-11-20.json`](docs/findings/kya-rails-mandate-2026-11-20.json).
+> Left in place so the claim can be read next to what corrects it.
+
 One command runs the ledger side end to end:
 
 ```bash

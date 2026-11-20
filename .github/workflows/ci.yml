@@ -121,6 +121,9 @@ jobs:
         # No ledger needed: a fake clock, so nothing sleeps.
         run: python3 tests/sandbox_ready_smoke.py
 
+      - name: the review page tells the record's truth and refuses one that does not verify
+        run: python3 tests/assurance_page_smoke.py
+
       - name: a misdirected traffic report is caught from the parties' own records
         # MOCKED data, no ledger needed. CIP-0129 defines no report format.
         run: python3 tests/traffic_report_smoke.py
