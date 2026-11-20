@@ -1,0 +1,23 @@
+-- Shared by the tests that must know WHICH rule refused, not only that
+-- something did. submitMustFail proves a transaction was refused. It cannot tell
+-- the rule you meant from another rule that fires on the same input, so a check
+-- can be deleted and a test built on submitMustFail still goes green. That is
+-- how 13 checks went unnoticed until the review harness found them
+-- (docs/findings/kya-rails-mandate-2026-11-20.json).
+module KyaSupport where
+
+import DA.Text (isInfixOf)
+import Daml.Script
+
+-- Run commands that must be refused, and require the refusal to name `rule`.
+refusedWith : Text -> SubmitOptions -> Commands a -> Script ()
+refusedWith rule who cmds = do
+  result <- trySubmit who cmds
+  case result of
+    Left (FailureStatusError fs) ->
+      assertMsg ("refused, but not by the rule named \"" <> rule <> "\": " <> fs.message)
+                (rule `isInfixOf` fs.message)
+    Left _ ->
+      assertMsg "refused by something other than a failed check in the choice" False
+    Right _ ->
+      assertMsg ("ACCEPTED, but the rule \"" <> rule <> "\" should have refused it") False

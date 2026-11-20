@@ -1,0 +1,238 @@
+-- Tests for the 13 checks that no test noticed losing.
+--
+-- On 20 November 2026 the review harness was run on this package (the same one
+-- the free GitHub Action runs). 50 checks, 37 with a named test that goes red when
+-- the check is removed, 13 with none. The sealed record is
+-- docs/findings/kya-rails-mandate-2026-11-20.json. This file is the other half:
+-- one test per check, each asserting on the rule that fired, so deleting the check
+-- turns that test red and nothing else can stand in for it.
+--
+-- Every test is paired with a control that is ACCEPTED, so a test cannot pass
+-- merely because the setup was already broken.
+module KyaGuardGapTest where
+
+import DA.Time (addRelTime, hours)
+import Daml.Script
+import KyaCycle
+import KyaInbound
+import KyaMandate
+import qualified KyaQuote as KQ
+import KyaSupport
+import qualified KyaCycleTest as C
+import qualified KyaInboundTest as I
+import qualified KyaQuoteTest as Q
+
+-- ===========================================================================
+-- KyaMandate: the template's `ensure`, one clause at a time.
+-- The Charge assertions duplicate some of these on purpose. These tests reach
+-- the template directly, so only the `ensure` can be what refuses.
+-- ===========================================================================
+
+precondition : Text
+precondition = "Template precondition violated"
+
+mandateWith : Decimal -> Decimal -> Decimal -> Optional Decimal
+            -> Script (Party, Party, Time, Commands (ContractId KyaMandate))
+mandateWith cap spent periodSpent periodLimit = script do
+  owner   <- allocateParty "Principal"
+  spender <- allocateParty "Operator"
+  now <- getTime
+  pure (owner, spender, now, createCmd KyaMandate with
+    owner; spender; cap; spent
+    expiresAt = addRelTime now (hours 24)
+    allowed = []
+    periodLimit; periodLength = None
+    periodSpent; periodStart = now
+    auditor = None)
+
+refusedMandate : Decimal -> Decimal -> Decimal -> Optional Decimal -> Script ()
+refusedMandate cap spent periodSpent periodLimit = script do
+  (owner, spender, _, cmd) <- mandateWith cap spent periodSpent periodLimit
+  refusedWith precondition (actAs [owner, spender]) cmd
+
+acceptedMandate : Decimal -> Decimal -> Decimal -> Optional Decimal -> Script ()
+acceptedMandate cap spent periodSpent periodLimit = script do
+  (owner, spender, _, cmd) <- mandateWith cap spent periodSpent periodLimit
+  _ <- submit (actAs [owner, spender]) cmd
+  pure ()
+
+-- A mandate with a sound shape is created, including the edge where the whole
+-- cap has been spent. Without this the refusals below prove nothing.
+testASoundMandateIsCreated : Script ()
+testASoundMandateIsCreated = script do
+  acceptedMandate 100.0 0.0 0.0 None
+  acceptedMandate 100.0 100.0 0.0 None
+  acceptedMandate 100.0 0.0 0.0 (Some 25.0)
+
+testAMandateWithNoCapIsRefusedByTheEnsure : Script ()
+testAMandateWithNoCapIsRefusedByTheEnsure = script do
+  refusedMandate 0.0 0.0 0.0 None
+  refusedMandate (-5.0) 0.0 0.0 None
+
+testAMandateWithNegativeSpentIsRefusedByTheEnsure : Script ()
+testAMandateWithNegativeSpentIsRefusedByTheEnsure = script do
+  refusedMandate 100.0 (-1.0) 0.0 None
+
+testAMandateSpentPastItsCapIsRefusedByTheEnsure : Script ()
+testAMandateSpentPastItsCapIsRefusedByTheEnsure = script do
+  refusedMandate 100.0 100.01 0.0 None
+
+testANegativePeriodSpentIsRefusedByTheEnsure : Script ()
+testANegativePeriodSpentIsRefusedByTheEnsure = script do
+  refusedMandate 100.0 0.0 (-1.0) (Some 25.0)
+
+testAPeriodLimitOfNothingIsRefusedByTheEnsure : Script ()
+testAPeriodLimitOfNothingIsRefusedByTheEnsure = script do
+  refusedMandate 100.0 0.0 0.0 (Some 0.0)
+  refusedMandate 100.0 0.0 0.0 (Some (-5.0))
+
+-- ===========================================================================
+-- KyaCycle
+-- ===========================================================================
+
+testADepositAddressNeedsAssetNetworkAndAddress : Script ()
+testADepositAddressNeedsAssetNetworkAndAddress = script do
+  (k, d, _) <- C.books
+  let rule = "asset, network and address are all required"
+  refusedWith rule (actAs k.principal) do
+    exerciseCmd d ApproveDepositAddress with
+      asset = ""; network = "BEP20"; address = C.erc; memoRequired = False
+  refusedWith rule (actAs k.principal) do
+    exerciseCmd d ApproveDepositAddress with
+      asset = "USDT"; network = ""; address = C.erc; memoRequired = False
+  refusedWith rule (actAs k.principal) do
+    exerciseCmd d ApproveDepositAddress with
+      asset = "USDT"; network = "BEP20"; address = ""; memoRequired = False
+  -- Last, because approving consumes the book.
+  _ <- submit k.principal do
+    exerciseCmd d ApproveDepositAddress with
+      asset = "USDT"; network = "BEP20"; address = C.erc; memoRequired = False
+  pure ()
+
+testAConfirmedDepositMustBeForSomething : Script ()
+testAConfirmedDepositMustBeForSomething = script do
+  (k, feed, d) <- C.withDepositFeed
+  inst <- C.instructionFor k d
+  refusedWith "deposit amount must be positive" (actAs feed) do
+    exerciseCmd inst ConfirmDepositSeen with txRef = "0x9f2c...a41"; seenAmount = 0.0
+  refusedWith "deposit amount must be positive" (actAs feed) do
+    exerciseCmd inst ConfirmDepositSeen with txRef = "0x9f2c...a41"; seenAmount = -3.0
+  _ <- submit feed do
+    exerciseCmd inst ConfirmDepositSeen with txRef = "0x9f2c...a41"; seenAmount = 3.0
+  pure ()
+
+testTheDeskCannotSendNothingToAnOffTaker : Script ()
+testTheDeskCannotSendNothingToAnOffTaker = script do
+  (k, _, o) <- C.books
+  let send amount = exerciseCmd o SendToOffTaker with
+        offTaker = "Supplier A"; asset = "USDT"; network = "TRC20"
+        toAddress = C.trc; amount; expectedNaira = 0.0
+  refusedWith "amount must be positive" (actAs k.operator) (send 0.0)
+  refusedWith "amount must be positive" (actAs k.operator) (send (-1.0))
+  _ <- submit k.operator (send 1.0)
+  pure ()
+
+-- ===========================================================================
+-- KyaInbound
+-- ===========================================================================
+
+testAQuoteNeedsAPositiveNairaAmount : Script ()
+testAQuoteNeedsAPositiveNairaAmount = script do
+  (d, b) <- I.books
+  now <- getTime
+  let quote naira rate = exerciseCmd b QuoteForNaira with
+        customer = d.customer; reference = "KYA-GAP"
+        payIntoAccount = I.deskAccount; nairaAmount = naira; rate
+        asset = "USDT"; network = "TRC20"; customerWallet = I.customerWalletTrc
+        expiresAt = addRelTime now (hours 2); cryptoAmount = Some 1000.0
+  refusedWith "naira amount must be positive" (actAs d.operator) (quote 0.0 1250.0)
+  refusedWith "naira amount must be positive" (actAs d.operator) (quote (-1.0) 1250.0)
+  _ <- submit d.operator (quote 1250000.0 1250.0)
+  pure ()
+
+testAQuoteNeedsAPositiveRate : Script ()
+testAQuoteNeedsAPositiveRate = script do
+  (d, b) <- I.books
+  now <- getTime
+  let quote rate = exerciseCmd b QuoteForNaira with
+        customer = d.customer; reference = "KYA-GAP"
+        payIntoAccount = I.deskAccount; nairaAmount = 1250000.0; rate
+        asset = "USDT"; network = "TRC20"; customerWallet = I.customerWalletTrc
+        expiresAt = addRelTime now (hours 2); cryptoAmount = Some 1000.0
+  refusedWith "rate must be positive" (actAs d.operator) (quote 0.0)
+  refusedWith "rate must be positive" (actAs d.operator) (quote (-1250.0))
+  _ <- submit d.operator (quote 1250.0)
+  pure ()
+
+testAQuoteNeedsAReceivingWallet : Script ()
+testAQuoteNeedsAReceivingWallet = script do
+  (d, b) <- I.books
+  now <- getTime
+  refusedWith "a receiving wallet must be given when the rate is agreed" (actAs d.operator) do
+    exerciseCmd b QuoteForNaira with
+      customer = d.customer; reference = "KYA-GAP"
+      payIntoAccount = I.deskAccount; nairaAmount = 1250000.0; rate = 1250.0
+      asset = "USDT"; network = "TRC20"; customerWallet = ""
+      expiresAt = addRelTime now (hours 2); cryptoAmount = Some 1000.0
+
+testTheNairaRateBandMustBeSane : Script ()
+testTheNairaRateBandMustBeSane = script do
+  (d, b) <- I.books
+  let rule = "a rate band must be positive and the right way round"
+  refusedWith rule (actAs d.principal) do exerciseCmd b SetRateBand with floor = 0.0; ceiling = 10.0
+  refusedWith rule (actAs d.principal) do exerciseCmd b SetRateBand with floor = -5.0; ceiling = 10.0
+  refusedWith rule (actAs d.principal) do exerciseCmd b SetRateBand with floor = 1500.0; ceiling = 1000.0
+  _ <- submit d.principal do exerciseCmd b SetRateBand with floor = 1100.0; ceiling = 1400.0
+  pure ()
+
+confirmedDeal : I.Desk -> ContractId NairaBook -> Script (ContractId InboundDeal)
+confirmedDeal d b = script do
+  deal <- I.quoteIt d b
+  submit d.principal do
+    exerciseCmd deal ConfirmNairaCredited with
+      bankRef = "GTB/2026-11-20/1"; credited = 1250000.0
+
+testAnExpiredQuoteCannotBeReleased : Script ()
+testAnExpiredQuoteCannotBeReleased = script do
+  (d, b) <- I.books
+  confirmed <- confirmedDeal d b
+  passTime (hours 3)
+  refusedWith "quote expired" (actAs d.operator) do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = I.customerWalletTrc; onNetwork = "TRC20"; amount = 1000.0
+
+testAReleaseMustBeForSomething : Script ()
+testAReleaseMustBeForSomething = script do
+  (d, b) <- I.books
+  confirmed <- confirmedDeal d b
+  refusedWith "amount must be positive" (actAs d.operator) do
+    exerciseCmd confirmed ReleaseCrypto with
+      toWallet = I.customerWalletTrc; onNetwork = "TRC20"; amount = 0.0
+
+-- ===========================================================================
+-- KyaQuote
+-- ===========================================================================
+
+testAnAccountCannotBeApprovedTwice : Script ()
+testAnAccountCannotBeApprovedTwice = script do
+  (d, b) <- Q.book
+  refusedWith "account is already approved" (actAs d.principal) do
+    exerciseCmd b KQ.ApproveAccount with account = Q.customerAccount
+  _ <- submit d.principal do exerciseCmd b KQ.ApproveAccount with account = "GTB 0000000001 / ANOTHER"
+  pure ()
+
+testAnApprovedAccountNeedsAName : Script ()
+testAnApprovedAccountNeedsAName = script do
+  (d, b) <- Q.book
+  refusedWith "an account must have a name" (actAs d.principal) do
+    exerciseCmd b KQ.ApproveAccount with account = ""
+
+testTheQuoteRateBandMustBeSane : Script ()
+testTheQuoteRateBandMustBeSane = script do
+  (d, b) <- Q.book
+  let rule = "a rate band must be positive and the right way round"
+  refusedWith rule (actAs d.principal) do exerciseCmd b KQ.SetRateBand with floor = 0.0; ceiling = 10.0
+  refusedWith rule (actAs d.principal) do exerciseCmd b KQ.SetRateBand with floor = -5.0; ceiling = 10.0
+  refusedWith rule (actAs d.principal) do exerciseCmd b KQ.SetRateBand with floor = 1500.0; ceiling = 1000.0
+  _ <- submit d.principal do exerciseCmd b KQ.SetRateBand with floor = 1100.0; ceiling = 1400.0
+  pure ()

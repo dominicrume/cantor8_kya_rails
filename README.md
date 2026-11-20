@@ -85,7 +85,7 @@ enforced only by a test that would pass without it:
 
 ```
 $ python3 tests/mutation.py
-baseline: 184 scripts green
+baseline: 202 scripts green
   ok    charge would exceed the cap          -> testOverCapRefusedByTheCapAssertion goes red
   ok    payee is not on the allow-list       -> testPayoutRedirectionRefused goes red
   ...  34 of 34
@@ -100,11 +100,19 @@ every fence is covered: deleting any one of them turns a test red.
 > deliberate duplicates of another check; that has not been sorted yet. The sealed
 > record is [`docs/findings/kya-rails-mandate-2026-11-20.json`](docs/findings/kya-rails-mandate-2026-11-20.json).
 > Left in place so the claim can be read next to what corrects it.
+>
+> **Closed the same day.** 18 tests were added (`KyaGuardGapTest.daml`), each asserting
+> on the rule that fired. The same harness on the same package, now at `f01a79b` plus
+> those tests, reports **50 of 50** checks with a named test that goes red
+> ([`docs/findings/kya-rails-mandate-2026-11-20-after.json`](docs/findings/kya-rails-mandate-2026-11-20-after.json)).
+> Twelve of the 13 were in the desk modules; one was the `ensure` on the mandate. The
+> cause was tests built on `submitMustFail`, which cannot tell the rule you meant from
+> another rule that fires on the same input.
 
 One command runs the ledger side end to end:
 
 ```bash
-python3 tests/daml_tests.py                # 184 of 184 attack scripts
+python3 tests/daml_tests.py                # 202 of 202 attack scripts
 ```
 
 Nothing above is enforced in Python. The Python mirror in `step-2-agent/agent.py`
@@ -182,7 +190,7 @@ country and deciding whether to trust the person who produced it.
 
 | Claim | Evidence |
 | --- | --- |
-| Attack suite green | **184 / 184** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
+| Attack suite green | **202 / 202** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.2.0**, MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 20 vectors exist because we asked which wrong implementations still passed, and two did |
 | The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |
@@ -191,7 +199,7 @@ country and deciding whether to trust the person who produced it.
 | One bad line cannot end the model's session | `tests/mcp_smoke.py` feeds 15 malformed JSON-RPC lines **between** the good ones. Each gets its proper code (-32700 / -32600 / -32601), and the request after them all is still answered |
 | The chain is bound to its origin | **NOT YET TRUE.** The design publishes the head on Canton, and a fully forged chain verifies green in all four implementations, which is exactly why an anchor matters. No anchor has ever been written to a ledger, so today a forged chain is caught by nothing. `KyaAnchor.daml` is exercised in `daml test` only |
 | Fences enforced on-ledger | cap, **per-period limit**, allow-list, expiry, positive amount — five `assertMsg` fences in the `Charge` choice body. Revoke is not one of them and should not be: it is a **consuming** choice, so it archives the mandate and there is no contract left to charge. That is a stronger guarantee than an assertion, and the distinction is worth stating rather than rounding off |
-| Deployed on Cantor8 DevNet | Built: `kya-rails-mandate` **1.1.1** on SDK 3.4.11 (112/112 scripts in the mandate tests today; 184 across both packages). Vetted on DevNet: **1.1.0**, as an upgrade of 1.0.0 — 1.1.1 is built and tested but not yet uploaded, and this row will say so until it is. The mandate templates carry package `df5a02e88a68…` from 1.0.0; `KyaAnchor` arrived in 1.1.0 as `fd3f43a273be…`, and both are vetted |
+| Deployed on Cantor8 DevNet | Built: `kya-rails-mandate` **1.1.1** on SDK 3.4.11 (130/130 scripts in the mandate tests today; 202 across both packages). Vetted on DevNet: **1.1.0**, as an upgrade of 1.0.0 — 1.1.1 is built and tested but not yet uploaded, and this row will say so until it is. The mandate templates carry package `df5a02e88a68…` from 1.0.0; `KyaAnchor` arrived in 1.1.0 as `fd3f43a273be…`, and both are vetted |
 | Refusals returned by real Canton | over-cap, unverified payee, expired, revoked, agent-only `Adjust` |
 | Receipt chain | 6 receipts, 2 accepted, 4 refused, chain verifies end to end |
 | Tamper evident | edit one receipt, every later seal breaks |
@@ -419,7 +427,7 @@ python3 tests/mutation_py.py     # same, for every refusal the sealed journal ra
 python3 tests/anchor_smoke.py    # the agent anchors the chain it wrote, or says it did not
 python3 tests/standalone_smoke.py # the handed-out file is self-contained and current
 python3 tests/complexity_lint.py # no function over the ceiling without a written reason
-python3 tests/daml_tests.py                               # 184 scripts, rebuilt from source
+python3 tests/daml_tests.py                               # 202 scripts, rebuilt from source
 python3 tools/before_contributing.py digital-asset/dpm    # gate before opening anything in a repo that is not ours
 python3 tools/post_queue.py                               # walks every pending draft: checks it, copies it, opens the page
 python3 tools/post_queue.py --dry-run                     # the same, touching no clipboard and opening no browser
