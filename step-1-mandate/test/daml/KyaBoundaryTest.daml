@@ -1,0 +1,211 @@
+-- Tests for the boundaries and the authority that no test pinned.
+--
+-- On 21 November 2026 Mewt (Trail of Bits' mutation tester, run from a verified
+-- release, on a copy) tried 109 mutants of KyaMandate.daml. 87 were caught and 22
+-- were not. This is the other half. Each test names the mutants it kills, by
+-- Mewt's own ids, so the claim can be checked by running Mewt again.
+--
+--   [COS 12]  `cap > 0.0` -> `cap /= 0.0`: an EQUIVALENT mutant. `spent >= 0.0 &&
+--             spent <= cap` already forces cap >= 0, so no test can tell them
+--             apart, and none is written. Left as the one honest survivor.
+--
+-- Most of these are edges: the instant of expiry, the instant a window rolls over,
+-- the limit exactly reached. The last is authority: the agent must co-sign any
+-- change to its own cap, which is the claim the whole product rests on.
+module KyaBoundaryTest where
+
+import DA.Time (RelTime, addRelTime, hours, minutes)
+import Daml.Script
+import KyaMandate
+import KyaSupport
+
+data Rig = Rig with
+  owner   : Party
+  spender : Party
+  payee   : Party
+  mandate : ContractId KyaMandate
+
+rig : Decimal -> RelTime -> Optional Decimal -> Optional RelTime -> Script Rig
+rig cap life limit len = script do
+  owner   <- allocateParty "Principal"
+  spender <- allocateParty "Operator"
+  payee   <- allocateParty "Recipient"
+  now <- getTime
+  prop <- submit owner do
+    createCmd KyaMandateProposal with
+      owner; spender; cap
+      expiresAt = addRelTime now life
+      allowed = [payee]
+      periodLimit = limit; periodLength = len
+      auditor = None
+  m <- submit spender do exerciseCmd prop Accept
+  pure Rig with owner; spender; payee; mandate = m
+
+charge : Rig -> ContractId KyaMandate -> Decimal -> Commands (ContractId KyaMandate)
+charge r m amount = exerciseCmd m Charge with amount; payee = r.payee; memo = "boundary"
+
+-- TryCharge, returning the rule that refused it (if any) and the mandate afterwards.
+tryIt : Rig -> ContractId KyaMandate -> Decimal -> Script (Optional Text, ContractId KyaMandate)
+tryIt r m amount = script do
+  res <- submit r.spender do
+    exerciseCmd m TryCharge with amount; payee = r.payee; memo = "boundary"
+  rule <- case res.refusal of
+    None -> pure None
+    Some c -> do
+      refused <- queryContractId r.spender c
+      pure (fmap (.rule) refused)
+  pure (rule, res.mandate)
+
+fieldsOf : Rig -> ContractId KyaMandate -> Script KyaMandate
+fieldsOf r m = script do
+  found <- queryContractId r.spender m
+  case found of
+    Some x -> pure x
+    None -> do
+      assertMsg "the mandate is not on the ledger" False
+      error "unreachable"
+
+-- ---------------------------------------------------------------------------
+-- Expiry. [COS 38] `now < expiresAt` -> `<=`.  [COS 75] `now >= expiresAt` -> `>`.
+-- ---------------------------------------------------------------------------
+
+testAChargeAtTheInstantOfExpiryIsRefused : Script ()
+testAChargeAtTheInstantOfExpiryIsRefused = script do
+  r <- rig 100.0 (hours 1) None None
+  passTime (minutes 59)
+  _ <- submit r.spender (charge r r.mandate 10.0)           -- one minute before: allowed
+  r2 <- rig 100.0 (hours 1) None None
+  passTime (hours 1)                                         -- now == expiresAt exactly
+  refusedWith "mandate expired" (actAs r2.spender) (charge r2 r2.mandate 10.0)
+
+testARecordedRefusalAtTheInstantOfExpiryNamesExpiry : Script ()
+testARecordedRefusalAtTheInstantOfExpiryNamesExpiry = script do
+  r <- rig 100.0 (hours 1) None None
+  passTime (hours 1)
+  (rule, _) <- tryIt r r.mandate 10.0
+  assertMsg ("expected the expiry rule at the instant of expiry, got " <> show rule)
+            (rule == Some "mandate expired")
+
+-- ---------------------------------------------------------------------------
+-- Amounts. [COS 42] `amount > 0.0` -> `amount /= 0.0`: a NEGATIVE charge would pass,
+-- and with something already spent it would quietly lower the spent total.
+-- ---------------------------------------------------------------------------
+
+testANegativeChargeIsRefusedWhenSomethingIsAlreadySpent : Script ()
+testANegativeChargeIsRefusedWhenSomethingIsAlreadySpent = script do
+  r <- rig 100.0 (hours 24) None None
+  m1 <- submit r.spender (charge r r.mandate 40.0)
+  refusedWith "amount must be positive" (actAs r.spender) (charge r m1 (-5.0))
+  now <- fieldsOf r m1
+  assertMsg "the spent total moved" (now.spent == 40.0)
+
+-- ---------------------------------------------------------------------------
+-- Authority. [CPR 104] `controller owner, spender` -> `controller owner`.
+-- The agent consents to its own leash, so the owner alone cannot move the cap.
+-- [COS 70] `newCap >= spent` -> `>`: a cap equal to what is spent is allowed.
+-- ---------------------------------------------------------------------------
+
+testTheOwnerAloneCannotAdjustTheCap : Script ()
+testTheOwnerAloneCannotAdjustTheCap = script do
+  r <- rig 100.0 (hours 24) None None
+  submitMustFail r.owner do exerciseCmd r.mandate Adjust with newCap = 500.0
+  submitMustFail r.spender do exerciseCmd r.mandate Adjust with newCap = 500.0
+  _ <- submit (actAs [r.owner, r.spender]) do exerciseCmd r.mandate Adjust with newCap = 500.0
+  pure ()
+
+testAdjustToExactlyWhatIsSpentIsAllowed : Script ()
+testAdjustToExactlyWhatIsSpentIsAllowed = script do
+  r <- rig 100.0 (hours 24) None None
+  m1 <- submit r.spender (charge r r.mandate 40.0)
+  refusedWith "new cap below what is already spent" (actAs [r.owner, r.spender]) do
+    exerciseCmd m1 Adjust with newCap = 39.99
+  m2 <- submit (actAs [r.owner, r.spender]) do exerciseCmd m1 Adjust with newCap = 40.0
+  now <- fieldsOf r m2
+  assertMsg "the cap was not set to what is spent" (now.cap == 40.0)
+
+-- ---------------------------------------------------------------------------
+-- A period limit with no window. [BL 2, BL 4, BL 5] `None -> False` -> `None -> True`
+-- on all three paths. With no window length the period never rolls over, so the
+-- period limit behaves as a second cap. If it reset on every charge it would limit nothing.
+-- ---------------------------------------------------------------------------
+
+testAPeriodLimitWithNoWindowNeverResets : Script ()
+testAPeriodLimitWithNoWindowNeverResets = script do
+  r <- rig 100.0 (hours 24) (Some 50.0) None
+  m1 <- submit r.spender (charge r r.mandate 30.0)
+  refusedWith "charge would exceed the period limit" (actAs r.spender) (charge r m1 30.0)
+
+testATryChargeWithNoWindowAccumulatesAndRefuses : Script ()
+testATryChargeWithNoWindowAccumulatesAndRefuses = script do
+  r <- rig 100.0 (hours 24) (Some 50.0) None
+  (a, m1) <- tryIt r r.mandate 20.0
+  (b, m2) <- tryIt r m1 30.0
+  after <- fieldsOf r m2
+  assertMsg "both charges should be accepted" (a == None && b == None)
+  assertMsg ("the period total must accumulate, got " <> show after.periodSpent)
+            (after.periodSpent == 50.0)
+  (c, _) <- tryIt r m2 1.0
+  assertMsg ("over the period limit must be refused by that rule, got " <> show c)
+            (c == Some "charge would exceed the period limit")
+
+-- ---------------------------------------------------------------------------
+-- The window rolling over. [COS 55] Charge; [COS 61..65] TryCharge accepted path;
+-- [COS 86..90] the rule that refuses. The comparison is `now >= start + length`.
+-- ---------------------------------------------------------------------------
+
+testTheWindowRollsOverExactlyAtItsBoundaryOnTryCharge : Script ()
+testTheWindowRollsOverExactlyAtItsBoundaryOnTryCharge = script do
+  r <- rig 1000.0 (hours 100) (Some 50.0) (Some (hours 1))
+  (a, m1) <- tryIt r r.mandate 40.0
+  assertMsg "the first charge should be accepted" (a == None)
+  passTime (minutes 59)
+  (inside, m2) <- tryIt r m1 40.0
+  assertMsg ("inside the window it must be refused by the period rule, got " <> show inside)
+            (inside == Some "charge would exceed the period limit")
+  passTime (minutes 1)                                       -- now == start + length exactly
+  (edge, m3) <- tryIt r m2 40.0
+  assertMsg ("at the boundary the window has rolled, so it is accepted, got " <> show edge)
+            (edge == None)
+  opened <- getTime
+  at <- fieldsOf r m3
+  assertMsg ("a new window opens: period spent is this charge alone, got " <> show at.periodSpent)
+            (at.periodSpent == 40.0)
+  assertMsg "and the window starts now" (at.periodStart == opened)
+  passTime (hours 2)                                         -- well after: still rolls
+  -- 40 again, not a small amount. With 40 already spent in the stale window, 40 more is
+  -- over the limit of 50 unless the window really rolled. A small amount would fit either
+  -- way and could not tell a rolled window from one that did not. [COS 86]
+  (later, m4) <- tryIt r m3 40.0
+  after <- fieldsOf r m4
+  assertMsg ("well after the boundary the window has rolled, so 40 is accepted, got " <> show later)
+            (later == None)
+  assertMsg ("and starts a fresh window, got " <> show after.periodSpent) (after.periodSpent == 40.0)
+
+testTheWindowRollsOverExactlyAtItsBoundaryOnCharge : Script ()
+testTheWindowRollsOverExactlyAtItsBoundaryOnCharge = script do
+  r <- rig 1000.0 (hours 100) (Some 50.0) (Some (hours 1))
+  m1 <- submit r.spender (charge r r.mandate 40.0)
+  passTime (minutes 59)
+  refusedWith "charge would exceed the period limit" (actAs r.spender) (charge r m1 40.0)
+  passTime (minutes 1)
+  m2 <- submit r.spender (charge r m1 40.0)
+  now <- fieldsOf r m2
+  assertMsg ("the window rolled at the boundary, got " <> show now.periodSpent)
+            (now.periodSpent == 40.0)
+
+-- ---------------------------------------------------------------------------
+-- The period limit is inclusive. [COS 91] `<=` -> `==`.  [COS 93] `<=` -> `<`.
+-- ---------------------------------------------------------------------------
+
+testThePeriodLimitIsInclusive : Script ()
+testThePeriodLimitIsInclusive = script do
+  under <- rig 1000.0 (hours 100) (Some 50.0) (Some (hours 1))
+  (u, _) <- tryIt under under.mandate 30.0
+  assertMsg ("under the limit is accepted, got " <> show u) (u == None)
+  exact <- rig 1000.0 (hours 100) (Some 50.0) (Some (hours 1))
+  (e, _) <- tryIt exact exact.mandate 50.0
+  assertMsg ("exactly the limit is accepted, got " <> show e) (e == None)
+  over <- rig 1000.0 (hours 100) (Some 50.0) (Some (hours 1))
+  (o, _) <- tryIt over over.mandate 50.01
+  assertMsg ("over the limit is refused by the period rule, got " <> show o)
+            (o == Some "charge would exceed the period limit")
