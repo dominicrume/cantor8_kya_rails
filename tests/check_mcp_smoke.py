@@ -379,10 +379,39 @@ def root_rule_and_sweep(proj, parent):
     os.rmdir(fresh)
 
 
+def shim_dir(*names):
+    d = tempfile.mkdtemp()
+    for n in names:
+        path = os.path.join(d, n)
+        open(path, "w").write("#!/bin/sh\nexit 0\n")
+        os.chmod(path, 0o700)
+    return d
+
+
+def versioned_project(version):
+    d = tempfile.mkdtemp()
+    open(os.path.join(d, "multi-package.yaml"), "w").write("packages: [contracts, tests]\n")
+    for pkg in ("contracts", "tests"):
+        os.makedirs(os.path.join(d, pkg))
+        open(os.path.join(d, pkg, "daml.yaml"), "w").write("sdk-version: %s\nname: x\n" % version)
+    return os.path.join(d, "contracts"), os.path.join(d, "tests")
+
+
 def no_sdk(proj):
     s = Server({}, runner=False, path="/usr/bin:/bin")
     err, text = started(s, proj)
-    check(err and "Daml SDK not found" in text, "with no Daml SDK the server says so plainly")
+    check(err and "`daml` was not found" in text, "with no Daml SDK the server says so, naming the tool")
+    s.close()
+    src, test = versioned_project("3.5.8")
+    s = Server({}, runner=False, path=shim_dir("daml") + ":/usr/bin:/bin")
+    err, text = s.tool("kya_guard_review_start", {"src": src, "test": test})
+    check(err and "`dpm` was not found" in text,
+          "a 3.5 package with only the classic daml installed is told it needs dpm")
+    s.close()
+    s = Server({}, runner=False, path=shim_dir("dpm") + ":/usr/bin:/bin")
+    err, out = s.tool("kya_guard_review_start", {"src": src, "test": test})
+    check(not err and out.get("state") == "running", "a 3.5 package with dpm installed is accepted")
+    s.tool("kya_guard_review_cancel", {"job_id": out["job_id"]})
     s.close()
 
 

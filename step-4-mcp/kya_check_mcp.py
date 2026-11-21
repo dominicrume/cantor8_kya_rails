@@ -54,6 +54,7 @@ for _p in ("step-2-agent", "tools"):
     sys.path.insert(0, os.path.join(ROOT, _p))
 from kya_chain import Chain  # noqa: E402
 import assurance_page  # noqa: E402
+import daml_mutate  # noqa: E402  (the harness's own choice of daml or dpm)
 
 PROTOCOL = "2024-11-05"
 SERVER = {"name": "kya-check", "version": "0.1.0"}
@@ -190,14 +191,24 @@ def live_jobs():
     return [j for j in JOBS.values() if "final" not in j and j["proc"].poll() is None]
 
 
+def check_sdk(src):
+    """Ask the harness's own question: which assistant does THIS package need?
+    The classic `daml` is deprecated and removed in 3.5, where only `dpm` builds."""
+    if ASSURANCE != os.path.join(ROOT, "tools", "assurance.py"):
+        return
+    needed, why = daml_mutate.toolchain_for(src)
+    if not shutil.which(needed):
+        raise ToolError("The Daml SDK tool `%s` was not found on PATH, and this package needs it "
+                        "(%s). Install it (%s), run `%s version` to check, and ask again."
+                        % (needed, why, SDK_HELP, needed))
+
+
 def start_review(args):
-    if ASSURANCE == os.path.join(ROOT, "tools", "assurance.py") and not shutil.which("daml"):
-        raise ToolError("Daml SDK not found on PATH. Install it (%s), run `daml version` to "
-                        "check, and ask again." % SDK_HELP)
     if len(live_jobs()) >= MAX_LIVE_JOBS:
         raise ToolError("%d reviews are already running. Wait for one, or cancel one."
                         % MAX_LIVE_JOBS)
     src, test = package_dir(args.get("src"), "src"), package_dir(args.get("test"), "test")
+    check_sdk(src)
     job = new_job(src, test, args.get("subject"))
     launch(job)
     JOBS[job["id"]] = job
