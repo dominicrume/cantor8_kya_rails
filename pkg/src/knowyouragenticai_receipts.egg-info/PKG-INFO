@@ -1,13 +1,13 @@
 Metadata-Version: 2.4
 Name: knowyouragenticai-receipts
-Version: 1.0.0
-Summary: Let an AI agent pay, and prove what it could not. A tamper-evident record of every payment attempt, including the refusals, for agent-operated wallets. Built for Canton Network; works anywhere. Zero dependencies.
+Version: 1.3.0
+Summary: The evidence layer that sits under an agent platform. A platform decides what an agent may do; this records what it tried and was refused, sealed so the other side can check it without trusting whoever ran the agent. Every attempt is a receipt, refusals included, and each seals onto the last. Verifiable in a browser with nothing installed. Native MCP server included. Zero dependencies. Free and MIT licensed; assurance for production agents at https://rumedominic.com/assurance
 Author: Rume Dominic (O'Rume Dominic Uririe)
 License: MIT
 Project-URL: Homepage, https://github.com/dominicrume/cantor8_kya_rails
 Project-URL: Specification, https://github.com/dominicrume/cantor8_kya_rails/blob/main/SPEC.md
 Project-URL: Source, https://github.com/dominicrume/cantor8_kya_rails
-Keywords: agent-payments,spend-limits,audit,receipts,tamper-evident,hash-chain,canton,daml,ai-agents
+Keywords: agent-payments,spend-limits,audit,receipts,tamper-evident,hash-chain,canton,daml,ai-agents,mcp,model-context-protocol
 Classifier: Development Status :: 4 - Beta
 Classifier: Intended Audience :: Developers
 Classifier: License :: OSI Approved :: MIT License
@@ -22,10 +22,10 @@ Dynamic: license-file
 
 # knowyouragenticai-receipts
 
-**Let an AI agent pay, and prove what it couldn't.**
+**Let an automated execution pay, and prove what it couldn't.**
 
 A tamper-evident record of every payment attempt — including the refusals — for
-agent-operated wallets. Built for Canton Network; works anywhere. Zero
+automated Canton applications. Built for Canton Network; works anywhere. Zero
 dependencies.
 
 ---
@@ -66,7 +66,7 @@ are set once when the chain is made. `stamp()` is there when you need full
 control.
 
 There is a runnable version of the whole idea in
-`python -m knowyouragenticai_receipts example` — an agent with a spending limit, four attempts, two
+`python -m knowyouragenticai_receipts example` — an application with a spending limit, four attempts, two
 stopped, and the record being tampered with and caught:
 
 ```bash
@@ -104,6 +104,36 @@ Both give three answers, and the third one matters:
 Calling an ordinary export "tampered" is a false accusation of the most serious
 kind this format makes. A wrapped chain (`{"receipts": [...]}`) is found and
 checked; a config file is told apart from a forgery.
+
+## Model Context Protocol (MCP) Server
+
+Connect KYA Receipts directly to any tool that speaks MCP (Claude Desktop, Claude Code, Cursor):
+
+```bash
+# Add to Claude Code
+claude mcp add kya-receipts -- python3 -m knowyouragenticai_receipts mcp
+
+# Or via installed console script
+claude mcp add kya-receipts -- kya-receipts-mcp
+```
+
+Or add to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "kya-receipts": {
+      "command": "python3",
+      "args": ["-m", "knowyouragenticai_receipts", "mcp"]
+    }
+  }
+}
+```
+
+Exposes tools:
+- `kya_stamp`: Append an action (accepted or refused) and cryptographically seal onto previous seal.
+- `kya_verify`: Verify chain integrity from a file or JSON payload.
+- `kya_disclose`: Redact and disclose refusals while withholding confidential payments.
+- `kya_status`: Inspect the active session chain head and receipt counts.
 
 ## Prove this build implements the specification
 
@@ -163,4 +193,4 @@ dependency in everyone's audit trail.
 ---
 
 MIT. Built as part of [KYA Rails](https://github.com/dominicrume/cantor8_kya_rails),
-a spend-limited wallet for AI agents on Canton.
+a spend-limited deterministic settlement wallet for Canton.

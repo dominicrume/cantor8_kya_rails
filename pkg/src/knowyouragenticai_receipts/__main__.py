@@ -173,12 +173,19 @@ def cmd_version() -> int:
     return 0
 
 
+def cmd_mcp() -> int:
+    """Launch the Model Context Protocol (MCP) server over stdio."""
+    from .mcp import main as mcp_main
+    return mcp_main()
+
+
 # One row per thing a user can type, including the spellings they will try.
 COMMANDS = {
     "selftest": lambda a: cmd_selftest(), "--selftest": lambda a: cmd_selftest(),
     "example": lambda a: cmd_example(),
     "refusal": lambda a: cmd_refusal("--json" in a),
     "verify": lambda a: cmd_verify(a[0]) if a else _verify_usage(),
+    "mcp": lambda a: cmd_mcp(), "--mcp": lambda a: cmd_mcp(),
     "-h": lambda a: cmd_help(), "--help": lambda a: cmd_help(),
     "help": lambda a: cmd_help(),
     "-V": lambda a: cmd_version(), "--version": lambda a: cmd_version(),

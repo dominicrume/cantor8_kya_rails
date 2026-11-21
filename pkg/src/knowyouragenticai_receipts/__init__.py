@@ -52,12 +52,13 @@ import json
 import time
 from typing import Any, Iterable, Mapping, Sequence
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __all__ = ["canonical", "seal", "outcome_digest", "verify", "assert_ascii", "Chain",
            "NonAsciiInReceipt", "BrokenChain", "GENESIS",
            "Policy", "PolicyError", "guard", "attempt", "Refused",
            "assurance", "SELF_ATTESTED", "ANCHORED", "LEDGER_RECORDED",
-           "disclose", "check_disclosure", "refusals_only", "what_this_reveals"]
+           "disclose", "check_disclosure", "refusals_only", "what_this_reveals",
+           "mcp"]
 
 GENESIS = "GENESIS"
 

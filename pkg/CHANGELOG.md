@@ -11,6 +11,23 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ---
 
+## [1.3.0] — 2026-11-21
+
+### Added
+
+- **Native Model Context Protocol (MCP) Server.** Built-in standard library
+  JSON-RPC 2.0 server over stdio for AI assistants (Claude Desktop, Claude Code,
+  Cursor). Zero external dependencies.
+  Exposes tools:
+  - `kya_stamp`: Append an action/refusal attempt to the receipt chain, sealing onto the previous SHA-256 seal.
+  - `kya_verify`: Verify receipt chain integrity from a file or JSON array.
+  - `kya_disclose`: Generate selective disclosure for audits (revealing refusals while withholding accepted transactions).
+  - `kya_status`: Inspect the current session chain status and head hash.
+- **CLI MCP Launcher.** Run directly via `python -m knowyouragenticai_receipts mcp`
+  or via the new console script `kya-receipts-mcp`.
+
+---
+
 ## [1.2.0] — 2026-10-22
 
 ### Added

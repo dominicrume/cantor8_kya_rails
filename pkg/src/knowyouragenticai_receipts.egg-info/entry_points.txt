@@ -1,0 +1,3 @@
+[console_scripts]
+kya-receipts = knowyouragenticai_receipts.__main__:main
+kya-receipts-mcp = knowyouragenticai_receipts.mcp:main

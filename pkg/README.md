@@ -83,6 +83,36 @@ Calling an ordinary export "tampered" is a false accusation of the most serious
 kind this format makes. A wrapped chain (`{"receipts": [...]}`) is found and
 checked; a config file is told apart from a forgery.
 
+## Model Context Protocol (MCP) Server
+
+Connect KYA Receipts directly to any tool that speaks MCP (Claude Desktop, Claude Code, Cursor):
+
+```bash
+# Add to Claude Code
+claude mcp add kya-receipts -- python3 -m knowyouragenticai_receipts mcp
+
+# Or via installed console script
+claude mcp add kya-receipts -- kya-receipts-mcp
+```
+
+Or add to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "kya-receipts": {
+      "command": "python3",
+      "args": ["-m", "knowyouragenticai_receipts", "mcp"]
+    }
+  }
+}
+```
+
+Exposes tools:
+- `kya_stamp`: Append an action (accepted or refused) and cryptographically seal onto previous seal.
+- `kya_verify`: Verify chain integrity from a file or JSON payload.
+- `kya_disclose`: Redact and disclose refusals while withholding confidential payments.
+- `kya_status`: Inspect the active session chain head and receipt counts.
+
 ## Prove this build implements the specification
 
 The conformance vectors ship inside the package, so this works offline:
