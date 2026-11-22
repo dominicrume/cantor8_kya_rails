@@ -190,4 +190,10 @@ if fails:
     for f in fails:
         print("  -", f)
     sys.exit(1)
-print("MCP smoke passed: the model cannot overspend, cannot redirect, cannot\noutlive a revoke -- and cannot end the session by sending nonsense.")
+print("MCP smoke passed: the model cannot overspend, cannot redirect, cannot\noutlive a revoke -- and cannot end the session by sending nonsense.\n")
+
+# Drive the KYA Receipts MCP server (PyPI package) and assert the 6 VeritaPort review fixes hold
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import receipts_mcp_smoke
+receipts_mcp_smoke.main()

@@ -88,30 +88,36 @@ checked; a config file is told apart from a forgery.
 Connect KYA Receipts directly to any tool that speaks MCP (Claude Desktop, Claude Code, Cursor):
 
 ```bash
-# Add to Claude Code
+# macOS / Linux:
 claude mcp add kya-receipts -- python3 -m knowyouragenticai_receipts mcp
 
-# Or via installed console script
+# Windows (PowerShell / Command Prompt):
+claude mcp add kya-receipts -- python -m knowyouragenticai_receipts mcp
+
+# Or via installed console script (cross-platform):
 claude mcp add kya-receipts -- kya-receipts-mcp
 ```
+
+> **Windows Tip:** On Windows developer machines, typing `python3` frequently triggers the Microsoft Store stub (*"Python was not found"*). Use `python` (or `py`, or `kya-receipts-mcp`), or disable the Windows Store alias in *Settings > Apps > Advanced app settings > App execution aliases*.
 
 Or add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
     "kya-receipts": {
-      "command": "python3",
+      "command": "python",
       "args": ["-m", "knowyouragenticai_receipts", "mcp"]
     }
   }
 }
 ```
+*(On macOS/Linux, set `"command": "python3"` or use your virtualenv Python path).*
 
 Exposes tools:
-- `kya_stamp`: Append an action (accepted or refused) and cryptographically seal onto previous seal.
-- `kya_verify`: Verify chain integrity from a file or JSON payload.
-- `kya_disclose`: Redact and disclose refusals while withholding confidential payments.
-- `kya_status`: Inspect the active session chain head and receipt counts.
+- `kya_stamp`: Append an action (accepted or refused) and cryptographically seal onto previous seal. Fail-closed against tampered files; atomically writes state; defaults persistence to `receipts.json`.
+- `kya_verify`: Verify chain integrity from a file or JSON payload (proves no edits/reordering; caveats external anchor requirement for tail deletion).
+- `kya_disclose`: Redact and disclose refusals while withholding confidential payments (safe overwrite protection).
+- `kya_status`: Inspect the active session chain head, verification state, and receipt counts.
 
 ## Prove this build implements the specification
 

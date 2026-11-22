@@ -11,6 +11,19 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ---
 
+## [1.3.1] — 2026-11-21
+
+### Fixed (VeritaPort Independent Review Hardening)
+
+- **Fail-Closed on Tampered Files (`kya_stamp`):** Attempting to stamp onto an existing receipt file that fails verification now aborts immediately with an error and **never overwrites** the file. Preserves tamper evidence on disk instead of replacing the history with a 1-receipt chain.
+- **Atomic File Writing:** All disk writes in `handle_stamp` and `handle_disclose` now write to a temporary file (`.tmp.<pid>`) and atomically replace the destination via `os.replace()`, preventing partial or corrupted files.
+- **Default Persistence Path:** `kya_stamp` now defaults `save_path` to `receipts.json` in the current working directory if omitted, preventing silent in-memory loss across server restarts.
+- **Accurate Verification Claims (`kya_verify`):** Tool description and response message updated to explicitly state that standalone verification proves no entries were edited, and that proving no tail truncation or rebuilt histories requires comparing against an external anchor.
+- **Safe Overwrite Protection (`kya_disclose`):** Refuses to overwrite an existing file unless `overwrite=True` is explicitly passed.
+- **Explicit Currency/Unit Requirement:** Removed silent `"USD"` fallback in `kya_stamp`. `currency` is now required and accepts non-financial units (e.g., `QUERY`, `EVENT`, `ANSWER`).
+
+---
+
 ## [1.3.0] — 2026-11-21
 
 ### Added

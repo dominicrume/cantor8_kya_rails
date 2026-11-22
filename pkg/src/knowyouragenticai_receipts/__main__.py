@@ -71,7 +71,7 @@ def _looks_like_a_chain(receipts: list[Any]) -> bool:
 
 def cmd_verify(source: str) -> int:
     try:
-        text = sys.stdin.read() if source == "-" else open(source).read()
+        text = sys.stdin.read() if source == "-" else open(source, encoding="utf-8").read()
     except OSError as e:
         print("could not read %s: %s" % (source, e))
         return 2
@@ -138,7 +138,8 @@ def _check_case(case: dict[str, Any]) -> tuple[bool, str]:
 
 
 def cmd_selftest() -> int:
-    data = json.load(open(VECTORS))
+    with open(VECTORS, "r", encoding="utf-8") as f:
+        data = json.load(f)
     print("KYA Receipt Chain %s - self-test (package %s)"
           % (data["spec_version"], __version__))
     fails = []

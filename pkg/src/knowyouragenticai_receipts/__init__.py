@@ -49,10 +49,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 from typing import Any, Iterable, Mapping, Sequence
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 __all__ = ["canonical", "seal", "outcome_digest", "verify", "assert_ascii", "Chain",
            "NonAsciiInReceipt", "BrokenChain", "GENESIS",
            "Policy", "PolicyError", "guard", "attempt", "Refused",
@@ -450,9 +451,11 @@ class Chain:
             raise BrokenChain(
                 "receipt %s does not verify. Refusing to write a chain that "
                 "will fail the moment anyone checks it." % bad)
-        with open(path, "w") as f:
+        tmp = f"{path}.tmp.{os.getpid()}"
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(self.receipts, f, indent=2)
             f.write("\n")
+        os.replace(tmp, path)
         return path
 
     @classmethod
@@ -462,7 +465,7 @@ class Chain:
         Loading without checking would let a tampered file be extended, and
         every receipt appended afterwards would be sealed onto a lie.
         """
-        with open(path) as f:
+        with open(path, "r", encoding="utf-8") as f:
             receipts = json.load(f)
         if not isinstance(receipts, list):
             raise BrokenChain(

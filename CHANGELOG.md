@@ -57,6 +57,38 @@ meant to outlive the code that wrote them, so that bar is high.
   entry was removed. SPEC 6b now says so. **Not released.** PyPI still has
   1.2.0 without this fix, and nothing here approves a release.
 
+---
+
+## [1.3.1] — 2026-11-21
+
+### Fixed (VeritaPort Independent Review Hardening)
+
+- **Fail-Closed on Tampered Files (`kya_stamp`):** Attempting to stamp onto an existing receipt file that fails verification now aborts immediately with an error and **never overwrites** the file. Preserves tamper evidence on disk instead of replacing the history with a 1-receipt chain.
+- **Atomic File Writing:** All disk writes in `handle_stamp`, `Chain.save()`, and `handle_disclose` now write to a temporary file (`.tmp.<pid>`) and atomically replace the destination via `os.replace()`, preventing partial or corrupted files.
+- **Default Persistence Path:** `kya_stamp` now defaults `save_path` to `kya-receipts.json` in the current working directory if omitted, preventing silent in-memory loss across server restarts.
+- **Accurate Verification Claims (`kya_verify`):** Tool description and response message updated to explicitly state that standalone verification proves no entries were edited, and that proving no tail truncation or rebuilt histories requires comparing against an external anchor.
+- **Safe Overwrite Protection (`kya_disclose`):** Refuses to overwrite an existing file unless `overwrite=True` is explicitly passed.
+- **Explicit Currency/Unit Requirement:** Removed silent `"USD"` fallback in `kya_stamp`. `currency` is now required and accepts non-financial units (e.g., `QUERY`, `EVENT`, `N/A`).
+
+---
+
+## [1.3.0] — 2026-11-21
+
+### Added
+
+- **Native Model Context Protocol (`mcp`) Server.** Built-in standard library
+  JSON-RPC 2.0 server over stdio for AI assistants (Claude Desktop, Claude Code,
+  Cursor). Zero external dependencies. Available via `knowyouragenticai_receipts.mcp`.
+  Exposes tools:
+  - `kya_stamp`: Append an action/refusal attempt to the receipt chain, sealing onto the previous SHA-256 seal.
+  - `kya_verify`: Verify receipt chain integrity from a file or JSON array.
+  - `kya_disclose`: Generate selective disclosure for audits (revealing refusals while withholding accepted transactions).
+  - `kya_status`: Inspect the current session chain status and head hash.
+- **CLI MCP Launcher.** Run directly via `python -m knowyouragenticai_receipts mcp`
+  or via the new console script `kya-receipts-mcp`.
+
+---
+
 ## [1.2.0] — released to PyPI 2026-10-22
 
 *Written 2026-09-13 and released on 2026-10-22. This heading said

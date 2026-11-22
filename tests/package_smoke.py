@@ -272,7 +272,7 @@ check(not rel, "no relative links in the README, which is rendered standalone on
 for cmd in _re.findall(r"python -m knowyouragenticai_receipts (\w+)", readme):
     r = subprocess.run([sys.executable, "-m", "knowyouragenticai_receipts", cmd,
                         *(["--help"] if cmd == "verify" else [])],
-                       cwd=ELSEWHERE, env=env, capture_output=True, text=True)
+                       input="", cwd=ELSEWHERE, env=env, capture_output=True, text=True)
     # `r.returncode in (0, 2)` accepted 2 -- which is exactly what an unknown
     # command returns, so this passed for a subcommand called `totallybogus`.
     check("unknown command" not in r.stdout,

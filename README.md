@@ -344,7 +344,11 @@ The point of the mandate is that it holds even if the application logic is flawe
 The MCP server lets you test that directly:
 
 ```bash
+# macOS / Linux:
 claude mcp add kya -- python3 step-4-mcp/kya_mcp.py
+
+# Windows (avoids Microsoft Store python3 stub):
+claude mcp add kya -- python step-4-mcp/kya_mcp.py
 ```
 
 Then instruct the client to settle a trade, and then instruct it to overspend. It will
