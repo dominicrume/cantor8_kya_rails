@@ -25,6 +25,7 @@ import shutil
 import subprocess  # nosec B404 - fixed argv, no shell
 import sys
 import tarfile
+import zipfile
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -93,18 +94,23 @@ if r.returncode == 0:
     # directly, which is exactly what `build` would do anyway. Falling back to
     # setup.py would fail differently, because there is no setup.py: the
     # package is pyproject-only by design.
-    r = run([sys.executable, "-c",
-             "import sys;sys.path.insert(0,'.');"
-             "from setuptools import build_meta as b;"
-             "print(b.build_sdist(sys.argv[1]));"
-             "print(b.build_wheel(sys.argv[1]))",
-             os.path.join(work, "dist")],
-            cwd=os.path.join(clone, "pkg"))
-    os.makedirs(os.path.join(work, "dist"), exist_ok=True)
+    # One process per artefact. Building the sdist and then the wheel in the SAME
+    # process left the wheel in a stray folder (pkg/sdist/), so the gate saw one file,
+    # said "built", and never listed or scanned the wheel, which is the artefact most
+    # people install. 1.3.1 shipped with that gap in the gate.
     dist = os.path.join(work, "dist")
-    built = sorted(os.listdir(dist)) if os.path.isdir(dist) else []
-    check(bool(built), "built %s" % (", ".join(built) or "NOTHING: " +
-                                     (r.stdout + r.stderr).strip()[-160:]))
+    out = ""
+    for kind in ("build_sdist", "build_wheel"):
+        r = run([sys.executable, "-c",
+                 "import sys;sys.path.insert(0,'.');"
+                 "from setuptools import build_meta as b;"
+                 "print(getattr(b, sys.argv[2])(sys.argv[1]))", dist, kind],
+                cwd=os.path.join(clone, "pkg"))
+        out += r.stdout + r.stderr
+    os.makedirs(dist, exist_ok=True)
+    built = sorted(os.listdir(dist))
+    check(any(b.endswith(".tar.gz") for b in built) and any(b.endswith(".whl") for b in built),
+          "built BOTH a wheel and an sdist: %s" % (", ".join(built) or "NOTHING: " + out.strip()[-160:]))
 
 # ------------------------------------------------- 4. every file that goes out
 step(4, "every file that would go public, listed")
@@ -122,6 +128,14 @@ if built:
                                               "secret", "__pycache__"))]
     check(not unexpected, "nothing that looks private"
           + ("" if not unexpected else ": %s" % unexpected[:3]))
+    wheels = [b for b in built if b.endswith(".whl")]
+    if wheels:
+        with zipfile.ZipFile(os.path.join(work, "dist", wheels[0])) as z:
+            wnames = z.namelist()
+        bad = [m for m in wnames if any(x in m for x in (".env", "id_rsa", ".pem", ".key",
+                                                          "secret", "__pycache__"))]
+        check(len(wnames) > 0 and not bad, "the wheel lists %d files and nothing looks private%s"
+              % (len(wnames), "" if not bad else ": %s" % bad[:3]))
 
 # -------------------------------------------- 5. secret scan, positive control
 step(5, "scan the built artefact for secrets, and prove the scan can say yes")
