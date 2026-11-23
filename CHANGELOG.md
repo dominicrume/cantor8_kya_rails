@@ -15,6 +15,14 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ### Added
 
+- **Pins (SPEC 6f).** A hash chain cannot tell a chain from a fresh valid one: delete the file,
+  start again, and it verifies. `head_pin()` and `check_pins()` now give the count and final seal
+  to keep elsewhere, and catch truncation, delete-and-restart and replacement with another valid
+  chain. `kya_stamp` takes an optional `pin_file` (an append-only log), refuses to extend a chain
+  that no longer matches it, and appends a pin after each write; `kya_verify` takes the same
+  and reports `pin_check`. A pin never raises the assurance level, and one kept on the same disk
+  is only as safe as that disk. Python only, no conformance vector yet. `tests/pin_smoke.py`.
+
 - **`outcome_digest(receipts)` — one hash over every entry's position and
   outcome, in order.** SPEC 6c.
 

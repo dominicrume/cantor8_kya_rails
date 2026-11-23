@@ -1,5 +1,7 @@
 # What has actually been achieved
 
+> **A snapshot, not current.** Every number below is from 27 September 2026 and several are now wrong (downloads, suites, scripts, fences, vectors, commits). Current figures are in `STATUS.md`, and `python3 tools/pmf_check.py` re-measures pull. Left in place so the change can be read next to what it changes.
+
 *29 days, 29 August to 27 September 2026. Every number below came from the
 GitHub, PyPI and Canton forum APIs today, not from memory. Where a number is
 zero it says zero.*

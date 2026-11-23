@@ -56,6 +56,7 @@ from typing import Any, Iterable, Mapping, Sequence
 __version__ = "1.4.0"
 MAX_AGENT_REF = 256
 __all__ = ["canonical", "seal", "outcome_digest", "verify", "assert_ascii", "Chain",
+           "head_pin", "check_pins",
            "NonAsciiInReceipt", "BrokenChain", "GENESIS",
            "Policy", "PolicyError", "guard", "attempt", "Refused",
            "assurance", "SELF_ATTESTED", "ANCHORED", "LEDGER_RECORDED",
@@ -277,6 +278,59 @@ def verify(receipts: Sequence[Any]) -> tuple[bool, int]:
             return False, where
         prev = r["seal"]
     return True, 0
+
+
+def head_pin(receipts: Sequence[Any]) -> dict[str, Any]:
+    """The pin for a chain as it stands: how many receipts, and the final seal.
+
+    SPEC 6f. Keep it somewhere the chain's writer cannot reach. A chain that
+    holds proves nothing inside it was edited; it cannot prove it is the same
+    chain as yesterday, because a fresh valid chain verifies too. A pin can.
+    """
+    return {"n": len(receipts),
+            "seal": receipts[-1]["seal"] if receipts else GENESIS}
+
+
+def check_pins(receipts: Sequence[Any], pins: Sequence[Any]) -> tuple[bool, str]:
+    """(True, "") if the chain still contains every pin it was ever given.
+
+    NEVER RAISES. The chain must verify, and for each pin the receipt in place
+    n must carry exactly the pinned seal. Extending a chain keeps every pin
+    true. Deleting and restarting, truncating, or replacing history with a
+    different valid chain makes at least one pin false, and the reason says
+    which. A pin cannot say who changed it, only that it changed.
+    """
+    ok, bad = verify(receipts)
+    if not ok:
+        return False, "the chain itself does not verify (receipt %s)" % bad
+    for pin in pins:
+        why = _pin_problem(receipts, pin)
+        if why:
+            return False, why
+    return True, ""
+
+
+def _pin_well_formed(pin: Any) -> bool:
+    if not isinstance(pin, Mapping):
+        return False
+    n = pin.get("n")
+    return (isinstance(n, int) and not isinstance(n, bool) and n >= 0
+            and isinstance(pin.get("seal"), str))
+
+
+def _pin_problem(receipts: Sequence[Any], pin: Any) -> str:
+    """Why one pin is false against a chain that verifies, or "" if it holds."""
+    if not _pin_well_formed(pin):
+        return "a pin is malformed: %r" % (pin,)
+    n = pin["n"]
+    if n > len(receipts):
+        return ("truncated or restarted: the chain has %d receipts "
+                "and a pin saw %d" % (len(receipts), n))
+    actual = receipts[n - 1]["seal"] if n else GENESIS
+    if actual != pin["seal"]:
+        return ("replaced: receipt %d does not carry the sealed "
+                "head a pin recorded" % n)
+    return ""
 
 
 class Chain:

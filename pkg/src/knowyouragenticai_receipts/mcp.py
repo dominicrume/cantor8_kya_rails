@@ -20,7 +20,9 @@ from . import (
     __version__,
     canonical,
     check_disclosure,
+    check_pins,
     disclose,
+    head_pin,
     outcome_digest,
     refusals_only,
     seal,
@@ -52,6 +54,10 @@ TOOLS = [
             "type": "object",
             "required": ["what", "amount", "currency", "payee", "rule", "outcome"],
             "properties": {
+                "pin_file": {
+                    "type": "string",
+                    "description": "Optional. An append-only pin log kept OUTSIDE the chain's directory. When given, the receipt is refused if the chain no longer contains every earlier pin (it was deleted and restarted, truncated or replaced), and a new pin is appended after each write."
+                },
                 "what": {
                     "type": "string",
                     "description": "Short description of the action attempted (e.g. 'Answered CFO query', 'API call', 'supplier payout')."
@@ -109,6 +115,10 @@ TOOLS = [
                 "receipts_json": {
                     "type": "string",
                     "description": "Optional raw JSON string of the receipts array to verify directly."
+                },
+                "pin_file": {
+                    "type": "string",
+                    "description": "Optional. A pin log written by kya_stamp. Reports whether the chain still contains every pin: this is what catches a deleted-and-restarted, truncated or replaced chain."
                 }
             }
         }
@@ -164,6 +174,34 @@ def _atomic_write_json(path: str, data: Any) -> None:
             except OSError:
                 pass
         raise
+
+
+def _read_pins(path: str) -> tuple[list[Any], str | None]:
+    """The pins in an append-only pin log, one JSON object per line.
+
+    A missing file is no pins. A line that is not JSON is an error, not a skip:
+    a pin log somebody damaged must stop the writer, not be quietly ignored.
+    """
+    if not os.path.exists(path):
+        return [], None
+    pins: list[Any] = []
+    number = 0
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for number, line in enumerate(f, start=1):
+                if line.strip():
+                    pins.append(json.loads(line))
+    except (OSError, ValueError) as e:
+        return [], f"pin file {path} is unreadable near line {number}: {e}"
+    return pins, None
+
+
+def _append_pin(path: str, pin: dict[str, Any]) -> None:
+    """Append one pin and force it to disk. Never rewrites an earlier line."""
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(pin, sort_keys=True) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
 
 
 def _err_res(msg: str) -> dict[str, Any]:
@@ -224,6 +262,39 @@ def _agent_ref_for(arguments: dict[str, Any], meta: dict[str, Any] | None) -> tu
     return explicit, None
 
 
+def _pin_gate(pin_file: str | None) -> str | None:
+    """Error text if the session chain does not match the pin log, else None."""
+    if not pin_file:
+        return None
+    pins, pin_err = _read_pins(pin_file)
+    if pin_err:
+        return pin_err
+    pins_ok, why = check_pins(SESSION_CHAIN.receipts, pins)
+    if pins_ok:
+        return None
+    return f"Refusing to stamp: this chain does not match the pin log ({why}). Nothing was written."
+
+
+def _stamp_and_persist(arguments: dict[str, Any], agent_ref: Any,
+                       save_path: str | None, pin_file: str | None) -> Any:
+    receipt = SESSION_CHAIN.stamp(
+        what=arguments["what"],
+        amount=str(arguments["amount"]),
+        currency=arguments["currency"],
+        payee=arguments["payee"],
+        rule=arguments["rule"],
+        outcome=arguments["outcome"].upper(),
+        approved_by=arguments.get("approved_by"),
+        ledger=arguments.get("ledger"),
+        agent_ref=agent_ref
+    )
+    if save_path:
+        _atomic_write_json(save_path, SESSION_CHAIN.receipts)
+    if pin_file:
+        _append_pin(pin_file, head_pin(SESSION_CHAIN.receipts))
+    return receipt
+
+
 def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
     global SESSION_CHAIN
     val_err = _validate_stamp_fields(arguments)
@@ -240,20 +311,13 @@ def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) 
     if loaded_chain is not None:
         SESSION_CHAIN = loaded_chain
 
+    pin_file = arguments.get("pin_file")
+    gate_err = _pin_gate(pin_file)
+    if gate_err:
+        return _err_res(gate_err)
+
     try:
-        receipt = SESSION_CHAIN.stamp(
-            what=arguments["what"],
-            amount=str(arguments["amount"]),
-            currency=arguments["currency"],
-            payee=arguments["payee"],
-            rule=arguments["rule"],
-            outcome=arguments["outcome"].upper(),
-            approved_by=arguments.get("approved_by"),
-            ledger=arguments.get("ledger"),
-            agent_ref=agent_ref
-        )
-        if save_path:
-            _atomic_write_json(save_path, SESSION_CHAIN.receipts)
+        receipt = _stamp_and_persist(arguments, agent_ref, save_path, pin_file)
     except Exception as e:
         return _err_res(f"Failed to stamp receipt: {e}")
 
@@ -291,6 +355,18 @@ def _load_verify_receipts(file_path: str | None, receipts_json: str | None) -> t
     return SESSION_CHAIN.receipts, None
 
 
+def _pin_check(receipts: list[Any], pin_file: str | None) -> dict[str, Any] | None:
+    if not pin_file:
+        return None
+    pins, pin_err = _read_pins(pin_file)
+    if pin_err:
+        return {"matched": False, "reason": pin_err, "pins": 0}
+    if not pins:
+        return {"matched": False, "reason": "the pin file holds no pins, so nothing was checked", "pins": 0}
+    pin_ok, why = check_pins(receipts, pins)
+    return {"matched": pin_ok, "reason": why or "every pin is still in the chain", "pins": len(pins)}
+
+
 def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
     receipts, err = _load_verify_receipts(arguments.get("file_path"), arguments.get("receipts_json"))
     if err:
@@ -301,6 +377,7 @@ def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None)
     ok, bad = verify(receipts)
     head = receipts[-1].get("seal", GENESIS) if receipts else GENESIS
     msg = f"{len(receipts)} receipts, every seal holds." if ok else f"BROKEN at receipt {bad}."
+    pin_check = _pin_check(receipts, arguments.get("pin_file"))
 
     return {
         "content": [{
@@ -311,7 +388,8 @@ def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None)
                 "head": head,
                 "broken_at_receipt": bad if not ok else None,
                 "message": msg,
-                "note": "Proves no entry was edited. Proving no tail deletion or backdating requires comparing head seal against an external anchor."
+                "pin_check": pin_check,
+                "note": "Proves no entry was edited. Proving no tail deletion or backdating requires comparing the head seal against an external anchor. With a pin_file it also shows the chain still contains every pin it was given; a pin kept on the same disk as the chain is only as safe as that disk, and a pin never says who changed what. It does not raise the assurance level."
             }, indent=2)
         }]
     }

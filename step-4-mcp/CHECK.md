@@ -1,6 +1,6 @@
 # KYA guard review as an MCP server
 
-Your own agent (Claude Code, Cursor, anything that speaks MCP) asks whether your Daml
+Your own agent (anything that speaks MCP; tested so far against this project's own driver only, not a real client) asks whether your Daml
 tests would notice if a check were removed. It runs on your machine, on a temporary
 copy of your project, and tells you which checks nothing protects.
 

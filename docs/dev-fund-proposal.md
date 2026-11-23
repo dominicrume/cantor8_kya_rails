@@ -1,5 +1,7 @@
 ## Development Fund Proposal
 
+> **A snapshot, not current.** The counts and versions below were measured in October 2026 and have moved (for example package 1.3.1 is now live, and 21 conformance vectors, 34 fences and 212 Daml scripts). See `STATUS.md` for current figures.
+
 **Organization:** Independent (Rume Dominic / O'Rume Dominic Uririe)
 **Author / Primary Contact:** Rume Dominic — dominicrume@gmail.com — github.com/dominicrume
 **Status:** Draft

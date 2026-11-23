@@ -124,6 +124,9 @@ jobs:
       - name: all three MCP servers are stateless, and the old handshake still works
         run: python3 tests/mcp_modern_smoke.py
 
+      - name: a pin catches delete-and-restart, truncation and replacement
+        run: python3 tests/pin_smoke.py
+
       - name: the Daml tools choose daml or dpm by the package's SDK version
         # MOCKED shims, no Daml SDK needed.
         run: python3 tests/toolchain_smoke.py

@@ -85,7 +85,7 @@ checked; a config file is told apart from a forgery.
 
 ## Model Context Protocol (MCP) Server
 
-Connect KYA Receipts directly to any tool that speaks MCP (Claude Desktop, Claude Code, Cursor):
+Connect Know Your AgenticAI Receipts to a tool that speaks MCP. It has been tested against this project's own test driver only, not yet against Claude Desktop, Claude Code or Cursor:
 
 ```bash
 # macOS / Linux:
@@ -119,9 +119,9 @@ Exposes tools:
 - `kya_disclose`: Redact and disclose refusals while withholding confidential payments (safe overwrite protection).
 - `kya_status`: Inspect the active session chain head, verification state, and receipt counts. Reports `file_problem` if the receipts file on disk is tampered or unreadable, instead of quietly describing the in-memory chain.
 
-**Stateless protocol.** The server speaks the MCP 2026-07-28 revision, where there is no `initialize` handshake: every request carries its protocol version and capabilities in `_meta`, and `server/discover` says what the server supports. A client that still performs the old handshake works as before. Nothing is remembered between requests.
+**Stateless protocol (1.4.0, not yet published).** The server speaks the MCP 2026-07-28 revision, where there is no `initialize` handshake: every request carries its protocol version and capabilities in `_meta`, and `server/discover` says what the server supports. A client that still performs the old handshake works as before. Nothing is remembered between requests.
 
-**Pointing at an identity (`agent_ref`).** `kya_stamp` takes an optional `agent_ref`: a DID, an Agent Passport id, an OAuth client id, at most 256 ASCII characters. If you omit it, the client name and version from the request's `_meta` are recorded as `mcp-client:name/version`. That is a label the caller chose, not an authenticated identity. `agent_ref` is written by the caller and establishes nothing, so a verifier still reports `self-attested`; it exists so an identity system can point at a chain without this format competing with it (SPEC section 6e).
+**Pointing at an identity (`agent_ref`, 1.4.0, not yet published).** `kya_stamp` takes an optional `agent_ref`: a DID, an Agent Passport id, an OAuth client id, at most 256 ASCII characters. If you omit it, the client name and version from the request's `_meta` are recorded as `mcp-client:name/version`. That is a label the caller chose, not an authenticated identity. `agent_ref` is written by the caller and establishes nothing, so a verifier still reports `self-attested`; it exists so an identity system can point at a chain without this format competing with it (SPEC section 6e).
 
 ## Prove this build implements the specification
 

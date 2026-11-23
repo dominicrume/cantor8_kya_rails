@@ -3,7 +3,7 @@
 A wire format for **tamper-evident receipts of agent actions, including the
 actions that were refused.**
 
-Status: stable. Reference implementations: [`kya_chain.py`](step-2-agent/kya_chain.py)
+Status: draft by one author, with no independent implementation yet. "Stable" here means only that no seal has changed since 1.0. Reference implementations: [`kya_chain.py`](step-2-agent/kya_chain.py)
 (Python, stdlib only) and [`verifier.html`](step-3-verify/verifier.html)
 (browser, no dependencies). Conformance vectors: [`tests/vectors.json`](tests/vectors.json).
 
@@ -87,7 +87,9 @@ and had to infer them:
 
 Forward slash is **not** escaped. Code point above `0x7E` is a rejection case in
 practice — see section 5 — but the escape is specified so that implementations
-agree on what they would have produced.
+agree on what they would have produced. `0x7F` (DEL) is permitted by section 5 and is
+escaped as `\u007f` by this rule; Python, JavaScript and Go all do this, though no
+conformance vector tests it yet.
 
 In Python this is exactly:
 
@@ -440,6 +442,43 @@ Rules:
 Vector 21 makes the field binding: it appears only on receipts that have one, so an
 implementation with a fixed field list seals it differently.
 
+## 6f. Pins: telling the same chain from a fresh valid one
+
+A chain that verifies proves nothing inside it was edited. It does not prove it is the
+chain that existed yesterday, because deleting the file and starting again produces a
+chain that verifies just as well. Found by an engineer reading the 1.3.1 fix on
+23 November 2026, and open until now.
+
+A **pin** is `{"n": <receipt count>, "seal": <the final seal>}`, with `{"n": 0, "seal":
+"GENESIS"}` for an empty chain. A **pin log** is a file of pins, one JSON object per
+line, that the producer only ever appends to and keeps outside the directory the chain
+lives in.
+
+A verifier given a pin log:
+
+- MUST first verify the chain (§3), and fail if it does not hold;
+- MUST fail if any pin is malformed, rather than skip it;
+- MUST fail if the chain has fewer than `n` receipts (truncated, or deleted and restarted);
+- MUST fail if receipt number `n` does not carry exactly the pinned `seal` (history was
+  replaced by another valid chain);
+- passes a chain that extends a pinned one, because every earlier pin is still true.
+
+A producer given a pin log MUST check the chain against it BEFORE appending, and refuse
+to write if it fails, and SHOULD append a pin after every write.
+
+What a pin does NOT do:
+
+- It does not say who changed the chain, or why, only that it is no longer the pinned one.
+- It cannot rebuild lost history. It proves sameness.
+- A pin log on the same disk as the chain, writable by the same party, is only as safe
+  as that disk: whoever can delete the chain can delete the pins. It becomes evidence
+  against that party only when it is kept somewhere they cannot write.
+- It MUST NOT raise the assurance level (§6a). A pin the producer wrote is the
+  producer's own record. `anchored` still needs the reader to have confirmed the head
+  against an origin the producer does not control (§8).
+- It is implemented in the Python package only. There is no conformance vector for it
+  yet, and so nothing here shows that a second implementation agrees.
+
 ## 7. Verification
 
 ```
@@ -516,6 +555,29 @@ Version **1.4**. Changes that alter any seal require a new MAJOR version; none o
 1.1 -> 1.2 added §6a: the assurance level is derived by the verifier from what it substantiated, never read from a field, and there is deliberately no `ledger-enforced` level. Vector 18 makes it binding -- a receipt whose every field claims an independent decider, sealed correctly, that must still verify as `self-attested`. Every 1.0 and 1.1 seal is unchanged.
 
 ---
+
+## 10. Related work
+
+Read on 23 November 2026. All are individual drafts or community-group work, not ratified
+standards, and none has an implementation this author has run. This format does not claim to
+be the first to record a refusal in a hash-chained or signed receipt.
+
+- `draft-noa-scitt-ai-agent-receipt`: SCITT profile with hash-chained action receipts and a
+  BLOCKED verdict.
+- `draft-kamimura-scitt-refusal-events`: ATTEMPT and DENY claim sets over SCITT, refusal as
+  its sole subject, which states that it knows of no external implementations.
+- `draft-gruszka-audit-decision-receipts`: signed DENY receipts with no chain.
+- `draft-gilda-audit-agent-audit-record`: an in-toto predicate in a DSSE envelope.
+- `draft-aip-agent-identity-protocol`: an identity protocol whose proxy writes a record per
+  outcome, denials included.
+- DIF KYA-OS (Know Your Agent Operating System): an identity framework with a similar
+  acronym. It is a different thing.
+
+What this format adds is narrow: the assurance level is derived by the verifier and never
+read from a field (6a), a refusal can be bound to the transaction that enforces it (the Daml
+reference, outside this wire format), and the conformance vectors with a stdlib verifier. It
+is unsigned, so a forged chain verifies (section 8); the drafts that use signatures cover
+that and this format does not.
 
 ## Implementing this in production
 

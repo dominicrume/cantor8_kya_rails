@@ -55,7 +55,7 @@ The spending rules are not policy in an application. They are `assertMsg`
 fences in a Daml choice body: the application cannot argue with them, the operator
 cannot quietly widen them, and a crash does not reset them.
 
-KYC asks whether a person is who they say. **KYA asks what an automated execution
+KYC asks whether a person is who they say. **Know Your AgenticAI asks what an automated execution
 was permitted to do, and proves what it was stopped from doing.**
 
 ### D1, answered — the three attacks the judges will run
@@ -132,7 +132,7 @@ Two parts, and the second one is not about Canton:
    limits enforced in a Daml choice body.
 
 Cantor8 *Build on Canton* hackathon, challenge D1.
-Built with the KYA Method: Promise it. Attack it. Inspect it. Prove it.
+Built with the Know Your AgenticAI Method: Promise it. Attack it. Inspect it. Prove it.
 
 ---
 
@@ -191,7 +191,7 @@ country and deciding whether to trust the person who produced it.
 | Claim | Evidence |
 | --- | --- |
 | Attack suite green | **212 / 212** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
-| Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.3.1** (23 November), MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
+| Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.3.1** (23 November), MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 21/21 with no network |
 | Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 21 vectors exist because we asked which wrong implementations still passed, and two did |
 | The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |
 | The tests are themselves tested | `tests/mutation_suite.py` breaks **95** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
@@ -729,12 +729,12 @@ filed 20 May 2026, pending.
 [MIT](LICENSE). Copyright (c) 2026 Rume Dominic (O'Rume Dominic Uririe).
 
 The licence covers the code in this repository. It grants no rights in the
-"KYA" and "KYA Rails" names or in the KYA Framework as a body of work.
+"KYA" and "KYA Rails" names or in the Know Your AgenticAI Framework as a body of work.
 
 ## Credits
 
 Built by **Rume Dominic** (O'Rume Dominic Uririe), Aston University — creator of
-the KYA Framework.
+the Know Your AgenticAI Framework.
 
 `KyaMandate.daml` extends the Cantor8 hackathon starter `Mandate.daml`; the
 organisers' toolkit is a dependency, never modified.
