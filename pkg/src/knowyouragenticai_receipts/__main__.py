@@ -151,8 +151,8 @@ def cmd_selftest() -> int:
     print()
     if fails:
         print("NOT CONFORMANT - %d of %d:" % (len(fails), len(data["cases"])))
-        for f in fails:
-            print("  - " + f)
+        for failure in fails:
+            print("  - " + failure)
         return 1
     print("CONFORMANT: %d/%d cases. This build implements the specification."
           % (len(data["cases"]), len(data["cases"])))

@@ -176,6 +176,22 @@ if built:
               "the NEW code is what got installed: %s"
               % (r.stdout.strip().replace("\n", " ")[:70] or r.stderr[-70:]))
 
+# ---------------------------------------------------------------- 7. what CI would say
+# 1.3.1 passed steps 1 to 6 and then failed CI, because CI runs `mypy --strict` on the
+# package (it ships py.typed, which is a promise) and this gate did not. A gate that
+# says "ready" for something CI refuses is worse than no gate. This runs the same
+# command, on the same clean clone, and fails loudly if it cannot.
+step(7, "the type check CI runs on the package, because py.typed is a promise")
+if r.returncode == 0 and os.path.isdir(clone):
+    probe = run([sys.executable, "-m", "mypy", "--version"])
+    if probe.returncode != 0:
+        check(False, "mypy is not installed, and CI runs it: python3 -m pip install mypy")
+    else:
+        r = run([sys.executable, "-m", "mypy", "--strict",
+                 os.path.join(clone, "pkg", "src", "knowyouragenticai_receipts")])
+        check(r.returncode == 0, "mypy --strict is clean on the committed package: %s"
+              % (r.stdout.strip().splitlines() or ["(no output)"])[-1][:90])
+
 shutil.rmtree(work, ignore_errors=True)
 
 print()

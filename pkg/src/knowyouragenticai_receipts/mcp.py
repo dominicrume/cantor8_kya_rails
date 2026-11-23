@@ -284,11 +284,13 @@ def handle_verify(arguments: dict[str, Any]) -> dict[str, Any]:
 def _get_disclosure_input(file_path: str | None) -> list[Any]:
     if file_path and os.path.exists(file_path):
         with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            from_file: list[Any] = json.load(f)
+            return from_file
     active = DEFAULT_RECEIPTS_PATH
     if os.path.exists(active):
         with open(active, "r", encoding="utf-8") as f:
-            return json.load(f)
+            from_active: list[Any] = json.load(f)
+            return from_active
     return SESSION_CHAIN.receipts
 
 
