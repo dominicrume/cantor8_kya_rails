@@ -1,4 +1,4 @@
-# KYA Receipt Chain, version 1.3
+# KYA Receipt Chain, version 1.4
 
 A wire format for **tamper-evident receipts of agent actions, including the
 actions that were refused.**
@@ -407,6 +407,39 @@ falsify, which is a smaller thing and the only honest one available.
 A disclosure that carries no `topology` is not worse formed. It is making a
 smaller claim, and a reader should read it as one.
 
+## 6e. `agent_ref`: pointing at an identity without asserting one
+
+A receipt MAY carry `agent_ref`, an opaque string naming the identity the agent
+acted under: a DID, an Agent Passport identifier, an OAuth client id, an ERC-8004
+registry entry, or any other address a reader can resolve. It exists so that an
+identity system can point at a chain without this format competing with it, and so
+a receipt can point back.
+
+`agent_ref` is written by the producer and therefore establishes nothing by itself.
+It is an address, not evidence. It does not say the agent really is who the string
+names, and no identity system has been asked.
+
+Rules:
+
+- `agent_ref` is present only on receipts that have one. An empty value on every
+  receipt would change the canonical form of every chain ever sealed (§4). A verifier
+  canonicalises the keys it finds, as it already must for `ledger_ref`.
+- It MUST be ASCII (§5) and SHOULD NOT exceed 256 characters. A producer MUST refuse a
+  longer value rather than truncate it, because a truncated reference points nowhere.
+- A producer SHOULD begin it with a scheme, such as `did:`, `aap:`, `oauth-client:`,
+  `erc8004:` or `mcp-client:`, so a reader knows what to resolve. `mcp-client:` means
+  the client software name and version sent in an MCP request's `_meta`
+  (`io.modelcontextprotocol/clientInfo`). That is a label the caller chose, not an
+  authenticated identity.
+- A verifier **MUST NOT** report any level above `self-attested` on the strength of
+  `agent_ref` being present, however many entries carry one, and **MUST NOT** treat
+  it as having resolved or checked it. A verifier that does resolve it SHOULD say what
+  it checked and with what, beside the verdict, and the level is still raised only by
+  the reader who went and looked (§6a).
+
+Vector 21 makes the field binding: it appears only on receipts that have one, so an
+implementation with a fixed field list seals it differently.
+
 ## 7. Verification
 
 ```
@@ -445,7 +478,7 @@ none:
   verifies, and its head is a real seal — the count is what catches it.
 
   This is a binding, not a signature: the format is unchanged, every seal is
-  unchanged, and all 20 conformance vectors still hold. An unanchored chain is
+  unchanged, and every conformance vector that existed then still holds. An unanchored chain is
   still a valid chain; it just carries no claim about where it came from.
 - **It does not prove the rule was enforced.** `rule` is a string. The
   guarantee that a limit was actually applied comes from wherever the decision
@@ -471,10 +504,12 @@ you can make to this spec. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-Version **1.3**. Changes that alter any seal require a new MAJOR version; none of 1.1, 1.2 or 1.3 alters one.
+Version **1.4**. Changes that alter any seal require a new MAJOR version; none of 1.1, 1.2, 1.3 or 1.4 alters one.
 
 1.0 -> 1.1 added §4a, which states that `outcome` is an open vocabulary and that a verifier must check seals rather than vocabulary. Every 1.0 seal is unchanged and every 1.0 chain still verifies, so this is a minor version: it tells a 1.0 implementer that they may see values they do not recognise, and that rejecting one would be a false accusation rather than a finding.
 
+
+1.3 -> 1.4 added §6e, the optional `agent_ref` field a receipt may carry to point at the identity an agent acted under (a DID, an Agent Passport id, an OAuth client id). It exists because the MCP specification moved to a stateless protocol in which every request carries the caller in `_meta`, and identity standards are converging elsewhere: the format's part is to carry an address and refuse to treat it as evidence, the same position it takes on `ledger_ref`. Vector 21 makes the field binding. Every 1.0 to 1.3 seal is unchanged, and a chain with no `agent_ref` is byte-identical to what 1.3 produced. There are now 21 conformance vectors, and the 20 that existed before it are unchanged.
 
 1.2 -> 1.3 added the `ledger-recorded` level to §6a, and the optional `ledger_ref` field a receipt may carry to name the ledger record of a refusal. This exists because of a hole the first two levels hid: an accepted payment is corroborated by the money moving, and a refusal enforced by an aborting assertion is corroborated by nothing, so the half of the chain anyone actually asks for was the half backed only by the producer's word. Closing it is a change at the enforcement layer, not in this format, and the format's part is to carry an address and refuse to treat it as evidence. Vector 20 makes the field binding: it appears only on receipts that have one, so an implementation with a fixed field list seals it differently. Every 1.0, 1.1 and 1.2 seal is unchanged, and a chain with no ledger references is byte-identical to what 1.2 produced.
 

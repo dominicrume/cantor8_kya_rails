@@ -53,7 +53,8 @@ import os
 import time
 from typing import Any, Iterable, Mapping, Sequence
 
-__version__ = "1.3.1"
+__version__ = "1.4.0"
+MAX_AGENT_REF = 256
 __all__ = ["canonical", "seal", "outcome_digest", "verify", "assert_ascii", "Chain",
            "NonAsciiInReceipt", "BrokenChain", "GENESIS",
            "Policy", "PolicyError", "guard", "attempt", "Refused",
@@ -326,7 +327,8 @@ class Chain:
     def stamp(self, what: str, amount: str, currency: str, payee: str,
               rule: str, outcome: str, approved_by: str | None = None,
               ledger: str | None = None, instrument: str = "",
-              at: str | None = None, ledger_ref: str = "") -> dict[str, Any]:
+              at: str | None = None, ledger_ref: str = "",
+              agent_ref: str = "") -> dict[str, Any]:
         """Append one receipt and return it.
 
         Most of the time you want `allowed()` or `refused()` instead; this is
@@ -373,8 +375,11 @@ class Chain:
                 "receipt %s does not verify, so this chain cannot be extended. "
                 "Deal with the break rather than building on it." % bad)
 
+        if agent_ref and (not isinstance(agent_ref, str) or len(agent_ref) > MAX_AGENT_REF):
+            raise ValueError("agent_ref must be a string of at most %d characters"
+                             % MAX_AGENT_REF)
         r = self._body(what, amount, currency, payee, rule, outcome,
-                       approved_by, ledger, instrument, at, ledger_ref)
+                       approved_by, ledger, instrument, at, ledger_ref, agent_ref)
         assert_ascii(r)                       # before sealing, never after
         r["seal"] = seal(r, r["prev"])
         self.receipts.append(r)
@@ -383,7 +388,7 @@ class Chain:
     def _body(self, what: str, amount: str, currency: str, payee: str,
               rule: str, outcome: str, approved_by: str | None,
               ledger: str | None, instrument: str, at: str | None,
-              ledger_ref: str) -> dict[str, Any]:
+              ledger_ref: str, agent_ref: str = "") -> dict[str, Any]:
         """The receipt's fields, before it is sealed.
 
         Split out of stamp() when the optional ledger_ref pushed that function
@@ -408,6 +413,11 @@ class Chain:
         # every implementation, so an occasional extra key needs no new rule.
         if ledger_ref:
             r["ledger_ref"] = ledger_ref
+        # SPEC 6e. A pointer at the identity the agent acted under (a DID, an Agent
+        # Passport id, an OAuth client id). Written by the producer, present only
+        # when there is one, and it establishes nothing: it is an address, not evidence.
+        if agent_ref:
+            r["agent_ref"] = agent_ref
         return r
 
     def verify(self) -> tuple[bool, int]:

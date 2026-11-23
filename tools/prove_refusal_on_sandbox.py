@@ -45,8 +45,8 @@ import os
 import subprocess  # nosec B404
 import sys
 
-from canton_sandbox import (MANDATE_CHAIN, QUIET, Sandbox, build_chain,
-                            have_daml, say)
+from canton_sandbox import (MANDATE_CHAIN, Sandbox, assistant_argv,
+                            build_chain, have_daml, package_of_dar, say)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DAR = os.path.join(ROOT, "step-1-mandate", "test", ".daml", "dist",
@@ -59,8 +59,8 @@ def run_script(name, port):
     """Exercise one Daml script against the running ledger. Returns the code."""
     # B603 and B607: literal argv, shell=False, every element a string.
     r = subprocess.run(  # nosec B603 B607
-        ["daml", "script", QUIET, "--dar", DAR, "--script-name", name,
-         "--ledger-host", "localhost", "--ledger-port", str(port)],
+        assistant_argv(package_of_dar(DAR), "script", "--dar", DAR, "--script-name", name,
+                       "--ledger-host", "localhost", "--ledger-port", str(port)),
         capture_output=True, text=True)
     return r.returncode
 

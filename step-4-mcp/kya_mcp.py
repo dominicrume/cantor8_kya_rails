@@ -27,8 +27,9 @@ for _p in ("step-2-agent", "step-8-store"):
     sys.path.insert(0, os.path.join(HERE, "..", _p))
 from kya_chain import Chain, NonAsciiInReceipt
 from store import Store, Tampered, Unusable
+import mcp_modern as M
 
-PROTOCOL = "2024-11-05"
+PROTOCOL = "2024-11-05"     # the legacy handshake; the stateless layer is step-4-mcp/mcp_modern.py
 SERVER = {"name": "kya-rails", "version": "1.0.0"}
 
 # stdout carries the protocol. Anything we want to say goes to stderr.
@@ -225,8 +226,13 @@ def _tools_call(msg, wallet, mid):
                        "isError": is_error}}
 
 
+def _ping(msg, wallet, mid):
+    return {"jsonrpc": "2.0", "id": mid, "result": {}}
+
+
 # method -> handler. Notifications map to None: nothing to answer.
 METHODS = {
+    "ping": _ping,
     "initialize": _initialize,
     "tools/list": _tools_list,
     "tools/call": _tools_call,
@@ -262,6 +268,15 @@ def handle(msg, wallet):
         # `method in METHODS` on a list raises TypeError: unhashable type.
         return _error(mid, INVALID_REQUEST, "method must be a string, not %s"
                       % type(method).__name__)
+    if method == "server/discover":
+        return M.discover(mid, SERVER)
+    failure, _meta, modern = M.gate(msg, mid)
+    if failure:
+        return failure
+    return M.finish(_route(msg, wallet, method, mid), SERVER, modern)
+
+
+def _route(msg, wallet, method, mid):
     if method in METHODS:
         fn = METHODS[method]
         return fn(msg, wallet, mid) if fn else None

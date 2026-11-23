@@ -147,7 +147,7 @@ Stated so the claims above are not the only thing on this page.
   redirect to holds **0.0** on both sides. The arithmetic is in
   [`devnet-balances.json`](devnet-balances.json) and re-added on every build.
 - **Three independent implementations** (Python, JavaScript, Go) agree on
-  20/20 conformance vectors.
+  21/21 conformance vectors.
 
 And what has not: nobody outside this project has yet produced a chain with it.
 That is the honest state, and this page will say so until it changes.

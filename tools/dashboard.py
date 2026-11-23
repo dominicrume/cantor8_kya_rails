@@ -28,13 +28,15 @@ import subprocess  # nosec B404 - a harness runs commands; that is what it is
 import sys
 import time
 
+from canton_sandbox import assistant_argv
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "docs", "build.html")
 
 # (command, group, what a green result actually means)
 SUITES = [
     ("python3 tests/conformance.py", "The format",
-     "the Python implementation agrees with all 20 conformance vectors"),
+     "the Python implementation agrees with all 21 conformance vectors"),
     ("node tests/conformance.js", "The format",
      "the JavaScript implementation agrees, byte for byte, with the Python one"),
     ("cd impl/go && go run .", "The format",
@@ -156,6 +158,12 @@ SUITES = [
      "the README names exactly the constructs the harness recognises"),
     ("python3 tests/sandbox_ready_smoke.py", "The tests, tested",
      "the sandbox tools wait for the DAR to be ready, only for that, and not for ever"),
+    ("python3 tests/mcp_modern_smoke.py", "Stateless MCP",
+     "all three MCP servers speak the 2026-07-28 stateless protocol and the old handshake, and agent_ref seals"),
+    ("python3 tests/toolchain_smoke.py", "Toolchain",
+     "the Daml tools choose daml or dpm by the package's SDK version, on mocked shims"),
+    ("python3 tests/claims_lint.py", "No overclaims",
+     "no public document claims compliance, certification or regulator approval"),
     ("python3 tests/check_mcp_smoke.py", "Review MCP",
      "the customer's own agent can run the review without the project being touched, on a fake runner"),
     ("python3 tests/assurance_page_smoke.py", "Reports readable",
@@ -252,15 +260,16 @@ def daml_facts():
         # Rebuild the mandate first. The test package takes it as a
         # data-dependency on a built DAR, so without this the card reports on
         # whatever was last compiled rather than on the source in the tree.
-        b = subprocess.run(  # nosec B603 B607 - argv is literal; daml is on PATH
-            ["daml", "build", "--no-legacy-assistant-warning"],
-            cwd=os.path.dirname(test_dir), capture_output=True, text=True,
-            timeout=1800)
+        mandate = os.path.dirname(test_dir)
+        # The assistant follows each package's sdk-version: daml below 3.5, dpm from 3.5.
+        b = subprocess.run(  # nosec B603 B607 - argv from assistant_argv, daml or dpm on PATH
+            assistant_argv(mandate, "build"),
+            cwd=mandate, capture_output=True, text=True, timeout=1800)
         if b.returncode != 0:
             return {"scripts": 0, "failed": 1, "exercised": "?", "percent": "?",
                     "choices": "?", "ok": False}
-        p = subprocess.run(  # nosec B603 B607 - argv is literal; daml is on PATH
-            ["daml", "test", "--all", "--show-coverage", "--no-legacy-assistant-warning"],
+        p = subprocess.run(  # nosec B603 B607 - argv from assistant_argv, daml or dpm on PATH
+            assistant_argv(test_dir, "test", "--all", "--show-coverage"),
             cwd=test_dir, capture_output=True, text=True, timeout=1800)
     except (OSError, subprocess.TimeoutExpired):
         return None                    # no Daml toolchain here; say so, do not guess

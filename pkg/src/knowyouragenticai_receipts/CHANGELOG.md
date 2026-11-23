@@ -11,6 +11,21 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ---
 
+## [1.4.0] — 2026-11-23
+
+### Added
+
+- **`agent_ref` (SPEC 6e, spec 1.4).** A receipt may now carry `agent_ref`, a pointer at the
+  identity an agent acted under: a DID, an Agent Passport id, an OAuth client id. It is optional,
+  present only when set, at most 256 ASCII characters, and **establishes nothing**: it is an
+  address, not evidence, and a verifier must still report `self-attested`. It exists so identity
+  systems can point at a chain without this format competing with them. Conformance vector 21
+  makes it binding; Python, JavaScript and Go agree, 21 of 21. No existing seal changed, and a
+  chain with no `agent_ref` is byte-identical to 1.3.
+- **MCP server speaks the stateless protocol (2026-07-28), alongside the old handshake.** Requests carry the caller in `_meta`, `server/discover` is implemented, a request missing a required `_meta` field is `-32602`, an unsupported version is `-32022` with the list that is supported, and nothing is remembered from one request to the next. A non-object request gets `-32600` instead of crashing the server.
+- **`kya_stamp` takes `agent_ref`,** defaulting to `mcp-client:name/version` from the request's `_meta` when omitted, labelled as a client label and not an identity.
+
+
 ## [1.3.1] — 2026-11-21
 
 ### Fixed (VeritaPort Independent Review Hardening)

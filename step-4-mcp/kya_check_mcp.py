@@ -55,6 +55,7 @@ for _p in ("step-2-agent", "tools"):
 from kya_chain import Chain  # noqa: E402
 import assurance_page  # noqa: E402
 import daml_mutate  # noqa: E402  (the harness's own choice of daml or dpm)
+import mcp_modern as M  # noqa: E402  (the stateless 2026-07-28 layer)
 
 PROTOCOL = "2024-11-05"
 SERVER = {"name": "kya-check", "version": "0.1.0"}
@@ -439,6 +440,15 @@ def handle(msg):
     if not isinstance(mid, (str, int, float, type(None))) or not isinstance(method, str):
         return _error(None, INVALID_REQUEST, "id must be a string, number or null; "
                       "method must be a string")
+    if method == "server/discover":
+        return M.discover(mid, SERVER)
+    failure, _meta, modern = M.gate(msg, mid)
+    if failure:
+        return failure
+    return M.finish(_route(msg, method, mid), SERVER, modern)
+
+
+def _route(msg, method, mid):
     if method in METHODS:
         fn = METHODS[method]
         return fn(msg, mid) if fn else None

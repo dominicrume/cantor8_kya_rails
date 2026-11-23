@@ -37,6 +37,8 @@ import signal
 import tempfile
 import time
 
+from daml_mutate import toolchain_for
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 QUIET = "--no-legacy-assistant-warning"
 
@@ -84,10 +86,49 @@ def when_packages_ready(attempt, timeout=120, pause=2,
             sleep(pause)
 
 
-def have_daml():
-    if shutil.which("daml") is None:
-        say("daml is not on PATH. Install the Daml SDK, then re-run.")
-        return False
+DPM_HELP = "https://docs.digitalasset.com/build/3.4/dpm/dpm.html"
+
+
+def assistant_argv(cwd, verb, *args):
+    """The command line that runs `verb` for the package in `cwd`.
+
+    Which assistant is not decided here. daml_mutate.toolchain_for reads the
+    sdk-version in cwd/daml.yaml and answers "daml" or "dpm", and this only
+    spells the argv for that answer. The classic assistant keeps the flag it has
+    always been given, so a 3.4.x package runs what it ran before. dpm rejects
+    --no-legacy-assistant-warning ("Invalid option"), so it is left off. Every
+    other flag used by callers (--dar, --canton-port-file, --all,
+    --show-coverage) was read in `dpm sandbox|test --help` on dpm 3.5.8.
+    """
+    tool = toolchain_for(cwd)[0]
+    if tool == "dpm":
+        return ["dpm", verb] + list(args)
+    return ["daml", verb, QUIET] + list(args)
+
+
+def package_of_dar(dar):
+    """The package directory a built DAR came from (the folder above .daml)."""
+    parts = os.path.abspath(dar).split(os.sep + ".daml" + os.sep)
+    return parts[0] if len(parts) > 1 else os.path.dirname(os.path.abspath(dar))
+
+
+def have_daml(chain=None):
+    """True if every assistant the packages in `chain` need is on PATH.
+
+    With no chain, every package of both chains is checked, because the callers
+    that pass nothing build one of them and the tree is meant to be uniform.
+    """
+    rels = chain if chain is not None else MANDATE_CHAIN + REFUSAL_CHAIN
+    seen = {}
+    for rel in rels:
+        tool, why = toolchain_for(os.path.join(ROOT, rel))
+        seen.setdefault(tool, "%s (%s)" % (rel, why))
+    for tool, who in seen.items():
+        if shutil.which(tool) is None:
+            say("%s is not on PATH, and %s needs it. Install it, then re-run:"
+                % (tool, who))
+            say("  %s" % DPM_HELP)
+            return False
     return True
 
 
@@ -96,8 +137,9 @@ def build_chain(chain):
     for rel in chain:
         say("building %s" % rel)
         # B603 and B607: literal argv, shell=False, every element a string.
+        where = os.path.join(ROOT, rel)
         r = subprocess.run(  # nosec B603 B607
-            ["daml", "build", QUIET], cwd=os.path.join(ROOT, rel),
+            assistant_argv(where, "build"), cwd=where,
             capture_output=True, text=True)
         if r.returncode != 0:
             say("  build failed in %s:\n    %s"
@@ -114,23 +156,24 @@ class Sandbox:
     a test failure and is not one.
     """
 
-    def __init__(self, dar, extra=()):
+    def __init__(self, dar, extra=(), package=None):
         self.tmp = tempfile.mkdtemp(prefix="kya-sandbox-")
         self.portfile = os.path.join(self.tmp, "ports.json")
         self.proc = None
         self.ports = None
         self.dar = dar
+        self.package = package or package_of_dar(dar)
         self.extra = list(extra)
 
     def start(self, wait=180):
         """Start Canton and wait for its port file. True once it is ready."""
         say("starting a real Canton sandbox (participant, sequencer, mediator)")
-        # B603 only. The argument list is built with `+ self.extra`, so bandit
+        # B603 only. The argument list is built by a function, so bandit
         # cannot see a literal and does not raise B607 here. Suppressing an id
         # it did not raise is itself a bandit warning.
         self.proc = subprocess.Popen(  # nosec B603
-            ["daml", "sandbox", QUIET, "--dar", self.dar,
-             "--canton-port-file", self.portfile] + self.extra,
+            assistant_argv(self.package, "sandbox", "--dar", self.dar,
+                           "--canton-port-file", self.portfile) + self.extra,
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             start_new_session=True)
         for _ in range(wait):

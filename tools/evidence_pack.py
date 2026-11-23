@@ -252,7 +252,7 @@ if r:
 print(row("2026-09-06", "Specification and conformance vectors",
           "github.com/%s/blob/main/SPEC.md" % REPO,
           "Three independent implementations in Python, JavaScript and Go "
-          "agree on 20 conformance vectors. A format two people implement is a "
+          "agree on 21 conformance vectors. A format two people implement is a "
           "library; one that three implement is closer to a standard.", "OC1"))
 print(row("2026-09-12", "Verifiable in a browser with nothing installed",
           "dominicrume.github.io/cantor8_kya_rails/",

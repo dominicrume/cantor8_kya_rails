@@ -60,7 +60,8 @@ class Chain:
         self.receipts = []
 
     def stamp(self, what, amount, payee, rule, outcome, approved_by,
-              ledger, currency="CC", instrument="Amulet", ledger_ref=""):
+              ledger, currency="CC", instrument="Amulet", ledger_ref="",
+              agent_ref=""):
         r = {
             "n": len(self.receipts) + 1,
             "what": what, "amount": str(amount), "payee": payee,
@@ -79,6 +80,12 @@ class Chain:
         # the package: SPEC 6a, and the canonicaliser sorts whatever it finds.
         if ledger_ref:
             r["ledger_ref"] = ledger_ref
+        # SPEC 6e: a pointer at the identity the agent acted under, written by the
+        # producer, present only when there is one. It establishes nothing.
+        if agent_ref:
+            if not isinstance(agent_ref, str) or len(agent_ref) > 256:
+                raise ValueError("agent_ref must be a string of at most 256 characters")
+            r["agent_ref"] = agent_ref
         assert_ascii(r)          # before sealing, never after
         r["seal"] = seal(r, r["prev"])
         self.receipts.append(r)

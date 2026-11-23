@@ -117,7 +117,11 @@ Exposes tools:
 - `kya_stamp`: Append an action (accepted or refused) and cryptographically seal onto previous seal. Fail-closed against tampered files; atomically writes state; defaults persistence to `receipts.json`.
 - `kya_verify`: Verify chain integrity from a file or JSON payload (proves no edits/reordering; caveats external anchor requirement for tail deletion).
 - `kya_disclose`: Redact and disclose refusals while withholding confidential payments (safe overwrite protection).
-- `kya_status`: Inspect the active session chain head, verification state, and receipt counts.
+- `kya_status`: Inspect the active session chain head, verification state, and receipt counts. Reports `file_problem` if the receipts file on disk is tampered or unreadable, instead of quietly describing the in-memory chain.
+
+**Stateless protocol.** The server speaks the MCP 2026-07-28 revision, where there is no `initialize` handshake: every request carries its protocol version and capabilities in `_meta`, and `server/discover` says what the server supports. A client that still performs the old handshake works as before. Nothing is remembered between requests.
+
+**Pointing at an identity (`agent_ref`).** `kya_stamp` takes an optional `agent_ref`: a DID, an Agent Passport id, an OAuth client id, at most 256 ASCII characters. If you omit it, the client name and version from the request's `_meta` are recorded as `mcp-client:name/version`. That is a label the caller chose, not an authenticated identity. `agent_ref` is written by the caller and establishes nothing, so a verifier still reports `self-attested`; it exists so an identity system can point at a chain without this format competing with it (SPEC section 6e).
 
 ## Prove this build implements the specification
 

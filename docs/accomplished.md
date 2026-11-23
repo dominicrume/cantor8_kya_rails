@@ -13,7 +13,7 @@ zero it says zero.*
 | **A published format** | `knowyouragenticai-receipts`, live on PyPI since 6 September, **1.3.1 since 23 November** | **5 releases. 514 all time, mirrors excluded**, measured 15 Nov 2026. The 30-day figure is a rolling window and is not quoted here (`python3 tools/downloads.py`) |
 | **A published tool** | `ai-code-quality-auditor`, live since 31 May, now at 0.5.1 | 6 releases. 388/month raw at 26 Oct 2026, mostly mirrors |
 | **A reusable Daml package** | `canton-refusal-record` 1.0.0: one module, no dependencies beyond the standard library | 8 scripts, incl. a lending protocol and a collateral engine that have no concept of a payee |
-| **A written specification** | `SPEC.md` with 20 conformance vectors | three independent implementations, Python, JavaScript and Go, agree on all 20 |
+| **A written specification** | `SPEC.md` with 21 conformance vectors | three independent implementations, Python, JavaScript and Go, agree on all 20 |
 | **A verifier that needs nothing** | drop a file on a web page, no wallet, no install, no network | works offline |
 
 ## Accepted by people who are not us

@@ -126,7 +126,7 @@ Two parts, and the second one is not about Canton:
 1. **[SPEC.md](SPEC.md)** — an open format for tamper-evident receipts of automated
    actions, **including the actions that were refused**. Stdlib-only, no
    signatures, no network to verify. Three independent implementations and
-   [20 conformance vectors](tests/vectors.json). Three independent
+   [21 conformance vectors](tests/vectors.json). Three independent
    implementations agree.
 2. **A reference application** — the spend-limited wallet D1 asks for, with the
    limits enforced in a Daml choice body.
@@ -192,7 +192,7 @@ country and deciding whether to trust the person who produced it.
 | --- | --- |
 | Attack suite green | **212 / 212** `daml test` scripts, both directions of the cycle. `--show-coverage` reports 30 of 44 template choices exercised; the other 14 are Daml's auto-generated `Archive`, so every choice we wrote is covered. The count is checked by `tests/balance_lint.py`, because it read **92** for weeks after the suite had grown |
 | Published | **`pip install knowyouragenticai-receipts`** — [live on PyPI](https://pypi.org/project/knowyouragenticai-receipts/) since 6 September 2026. **1.3.1** (23 November), MIT, **zero dependencies**, with the conformance vectors inside it, so `python -m knowyouragenticai_receipts selftest` reports 20/20 with no network |
-| Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 20 vectors exist because we asked which wrong implementations still passed, and two did |
+| Anyone can implement it | ~40 lines, graded through a pipe in any language — `tests/conformance_any.py -- ./yours`. Two of the 21 vectors exist because we asked which wrong implementations still passed, and two did |
 | The journal cannot be edited | **5** checks on the journal: a receipt written before a process was killed is still there afterwards, and an entry edited or deleted from the middle of the file is refused on the next open |
 | The tests are themselves tested | `tests/mutation_suite.py` breaks **95** real things — the page's tamper detection, the webhook's signature check, the QR's contents, the audit trail, the route error boundary, the model's session with the wallet, the receipts a killed process must not lose, the refusals a disclosure must not be able to drop, the ledger record that stops a refusal being only our word, the rule the demo's mirror must not quietly rename — and requires the suite that claims to cover each one to go red. Two audits found 15 assertions that could not fail; this is what stops the sixteenth |
 | Every fence mutation-tested | all **34** in the Daml: delete any one and a *named* test goes red. `tests/mutation_py.py` does the same for the refusals at the edges, and now covers **1 of 1** — the journal's, because the webhook adapters it also covered moved to the kya-desk repository with the desk. The count is small and stated rather than rounded: it was 30 of 30 when there were thirty edges, and a repository that quotes yesterday's number is the thing this column exists to prevent |
@@ -540,7 +540,7 @@ See [SHORTCUTS.md](SHORTCUTS.md) for every debt taken, with a repayment plan.
 | [docs/wallet-providers.md](docs/wallet-providers.md) | where the addresses would come from, and what to ask a provider |
 | [docs/dev-fund-onepager.md](docs/dev-fund-onepager.md) | the Canton Development Fund ask in one page, including what it does not claim |
 | [docs/complexity.md](docs/complexity.md) | the one function allowed to be complicated, and the reason it is |
-| [tests/vectors.json](tests/vectors.json) | 20 conformance vectors. Where the spec and a vector disagree, the vector wins. |
+| [tests/vectors.json](tests/vectors.json) | 21 conformance vectors. Where the spec and a vector disagree, the vector wins. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | start here — the most useful contribution is a third implementation |
 
 ---
@@ -716,8 +716,10 @@ dated by someone.
 
 If that is the thing blocking you, the assurance engagement is where it gets
 settled: a decision map of what the agent may decide without a human, an
-accountability chain with named owners, and a regulator-readiness verdict
-against the Know Your AgenticAi standard. UK patent application GB2611754.9,
+accountability chain with named owners, and an assessment of how far the
+agent's evidence would answer a regulator's questions, against the Know Your
+AgenticAi standard. It is not legal advice, not a compliance certificate, and no
+regulator has reviewed it. UK patent application GB2611754.9,
 filed 20 May 2026, pending.
 
 **[rumedominic.com/assurance](https://rumedominic.com/assurance)**

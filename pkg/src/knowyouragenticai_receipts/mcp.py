@@ -27,7 +27,13 @@ from . import (
     verify,
 )
 
-PROTOCOL_VERSION = "2024-11-05"
+PROTOCOL_VERSION = "2024-11-05"           # what the legacy `initialize` handshake answers
+MODERN_VERSION = "2026-07-28"             # stateless: the caller rides in every request's _meta
+SUPPORTED_VERSIONS = ("2026-07-28", "2025-11-25", "2024-11-05")
+META_VERSION = "io.modelcontextprotocol/protocolVersion"
+META_CAPS = "io.modelcontextprotocol/clientCapabilities"
+META_CLIENT = "io.modelcontextprotocol/clientInfo"
+META_SERVER = "io.modelcontextprotocol/serverInfo"
 SERVER_INFO = {
     "name": "knowyouragenticai-receipts",
     "version": __version__,
@@ -78,6 +84,10 @@ TOOLS = [
                 "ledger": {
                     "type": "string",
                     "description": "Optional ledger, network, or environment name (e.g. 'polygon', 'production')."
+                },
+                "agent_ref": {
+                    "type": "string",
+                    "description": "Optional pointer at the identity the agent acted under: a DID, an Agent Passport id, an OAuth client id. At most 256 ASCII characters. It is written by the caller and establishes nothing: an address, not evidence. If omitted, the MCP client name and version from the request's _meta are recorded as 'mcp-client:name/version', a label the caller chose and not an authenticated identity."
                 },
                 "save_path": {
                     "type": "string",
@@ -192,11 +202,36 @@ def _load_existing_chain_fail_closed(path: str) -> tuple[Chain | None, str | Non
         )
 
 
-def handle_stamp(arguments: dict[str, Any]) -> dict[str, Any]:
+def _client_ref(meta: dict[str, Any] | None) -> str:
+    """'mcp-client:name/version' from the request's _meta, or '' when there is none.
+
+    Read from THIS request, never remembered from an earlier one: the protocol is
+    stateless. It is a label the client chose, so it carries its own scheme.
+    """
+    info = (meta or {}).get(META_CLIENT)
+    if not isinstance(info, dict) or not info.get("name"):
+        return ""
+    raw = "mcp-client:%s/%s" % (info.get("name"), info.get("version", ""))
+    return "".join(c if (c.isalnum() and ord(c) < 128) or c in "._:/@+-" else "_" for c in raw)[:256]
+
+
+def _agent_ref_for(arguments: dict[str, Any], meta: dict[str, Any] | None) -> tuple[str, str | None]:
+    explicit = arguments.get("agent_ref")
+    if explicit is None:
+        return _client_ref(meta), None
+    if not isinstance(explicit, str):
+        return "", "Field 'agent_ref' must be a string."
+    return explicit, None
+
+
+def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
     global SESSION_CHAIN
     val_err = _validate_stamp_fields(arguments)
     if val_err:
         return _err_res(val_err)
+    agent_ref, ref_err = _agent_ref_for(arguments, meta)
+    if ref_err:
+        return _err_res(ref_err)
 
     save_path = arguments.get("save_path") or DEFAULT_RECEIPTS_PATH
     loaded_chain, load_err = _load_existing_chain_fail_closed(save_path)
@@ -214,7 +249,8 @@ def handle_stamp(arguments: dict[str, Any]) -> dict[str, Any]:
             rule=arguments["rule"],
             outcome=arguments["outcome"].upper(),
             approved_by=arguments.get("approved_by"),
-            ledger=arguments.get("ledger")
+            ledger=arguments.get("ledger"),
+            agent_ref=agent_ref
         )
         if save_path:
             _atomic_write_json(save_path, SESSION_CHAIN.receipts)
@@ -255,7 +291,7 @@ def _load_verify_receipts(file_path: str | None, receipts_json: str | None) -> t
     return SESSION_CHAIN.receipts, None
 
 
-def handle_verify(arguments: dict[str, Any]) -> dict[str, Any]:
+def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
     receipts, err = _load_verify_receipts(arguments.get("file_path"), arguments.get("receipts_json"))
     if err:
         return _err_res(err)
@@ -294,7 +330,7 @@ def _get_disclosure_input(file_path: str | None) -> list[Any]:
     return SESSION_CHAIN.receipts
 
 
-def handle_disclose(arguments: dict[str, Any]) -> dict[str, Any]:
+def handle_disclose(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
     save_path = arguments.get("save_path")
     if save_path and os.path.exists(save_path) and not arguments.get("overwrite"):
         return _err_res(
@@ -325,7 +361,7 @@ def handle_disclose(arguments: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def handle_status(arguments: dict[str, Any]) -> dict[str, Any]:
+def handle_status(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
     active_path = DEFAULT_RECEIPTS_PATH
     chain = SESSION_CHAIN
     file_problem = None
@@ -365,17 +401,18 @@ TOOL_HANDLERS = {
 }
 
 
-def _execute_tool(tool_name: str | None, args: dict[str, Any]) -> dict[str, Any]:
+def _execute_tool(tool_name: str | None, args: dict[str, Any],
+                  meta: dict[str, Any] | None = None) -> dict[str, Any]:
     handler = TOOL_HANDLERS.get(tool_name or "")
     if not handler:
         raise KeyError(f"Tool not found: {tool_name}")
-    return handler(args)
+    return handler(args, meta)
 
 
-def _handle_tools_call(req: dict[str, Any], msg_id: Any) -> dict[str, Any]:
-    params = req.get("params", {})
+def _handle_tools_call(req: dict[str, Any], msg_id: Any, meta: dict[str, Any] | None) -> dict[str, Any]:
+    params = req.get("params") or {}
     try:
-        res = _execute_tool(params.get("name"), params.get("arguments", {}))
+        res = _execute_tool(params.get("name"), params.get("arguments") or {}, meta)
         return {"jsonrpc": "2.0", "id": msg_id, "result": res}
     except KeyError as e:
         return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32601, "message": str(e)}}
@@ -383,32 +420,77 @@ def _handle_tools_call(req: dict[str, Any], msg_id: Any) -> dict[str, Any]:
         return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32000, "message": str(e)}}
 
 
-def dispatch(req: dict[str, Any]) -> dict[str, Any]:
-    method = req.get("method")
-    msg_id = req.get("id")
+def _error(msg_id: Any, code: int, message: str, data: Any = None) -> dict[str, Any]:
+    err: dict[str, Any] = {"code": code, "message": message}
+    if data is not None:
+        err["data"] = data
+    return {"jsonrpc": "2.0", "id": msg_id, "error": err}
 
+
+def _discover(msg_id: Any) -> dict[str, Any]:
+    """server/discover, which the 2026-07-28 revision says every server MUST implement."""
+    return {"jsonrpc": "2.0", "id": msg_id, "result": {
+        "resultType": "complete",
+        "supportedVersions": list(SUPPORTED_VERSIONS),
+        "capabilities": {"tools": {}},
+        "_meta": {META_SERVER: SERVER_INFO},
+        "ttlMs": 3600000, "cacheScope": "public"}}
+
+
+def _gate(req: dict[str, Any], msg_id: Any) -> tuple[dict[str, Any] | None, dict[str, Any] | None, bool]:
+    """(error to send or None, this request's _meta, is it a modern request).
+
+    Stateless: everything is decided from THIS request. A request with no protocol
+    version in its _meta is a legacy client that went through `initialize`.
+    """
+    params = req.get("params")
+    meta = params.get("_meta") if isinstance(params, dict) else None
+    version = meta.get(META_VERSION) if isinstance(meta, dict) else None
+    if version is None:
+        return None, None, False
+    if version not in SUPPORTED_VERSIONS:
+        return _error(msg_id, -32022, "Unsupported protocol version",
+                      {"supported": list(SUPPORTED_VERSIONS), "requested": version}), None, False
+    if version == MODERN_VERSION and not (isinstance(meta, dict) and isinstance(meta.get(META_CAPS), dict)):
+        return _error(msg_id, -32602, "Invalid params: _meta must carry %s and %s"
+                      % (META_VERSION, META_CAPS)), None, False
+    return None, meta, version == MODERN_VERSION
+
+
+def _route(req: dict[str, Any], msg_id: Any, meta: dict[str, Any] | None) -> dict[str, Any]:
+    method = req.get("method")
     if method == "initialize":
-        return {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "result": {
-                "protocolVersion": PROTOCOL_VERSION,
-                "serverInfo": SERVER_INFO,
-                "capabilities": {"tools": {}}
-            }
-        }
+        return {"jsonrpc": "2.0", "id": msg_id, "result": {
+            "protocolVersion": PROTOCOL_VERSION, "serverInfo": SERVER_INFO,
+            "capabilities": {"tools": {}}}}
     if method == "ping":
         return {"jsonrpc": "2.0", "id": msg_id, "result": {}}
+    if method == "server/discover":
+        return _discover(msg_id)
     if method == "tools/list":
         return {"jsonrpc": "2.0", "id": msg_id, "result": {"tools": TOOLS}}
     if method == "tools/call":
-        return _handle_tools_call(req, msg_id)
+        return _handle_tools_call(req, msg_id, meta)
     if method == "notifications/initialized":
         return {}
-
     if msg_id is not None:
-        return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32601, "message": f"Method not supported: {method}"}}
+        return _error(msg_id, -32601, f"Method not supported: {method}")
     return {}
+
+
+def dispatch(req: Any) -> dict[str, Any]:
+    if not isinstance(req, dict):
+        return _error(None, -32600, "Invalid request: a JSON-RPC request must be an object")
+    msg_id = req.get("id")
+    if req.get("method") == "server/discover":
+        return _discover(msg_id)
+    failure, meta, modern = _gate(req, msg_id)
+    if failure:
+        return failure
+    resp = _route(req, msg_id, meta)
+    if modern and isinstance(resp.get("result"), dict):
+        resp["result"].setdefault("_meta", {})[META_SERVER] = SERVER_INFO
+    return resp
 
 
 def main() -> int:

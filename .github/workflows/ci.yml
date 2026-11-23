@@ -121,6 +121,16 @@ jobs:
         # No ledger needed: a fake clock, so nothing sleeps.
         run: python3 tests/sandbox_ready_smoke.py
 
+      - name: all three MCP servers are stateless, and the old handshake still works
+        run: python3 tests/mcp_modern_smoke.py
+
+      - name: the Daml tools choose daml or dpm by the package's SDK version
+        # MOCKED shims, no Daml SDK needed.
+        run: python3 tests/toolchain_smoke.py
+
+      - name: no public document claims compliance, certification or regulator approval
+        run: python3 tests/claims_lint.py
+
       - name: the review MCP server never touches the customer's project
         # MOCKED runner: the plumbing in seconds, no Daml SDK needed.
         run: python3 tests/check_mcp_smoke.py

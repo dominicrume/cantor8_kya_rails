@@ -23,7 +23,7 @@ Three things together, and the word *together* is doing the work:
 1. The refusal is a **first-class ledger contract** that commits while the
    payment does not move (`KyaMandate.TryCharge`, `ChargeRefused`).
 2. The chain is verified by **three independent implementations** in Python,
-   JavaScript and Go, agreeing on 20 conformance vectors.
+   JavaScript and Go, agreeing on 21 conformance vectors.
 3. Refusals can be **disclosed without the accepted payments**, and since
    SPEC 6c the outcome of every withheld entry is covered by one anchorable
    digest.

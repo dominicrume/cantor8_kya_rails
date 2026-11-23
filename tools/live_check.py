@@ -82,7 +82,7 @@ ITEMS = [
 
     ("Written down", "What this proves, and what it does not",
      "https://github.com/dominicrume/cantor8_kya_rails/blob/main/docs/what-this-proves.md", "read it"),
-    ("Written down", "The specification, with 20 conformance vectors",
+    ("Written down", "The specification, with 21 conformance vectors",
      "https://github.com/dominicrume/cantor8_kya_rails/blob/main/SPEC.md",
      "python3 tests/conformance.py && node tests/conformance.js"),
     ("Written down", "My scanner read the file every run and missed the breach",
