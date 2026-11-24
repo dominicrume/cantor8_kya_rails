@@ -171,6 +171,12 @@ jobs:
           python3 -m pip install --quiet mypy
           python3 -m mypy --strict pkg/src/knowyouragenticai_receipts
 
+      - name: the vote tool and the post queue print what they printed, offline
+        # Both mains were split on 24 November 2026. This runs them against
+        # fake gh, fetch and input and compares with a recording taken
+        # before the split. No network, no credential.
+        run: python3 tests/pipeline_tools_smoke.py
+
       - name: the action is callable by a stranger and cannot quietly stop
         run: python3 tests/action_smoke.py
 

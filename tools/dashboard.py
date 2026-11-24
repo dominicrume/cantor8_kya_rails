@@ -71,6 +71,9 @@ SUITES = [
      "anything about to be sent is short, plain, and in the other person's words"),
     ("python3 tests/waiting_smoke.py", "The record",
      "a thread where somebody else spoke last is a thread we owe, and it says who"),
+    ("python3 tests/pipeline_tools_smoke.py", "The record",
+     "the vote tool and the post queue print the same thing offline that they "
+     "did before they were split"),
     ("python3 tests/devnet_run_smoke.py", "The ledger",
      "four failures that all say REFUSED are told apart before one is written down"),
     ("python3 tests/devnet_parse_smoke.py", "The ledger",
