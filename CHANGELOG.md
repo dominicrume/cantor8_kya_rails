@@ -58,11 +58,12 @@ meant to outlive the code that wrote them, so that bar is high.
 - **Daml package `kya-rails-mandate` (not the PyPI package): `Charge` now needs both
   `owner` and `spender`.** Threat model N4. The agent alone could pick `Charge`, which
   aborts and writes nothing, over `TryCharge`, which records the refusal, so it chose
-  whether a refusal was ever recorded. Now its only unilateral door is `TryCharge`.
+  whether a refusal was ever recorded. Now the aborting door needs both, and the only door the agent holds alone is `TryCharge`. This narrows N4 and does not close it: see the list of what is not covered.
   Four tests, 216 scripts in all. Measured against the 1.1.0 DAR with a local
   `daml build`: the controller change is accepted with a warning, removing `Charge`
-  is refused. Not covered: owner and spender together, a refusal erased by a failing
-  command in the same transaction, and an attempt never submitted. **Not uploaded to
+  is refused. Not covered: the agent alone can still leave no record by adding a failing
+  command to the same transaction as its `TryCharge`, or by never submitting; owner and
+  spender together can still abort silently. **Not uploaded to
   DevNet, so not vetted**, and no version has been bumped.
 
 - **`check_disclosure()` now compares each shown body's own `n` and `prev` to
