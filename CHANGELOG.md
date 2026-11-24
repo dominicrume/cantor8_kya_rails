@@ -55,6 +55,16 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ### Fixed
 
+- **Daml package `kya-rails-mandate` (not the PyPI package): `Charge` now needs both
+  `owner` and `spender`.** Threat model N4. The agent alone could pick `Charge`, which
+  aborts and writes nothing, over `TryCharge`, which records the refusal, so it chose
+  whether a refusal was ever recorded. Now its only unilateral door is `TryCharge`.
+  Four tests, 216 scripts in all. Measured against the 1.1.0 DAR with a local
+  `daml build`: the controller change is accepted with a warning, removing `Charge`
+  is refused. Not covered: owner and spender together, a refusal erased by a failing
+  command in the same transaction, and an attempt never submitted. **Not uploaded to
+  DevNet, so not vetted**, and no version has been bumped.
+
 - **`check_disclosure()` now compares each shown body's own `n` and `prev` to
   the entry that carries it.** Found on 14 November 2026. A forger could delete
   an entry, renumber the envelope and re-seal each shown body, and the document
