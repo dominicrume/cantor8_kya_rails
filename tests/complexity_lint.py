@@ -112,6 +112,18 @@ DEBT = {
         "cc 31. The queue walk, the gate call, the destination read-back and "
         "the prompt loop are four jobs in one function. verify() was already "
         "pulled out; the same should happen to the walk and the prompt."),
+    "tests/mcp_adversarial_smoke.py:a_case": (
+        "2026-11-26", "cc 14. One helper that sends bytes and asks whether the server is alive; the "
+        "alive/eof/exit-code combinations are the branches. Not fixing today."),
+    "tests/mcp_adversarial_smoke.py:a8": (
+        "2026-11-26", "cc 10. A loop over id types plus two strict-JSON probes. Not fixing today."),
+    "tests/mcp_adversarial_smoke.py:b10": (
+        "2026-11-26", "cc 9. One loop over five tool/argument pairs. Not fixing today."),
+    "tests/mcp_adversarial_smoke.py:d3": (
+        "2026-11-26", "cc 9. Spawns 20 servers and joins their threads. Not fixing today."),
+    "tests/mcp_adversarial_smoke.py:main": (
+        "2026-11-26", "cc 22. Argument parsing, a capability probe, a thread pool and the report in one "
+        "function. Split into probe(), run() and report() when this suite is next touched."),
 }
 
 # `with` is deliberately absent: it is not a branch.
