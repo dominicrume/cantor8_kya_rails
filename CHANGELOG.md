@@ -82,7 +82,7 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ---
 
-## [1.4.0] — 2026-11-23
+## [1.4.0] — 2026-11-23, published 2026-11-26
 
 ### Added
 
