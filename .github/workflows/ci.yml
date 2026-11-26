@@ -127,6 +127,9 @@ jobs:
       - name: a pin catches delete-and-restart, truncation and replacement
         run: python3 tests/pin_smoke.py
 
+      - name: a witness refuses a regenerated chain, and a forged or edited pin fails its MAC
+        run: python3 tests/witness_smoke.py
+
       - name: the Daml tools choose daml or dpm by the package's SDK version
         # MOCKED shims, no Daml SDK needed.
         run: python3 tests/toolchain_smoke.py

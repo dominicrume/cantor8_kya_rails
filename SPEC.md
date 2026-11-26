@@ -479,6 +479,44 @@ What a pin does NOT do:
 - It is implemented in the Python package only. There is no conformance vector for it
   yet, and so nothing here shows that a second implementation agrees.
 
+## 6g. Witness: a pin the writer cannot forge or quietly delete
+
+A pin kept where the producer can write (§6f) is the producer's own record. A **witness**
+is a separate process, run as another user or on another machine, that holds a key the
+producer never has.
+
+A witness:
+
+- accepts a pin `{"n", "seal"}`, and records `{"n", "seal", "t", "mac"}` in an append-only
+  log, where `t` is the witness's own clock in whole seconds and
+  `mac = HMAC-SHA256(key, "knowyouragenticai-witness-1\n" + canonical({"n","seal","t"}))`;
+- answers a pin it has already recorded with the same entry, and answers a DIFFERENT seal
+  at a count it has already recorded with a refusal (HTTP 409), which is what stops a
+  chain regenerated from nothing from being accepted as the same chain;
+- refuses to record, and refuses to answer, if any line of its own log fails its MAC.
+
+A producer given a witness MUST fetch the witness's pins and check the chain against them
+BEFORE appending (the §6f rules), MUST refuse to write if the witness cannot be reached,
+and SHOULD send the new head after every write. If the witness does not record it, the
+producer MUST say the receipt was saved and NOT witnessed.
+
+A verifier that holds the key MUST check every witnessed pin's MAC before it trusts the
+pin, then apply the §6f rules. A verifier without the key can compare the pins but MUST say
+that the MACs were not checked.
+
+What a witness does NOT do:
+
+- It is not a transparency log. The MAC is symmetric, so anyone able to check it can also
+  forge it, and nobody outside the key holders has more than the witness operator's word.
+  Publishing heads to a log the operator does not control is not built.
+- It protects nothing if the producer can read the key, write the witness's log, or choose
+  the witness. A `witness_url` the agent supplies proves nothing to a reader who did not
+  choose it; the verifier must use a witness and key it chose.
+- The standard library has no asymmetric signing, so a key the producer cannot touch means a
+  separate process or user, not an HSM.
+- It does not say who changed the chain. It MUST NOT raise the assurance level (§6a).
+- It is Python only, exercised on localhost only, with no conformance vector.
+
 ## 7. Verification
 
 ```

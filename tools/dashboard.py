@@ -162,6 +162,8 @@ SUITES = [
      "all three MCP servers speak the 2026-07-28 stateless protocol and the old handshake, and agent_ref seals"),
     ("python3 tests/pin_smoke.py", "The record",
      "a pin catches delete-and-restart, truncation and replacement, which a hash chain alone cannot"),
+    ("python3 tests/witness_smoke.py", "The record",
+     "a separate witness refuses a regenerated chain, and a forged or edited witnessed pin fails its MAC"),
     ("python3 tests/toolchain_smoke.py", "Toolchain",
      "the Daml tools choose daml or dpm by the package's SDK version, on mocked shims"),
     ("python3 tests/claims_lint.py", "No overclaims",

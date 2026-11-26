@@ -15,6 +15,18 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ### Added
 
+- **Witness (SPEC 6g).** A pin kept on the chain's own disk is only as safe as that disk. A witness
+  is a separate process, run as another user or on another machine, that records each pin with its
+  own clock and a MAC (a keyed hash) from a key the agent never holds, and refuses a second,
+  different seal at a count it has already recorded. `kya_stamp` takes an optional `witness_url`,
+  asks the witness BEFORE writing, fails closed if it cannot be reached, and reports a write the
+  witness did not record as NOT witnessed; `kya_verify` takes `witness_url` and `witness_key_file`
+  and reports `witness_check`, saying whether the MACs were checked. Run one with
+  `python3 -m knowyouragenticai_receipts.witness serve`. The MAC is symmetric, so this is not a
+  transparency log such as Sigstore Rekor: only a holder of the key can check it, and nobody
+  outside has more than the witness operator's word. Python only, no conformance vector,
+  tested on localhost only. `tests/witness_smoke.py`.
+
 - **Pins (SPEC 6f).** A hash chain cannot tell a chain from a fresh valid one: delete the file,
   start again, and it verifies. `head_pin()` and `check_pins()` now give the count and final seal
   to keep elsewhere, and catch truncation, delete-and-restart and replacement with another valid

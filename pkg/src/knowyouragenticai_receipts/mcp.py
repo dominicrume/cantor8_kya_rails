@@ -28,6 +28,7 @@ from . import (
     seal,
     verify,
 )
+from .witness import check_witnessed, fetch_pins, load_key, post_pin
 
 PROTOCOL_VERSION = "2024-11-05"           # what the legacy `initialize` handshake answers
 MODERN_VERSION = "2026-07-28"             # stateless: the caller rides in every request's _meta
@@ -57,6 +58,10 @@ TOOLS = [
                 "pin_file": {
                     "type": "string",
                     "description": "Optional. An append-only pin log kept OUTSIDE the chain's directory. When given, the receipt is refused if the chain no longer contains every earlier pin (it was deleted and restarted, truncated or replaced), and a new pin is appended after each write."
+                },
+                "witness_url": {
+                    "type": "string",
+                    "description": "Optional. The base URL of a separate witness process (SPEC 6g). When given, the receipt is refused if the witness cannot be reached or has seen a head this chain does not contain, and the new head is sent to the witness after each write. Fails closed: no witness, no write."
                 },
                 "what": {
                     "type": "string",
@@ -119,6 +124,14 @@ TOOLS = [
                 "pin_file": {
                     "type": "string",
                     "description": "Optional. A pin log written by kya_stamp. Reports whether the chain still contains every pin: this is what catches a deleted-and-restarted, truncated or replaced chain."
+                },
+                "witness_url": {
+                    "type": "string",
+                    "description": "Optional. A witness (SPEC 6g) to compare the chain against."
+                },
+                "witness_key_file": {
+                    "type": "string",
+                    "description": "Optional. The witness's key file, held by the VERIFIER and never by the agent. Without it the witnessed pins are compared but their MACs are not checked, and the result says so."
                 }
             }
         }
@@ -275,6 +288,31 @@ def _pin_gate(pin_file: str | None) -> str | None:
     return f"Refusing to stamp: this chain does not match the pin log ({why}). Nothing was written."
 
 
+def _witness_gate(witness_url: str | None) -> str | None:
+    """Error text if the witness cannot be reached or has seen another chain."""
+    if not witness_url:
+        return None
+    pins, err = fetch_pins(witness_url)
+    if err or pins is None:
+        return f"Refusing to stamp: {err}. Nothing was written."
+    pins_ok, why = check_pins(SESSION_CHAIN.receipts, pins)
+    if pins_ok:
+        return None
+    return f"Refusing to stamp: this chain does not match what the witness saw ({why}). Nothing was written."
+
+
+def _witness_record(witness_url: str | None) -> str | None:
+    """Error text if the witness did not record the new head, else None."""
+    if not witness_url:
+        return None
+    err = post_pin(witness_url, head_pin(SESSION_CHAIN.receipts))
+    return f"Stamped and saved, but NOT witnessed: {err}" if err else None
+
+
+def _stamp_gates(pin_file: str | None, witness_url: str | None) -> str | None:
+    return _pin_gate(pin_file) or _witness_gate(witness_url)
+
+
 def _stamp_and_persist(arguments: dict[str, Any], agent_ref: Any,
                        save_path: str | None, pin_file: str | None) -> Any:
     receipt = SESSION_CHAIN.stamp(
@@ -295,14 +333,19 @@ def _stamp_and_persist(arguments: dict[str, Any], agent_ref: Any,
     return receipt
 
 
-def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
-    global SESSION_CHAIN
+def _checked_stamp_input(arguments: dict[str, Any], meta: dict[str, Any] | None) -> tuple[Any, str | None]:
+    """(agent_ref, error). The fields and the agent reference are both checked here."""
     val_err = _validate_stamp_fields(arguments)
     if val_err:
-        return _err_res(val_err)
-    agent_ref, ref_err = _agent_ref_for(arguments, meta)
-    if ref_err:
-        return _err_res(ref_err)
+        return None, val_err
+    return _agent_ref_for(arguments, meta)
+
+
+def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
+    global SESSION_CHAIN
+    agent_ref, input_err = _checked_stamp_input(arguments, meta)
+    if input_err:
+        return _err_res(input_err)
 
     save_path = arguments.get("save_path") or DEFAULT_RECEIPTS_PATH
     loaded_chain, load_err = _load_existing_chain_fail_closed(save_path)
@@ -312,7 +355,8 @@ def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) 
         SESSION_CHAIN = loaded_chain
 
     pin_file = arguments.get("pin_file")
-    gate_err = _pin_gate(pin_file)
+    witness_url = arguments.get("witness_url")
+    gate_err = _stamp_gates(pin_file, witness_url)
     if gate_err:
         return _err_res(gate_err)
 
@@ -320,6 +364,10 @@ def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) 
         receipt = _stamp_and_persist(arguments, agent_ref, save_path, pin_file)
     except Exception as e:
         return _err_res(f"Failed to stamp receipt: {e}")
+
+    unwitnessed = _witness_record(witness_url)
+    if unwitnessed:
+        return _err_res(unwitnessed)
 
     return {
         "content": [{
@@ -355,6 +403,32 @@ def _load_verify_receipts(file_path: str | None, receipts_json: str | None) -> t
     return SESSION_CHAIN.receipts, None
 
 
+def _witness_verdict(receipts: list[Any], pins: list[Any], key_file: str | None) -> tuple[bool, str, bool]:
+    """(matched, reason, macs_checked)."""
+    if not key_file:
+        pin_ok, why = check_pins(receipts, pins)
+        return pin_ok, why, False
+    try:
+        key = load_key(key_file)
+    except (OSError, ValueError) as e:
+        return False, f"the witness key is unusable: {e}", False
+    pin_ok, why = check_witnessed(receipts, pins, key)
+    return pin_ok, why, True
+
+
+def _witness_check(receipts: list[Any], url: str | None, key_file: str | None) -> dict[str, Any] | None:
+    if not url:
+        return None
+    pins, err = fetch_pins(url)
+    if err or pins is None:
+        return {"matched": False, "reason": err, "pins": 0, "macs_checked": False}
+    if not pins:
+        return {"matched": False, "reason": "the witness holds no pins, so nothing was checked", "pins": 0, "macs_checked": False}
+    matched, why, macs = _witness_verdict(receipts, pins, key_file)
+    return {"matched": matched, "reason": why or "every witnessed pin is still in the chain",
+            "pins": len(pins), "macs_checked": macs}
+
+
 def _pin_check(receipts: list[Any], pin_file: str | None) -> dict[str, Any] | None:
     if not pin_file:
         return None
@@ -378,6 +452,7 @@ def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None)
     head = receipts[-1].get("seal", GENESIS) if receipts else GENESIS
     msg = f"{len(receipts)} receipts, every seal holds." if ok else f"BROKEN at receipt {bad}."
     pin_check = _pin_check(receipts, arguments.get("pin_file"))
+    witness_check = _witness_check(receipts, arguments.get("witness_url"), arguments.get("witness_key_file"))
 
     return {
         "content": [{
@@ -389,7 +464,8 @@ def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None)
                 "broken_at_receipt": bad if not ok else None,
                 "message": msg,
                 "pin_check": pin_check,
-                "note": "Proves no entry was edited. Proving no tail deletion or backdating requires comparing the head seal against an external anchor. With a pin_file it also shows the chain still contains every pin it was given; a pin kept on the same disk as the chain is only as safe as that disk, and a pin never says who changed what. It does not raise the assurance level."
+                "witness_check": witness_check,
+                "note": "Proves no entry was edited. Proving no tail deletion or backdating requires comparing the head seal against an external anchor. With a pin_file it also shows the chain still contains every pin it was given; a pin kept on the same disk as the chain is only as safe as that disk, and a pin never says who changed what. It does not raise the assurance level. A witness_url compares the chain against a separate witness; its MACs are checked only with witness_key_file, a key the agent must never hold, and a MAC is symmetric so it proves nothing to anyone without that key."
             }, indent=2)
         }]
     }
