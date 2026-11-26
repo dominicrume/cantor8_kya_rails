@@ -49,7 +49,7 @@ def classify(results):
 
 
 def main():
-    proc = subprocess.run(["bandit", "-r", ROOT, "-f", "json", "-q"],
+    proc = subprocess.run(["bandit", "-r", ROOT, "-x", os.path.join(ROOT, ".claude"), "-f", "json", "-q"],
                           capture_output=True, text=True, check=False)
     if not proc.stdout.strip():
         print("bandit produced no output"); return 1

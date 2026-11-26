@@ -30,6 +30,7 @@ from . import (
     seal,
     verify,
 )
+from .witness import check_witnessed, fetch_pins, load_key, post_pin
 
 PROTOCOL_VERSION = "2024-11-05"           # what the legacy `initialize` handshake answers
 MODERN_VERSION = "2026-07-28"             # stateless: the caller rides in every request's _meta
@@ -320,6 +321,43 @@ def _pin_gate(pin_file: str | None, chain: Chain) -> str | None:
     return f"Refusing to stamp: this chain does not match the pin log ({why}). Nothing was written."
 
 
+def _witness_url() -> str | None:
+    """The witness address is OPERATOR configuration (SPEC 6g), never a tool argument.
+
+    An agent that could name the URL could make this server contact any host and
+    choose the request path. Set KYA_WITNESS_URL in the server's environment.
+    """
+    return os.environ.get("KYA_WITNESS_URL") or None
+
+
+def _witness_key_file() -> str | None:
+    """The key file the VERIFIER holds, from KYA_WITNESS_KEY_FILE. Never a tool argument."""
+    return os.environ.get("KYA_WITNESS_KEY_FILE") or None
+
+
+def _witness_gate(chain: Chain) -> str | None:
+    """Error text if the witness cannot be reached or has seen a head this chain lacks."""
+    url = _witness_url()
+    if not url:
+        return None
+    pins, err = fetch_pins(url)
+    if err or pins is None:
+        return f"Refusing to stamp: {err}. Nothing was written."
+    pins_ok, why = check_pins(chain.receipts, pins)
+    if pins_ok:
+        return None
+    return f"Refusing to stamp: this chain does not match what the witness saw ({why}). Nothing was written."
+
+
+def _witness_record(chain: Chain) -> str | None:
+    """Error text if the witness did not record the new head, else None."""
+    url = _witness_url()
+    if not url:
+        return None
+    err = post_pin(url, head_pin(chain.receipts))
+    return f"Stamped and saved, but NOT witnessed: {err}" if err else None
+
+
 def _stamp_and_persist(arguments: dict[str, Any], agent_ref: Any, save_path: str, chain: Chain) -> Any:
     """Stamp onto `chain` (a private copy), write the file, and only THEN commit to STORE.
 
@@ -395,19 +433,31 @@ def _append_pin_after_write(pin_file: str | None, chain: Chain, save_path: str) 
     return None
 
 
+def _stamp_gates(pin_file: str | None, chain: Chain) -> str | None:
+    return _pin_gate(pin_file, chain) or _witness_gate(chain)
+
+
+def _checked_base(arguments: dict[str, Any], save_path: str) -> tuple[Chain | None, str | None]:
+    """(chain, None) when it may be extended, else (None, why): the load, the pins and the witness."""
+    chain, load_err = _base_chain(save_path)
+    if load_err or chain is None:
+        return None, load_err or "no chain"
+    gate_err = _stamp_gates(arguments.get("pin_file"), chain)
+    return (None, gate_err) if gate_err else (chain, None)
+
+
 def _stamp_under_lock(arguments: dict[str, Any], agent_ref: Any, save_path: str) -> dict[str, Any]:
     """Read, verify, pin-check, append and write: all inside the lock."""
-    chain, load_err = _base_chain(save_path)
-    pin_file = arguments.get("pin_file")
-    gate_err = load_err or (_pin_gate(pin_file, chain) if chain is not None else None)
-    if gate_err or chain is None:
+    chain, gate_err = _checked_base(arguments, save_path)
+    if chain is None:
         return _err_res(gate_err or "no chain")
+    pin_file = arguments.get("pin_file")
     try:
         receipt = _stamp_and_persist(arguments, agent_ref, save_path, chain)
     except Exception as e:
         return _err_res(f"Failed to stamp receipt: {e}")
     _remember(save_path, pin_file)
-    pin_err = _append_pin_after_write(pin_file, chain, save_path)
+    pin_err = _append_pin_after_write(pin_file, chain, save_path) or _witness_record(chain)
     return _err_res(pin_err) if pin_err else _stamp_reply(receipt, chain, save_path)
 
 
@@ -433,6 +483,32 @@ def _verify_source(file_path: str | None, receipts_json: str | None) -> Loaded:
     return load_verified(DEFAULT_RECEIPTS_PATH)
 
 
+def _witness_verdict(receipts: list[Any], pins: list[Any], key_file: str | None) -> tuple[bool, str, bool]:
+    """(matched, reason, macs_checked)."""
+    if not key_file:
+        pin_ok, why = check_pins(receipts, pins)
+        return pin_ok, why, False
+    try:
+        key = load_key(key_file)
+    except (OSError, ValueError) as e:
+        return False, f"the witness key is unusable: {e}", False
+    pin_ok, why = check_witnessed(receipts, pins, key)
+    return pin_ok, why, True
+
+
+def _witness_check(receipts: list[Any], url: str | None, key_file: str | None) -> dict[str, Any] | None:
+    if not url:
+        return None
+    pins, err = fetch_pins(url)
+    if err or pins is None:
+        return {"matched": False, "reason": err, "pins": 0, "macs_checked": False}
+    if not pins:
+        return {"matched": False, "reason": "the witness holds no pins, so nothing was checked", "pins": 0, "macs_checked": False}
+    matched, why, macs = _witness_verdict(receipts, pins, key_file)
+    return {"matched": matched, "reason": why or "every witnessed pin is still in the chain",
+            "pins": len(pins), "macs_checked": macs}
+
+
 def _pin_check(receipts: list[Any], pin_file: str | None) -> dict[str, Any] | None:
     if not pin_file:
         return None
@@ -454,6 +530,7 @@ def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None)
     msg = f"{len(receipts)} receipts, every seal holds." if ok else f"BROKEN at receipt {bad}."
     _remember(arguments.get("pin_file"))
     pin_check = _pin_check(receipts, arguments.get("pin_file"))
+    witness_check = _witness_check(receipts, _witness_url(), _witness_key_file())
 
     return {
         "content": [{
@@ -465,7 +542,8 @@ def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None)
                 "broken_at_receipt": bad if not ok else None,
                 "message": msg,
                 "pin_check": pin_check,
-                "note": "Proves no entry was edited. Proving no tail deletion or backdating requires comparing the head seal against an external anchor. With a pin_file it also shows the chain still contains every pin it was given; a pin kept on the same disk as the chain is only as safe as that disk, and a pin never says who changed what. It does not raise the assurance level."
+                "witness_check": witness_check,
+                "note": "Proves no entry was edited. Proving no tail deletion or backdating requires comparing the head seal against an external anchor. With a pin_file it also shows the chain still contains every pin it was given; a pin kept on the same disk as the chain is only as safe as that disk, and a pin never says who changed what. It does not raise the assurance level. If the operator set KYA_WITNESS_URL it also compares the chain against a separate witness; its MACs are checked only if the operator set KYA_WITNESS_KEY_FILE, a key the agent must never hold, and a MAC is symmetric so it proves nothing to anyone without that key."
             }, indent=2)
         }]
     }

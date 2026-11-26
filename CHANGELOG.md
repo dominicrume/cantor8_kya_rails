@@ -15,6 +15,21 @@ meant to outlive the code that wrote them, so that bar is high.
 
 ### Added
 
+- **Witness (SPEC 6g).** A pin kept on the chain's own disk is only as safe as that disk. A witness
+  is a separate process, run as another user or on another machine, that records each pin with its
+  own clock and a MAC (a keyed hash) from a key the agent never holds, and refuses a second,
+  different seal at a count it has already recorded. The witness is OPERATOR
+  configuration, never a tool argument: set `KYA_WITNESS_URL` (and, for the verifier,
+  `KYA_WITNESS_KEY_FILE`) in the server's environment. An agent that could name the URL could
+  make the server contact any host. With it set, `kya_stamp` asks the witness BEFORE writing,
+  fails closed if it cannot be reached, and reports a write the witness did not record as NOT
+  witnessed; `kya_verify` reports `witness_check`, saying whether the MACs were checked. A
+  redirect from the witness is refused, and a refusal reports only a status, never the reply body. Run one with
+  `python3 -m knowyouragenticai_receipts.witness serve`. The MAC is symmetric, so this is not a
+  transparency log such as Sigstore Rekor: only a holder of the key can check it, and nobody
+  outside has more than the witness operator's word. Python only, no conformance vector,
+  tested on localhost only. `tests/witness_smoke.py`.
+
 - **Pins (SPEC 6f).** A hash chain cannot tell a chain from a fresh valid one: delete the file,
   start again, and it verifies. `head_pin()` and `check_pins()` now give the count and final seal
   to keep elsewhere, and catch truncation, delete-and-restart and replacement with another valid
@@ -81,6 +96,28 @@ meant to outlive the code that wrote them, so that bar is high.
 - **MCP server speaks the stateless protocol (2026-07-28), alongside the old handshake.** Requests carry the caller in `_meta`, `server/discover` is implemented, a request missing a required `_meta` field is `-32602`, an unsupported version is `-32022` with the list that is supported, and nothing is remembered from one request to the next. A non-object request gets `-32600` instead of crashing the server.
 - **`kya_stamp` takes `agent_ref`,** defaulting to `mcp-client:name/version` from the request's `_meta` when omitted, labelled as a client label and not an identity.
 
+
+### Fixed (MCP server hardening, found by an adversarial suite on 26 November 2026)
+
+Found by `tests/mcp_adversarial_smoke.py` (81 tests, 66 pass, 8 fail, 7 skipped here) and
+`tests/mcp_failclosed_smoke.py`. The 8 that still fail are all path confinement and are NOT
+fixed: `save_path`, `pin_file` and `file_path` still accept `../`, absolute paths and symlinks.
+Not "secure": these are the attacks that were tried.
+
+- **No input ends or hangs the server.** Invalid UTF-8, JSON nested 10,000 deep, a 5,000 digit id,
+  an integer where a path goes (it was treated as a file descriptor and closed stdout), a FIFO or
+  `/dev/zero` as a path, and NaN or Infinity ids no longer kill it. Caps: nesting 64, request
+  line 16 MiB, string field 64 KiB, input file 64 MB, id 256 characters.
+- **Reads fail closed.** `kya_status` reports `verified:false` for a file that does not parse
+  (it said `true`). `kya_disclose` refuses a missing, empty or tampered chain, and refuses a
+  `save_path` that is the chain or a pin log (it could replace the evidence). `kya_verify` no
+  longer falls back to an empty chain. Duplicate keys in a request are refused.
+- **One chain per file, with a lock, committed after the write.** Stamping `a.json` then `b.json`
+  no longer puts `a.json`'s receipts in `b.json`. A failed save no longer leaves the receipt
+  counted. In a 20-process test, stamps were lost before; none are now.
+  A `<chain>.lock` file now sits beside each chain; temp files have unpredictable names.
+- **Behaviour you will notice:** an unknown tool is now `-32602` (was `-32601`); bad arguments
+  are `isError` results, never `-32000`; a request id over 256 characters is `-32600`.
 
 ## [1.3.1] — 2026-11-21
 
