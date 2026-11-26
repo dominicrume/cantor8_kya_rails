@@ -133,6 +133,9 @@ jobs:
       - name: the MCP server fails closed, keeps one chain per file, and loses no stamp under a lock
         run: python3 tests/mcp_failclosed_smoke.py
 
+      - name: an outside timestamp verifies, and a changed file or reply, a refusal, or a missing openssl never reads as verified
+        run: python3 tests/anchor_timestamp_smoke.py
+
       - name: the Daml tools choose daml or dpm by the package's SDK version
         # MOCKED shims, no Daml SDK needed.
         run: python3 tests/toolchain_smoke.py

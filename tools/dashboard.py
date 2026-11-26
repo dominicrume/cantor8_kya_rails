@@ -169,6 +169,8 @@ SUITES = [
      "a separate witness refuses a regenerated chain, and a forged or edited witnessed pin fails its MAC"),
     ("python3 tests/mcp_failclosed_smoke.py", "The record",
      "the MCP server reports a broken file as broken, keeps one chain per file, and loses no stamp under a lock"),
+    ("python3 tests/anchor_timestamp_smoke.py", "The record",
+     "an outside timestamp on an anchor verifies, and a changed file or reply never reads as verified"),
     ("python3 tests/toolchain_smoke.py", "Toolchain",
      "the Daml tools choose daml or dpm by the package's SDK version, on mocked shims"),
     ("python3 tests/claims_lint.py", "No overclaims",
