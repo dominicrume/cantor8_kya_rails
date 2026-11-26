@@ -19,6 +19,7 @@ So a known fake secret is planted in a copy of the built artefact, the same
 scan is run, and it must find it. A scan that cannot say yes cannot be trusted
 when it says no.
 """
+import json
 import os
 import re
 import shutil
@@ -36,7 +37,7 @@ fails = []
 
 
 def step(n, what):
-    print("\n%d. %s" % (n, what))
+    print("\n%s. %s" % (n, what))
 
 
 def check(ok, what):
@@ -189,6 +190,44 @@ if built:
         check(VERSION in r.stdout and "True" in r.stdout,
               "the NEW code is what got installed: %s"
               % (r.stdout.strip().replace("\n", " ")[:70] or r.stderr[-70:]))
+
+# ------------------------ 6b. the install routes the README tells a user to type
+# pkg/README.md gives three ways to register the MCP server. Until this step, none of
+# them was run from the installed wheel: step 6 ran `selftest`, not the server. A user
+# who follows the README must get a server that answers AND names the package and
+# version that was installed, so a log line can never be mistaken for another project's.
+def handshake(argv, cwd):
+    """The serverInfo dict from `initialize`, or None if the command did not answer."""
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    msg = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+    try:
+        r = subprocess.run(argv, input=msg + "\n", cwd=cwd, env=env,  # nosec B603
+                           capture_output=True, text=True, timeout=30)
+        return json.loads(r.stdout.splitlines()[0])["result"]["serverInfo"]
+    except (OSError, ValueError, IndexError, KeyError, subprocess.SubprocessError):
+        return None
+
+
+def names_us(info, version):
+    return bool(info) and info.get("name") == NAME and info.get("version") == version
+
+
+step("6b", "the README's install routes, run from the installed wheel")
+if built and os.path.exists(py):
+    quiet = tempfile.mkdtemp(prefix="kya-route-")
+    console = os.path.join(venv, "bin", "kya-receipts-mcp")
+    routes = (("python -m knowyouragenticai_receipts mcp",
+               [py, "-m", "knowyouragenticai_receipts", "mcp"]),
+              ("kya-receipts-mcp", [console]))
+    for label, argv in routes:
+        info = handshake(argv, quiet)
+        check(names_us(info, VERSION),
+              "`%s` answers and says it is %s %s (got %s)" % (label, NAME, VERSION, info))
+    check(not names_us({"name": "kya", "version": VERSION}, VERSION),
+          "control: a server that calls itself plain 'kya' is NOT accepted")
+    check(handshake([os.path.join(quiet, "no-such-command")], quiet) is None,
+          "control: a command that does not exist is NOT reported as working")
+    shutil.rmtree(quiet, ignore_errors=True)
 
 # ---------------------------------------------------------------- 7. what CI would say
 # 1.3.1 passed steps 1 to 6 and then failed CI, because CI runs `mypy --strict` on the
