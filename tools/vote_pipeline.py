@@ -362,38 +362,48 @@ def usage():
     return 2
 
 
-def main():
-    args = sys.argv[1:]
-    if args and args[0] == "asks":
-        return asks(args[1]) if len(args) > 1 else usage()
-    if args:
-        return one(args[0])
-
-    ok, why = control()
-    print("positive control:", "PASS" if ok else "FAIL", "-", why)
-    if not ok:
-        print("\nRefusing to print numbers from a parser that failed its control.")
-        return 1
+def _print_rules(rules):
+    """The voting rules as read from the repository, or nothing if unread."""
+    if not rules:
+        return
+    print("== the rules, read from .github/.gitvote.yml ==")
+    print(f"  automation enabled   {rules.get('automation_enabled')}"
+          "   (false means every vote is opened by hand)")
+    print(f"  duration             {rules.get('duration')}")
+    print(f"  pass threshold       {rules.get('pass_threshold')}% of ALLOWED VOTERS, not of votes cast")
+    print(f"  allowed voter teams  {', '.join(rules.get('allowed_voter_teams') or ['?'])}")
     print()
 
-    rules = config()
-    if rules:
-        print("== the rules, read from .github/.gitvote.yml ==")
-        print(f"  automation enabled   {rules.get('automation_enabled')}"
-              "   (false means every vote is opened by hand)")
-        print(f"  duration             {rules.get('duration')}")
-        print(f"  pass threshold       {rules.get('pass_threshold')}% of ALLOWED VOTERS, not of votes cast")
-        print(f"  allowed voter teams  {', '.join(rules.get('allowed_voter_teams') or ['?'])}")
-        print()
 
-    rows = proposals()
-    withvote = [p for p in rows
-                if any(l["name"].startswith("gitvote") for l in p["labels"])]
+def _has_vote(p):
+    """True when a proposal carries any gitvote label."""
+    return any(l["name"].startswith("gitvote") for l in p["labels"])
+
+
+def _print_reach(rows, withvote):
+    """How many proposals exist and how many ever reached a vote."""
     print("== how far proposals get ==")
     print(f"  proposals in repo     {len(rows)}  (every one, highest #{max(r['number'] for r in rows)})")
     print(f"  reached any vote      {len(withvote)}  "
           f"({100.0 * len(withvote) / max(len(rows), 1):.1f}%)")
 
+
+def _concluded(p, tally):
+    """'passed', 'failed' or None, from the CURRENT label and a read tally."""
+    names = [l["name"] for l in p["labels"]]
+    if "gitvote/passed" in names and tally:
+        return "passed"
+    if "gitvote/failed" in names and tally:
+        return "failed"
+    return None
+
+
+def survey(withvote):
+    """Read every proposal that reached a vote.
+
+    Returns (openers, stamps, passed, failed): who opened votes, every binding
+    vote timestamp, and (number, tally) for each concluded proposal.
+    """
     openers, stamps = Counter(), []
     passed, failed = [], []
     for p in withvote:
@@ -405,16 +415,15 @@ def main():
             openers[opener] += 1
         if binding:
             stamps += [w for _, _, w in binding]
-        names = [l["name"] for l in p["labels"]]
-        if "gitvote/passed" in names and tally:
+        kind = _concluded(p, tally)
+        if kind == "passed":
             passed.append((p["number"], tally))
-        elif "gitvote/failed" in names and tally:
+        elif kind == "failed":
             failed.append((p["number"], tally))
+    return openers, stamps, passed, failed
 
-    print(f"  concluded             {len(passed) + len(failed)}"
-          f"  (passed {len(passed)}, failed {len(failed)})")
-    print()
 
+def _print_openers(openers):
     print("== who opens votes ==")
     for who, n in openers.most_common():
         print(f"  {n:>3}  @{who}")
@@ -424,24 +433,37 @@ def main():
               "That is the gate.")
     print()
 
+
+def _print_group(label, group):
+    """Yes-vote spread for one outcome, and any vote nobody cast."""
+    if not group:
+        return
+    ys = [t[0] for _, t in group]
+    print(f"  {label:<7} n={len(group)}  yes min {min(ys)} max {max(ys)}"
+          f" mean {sum(ys) / len(ys):.1f}")
+    _print_nobody(group)
+
+
+def _print_nobody(group):
+    """Name the votes where not one eligible voter said anything."""
+    nobody = [n for n, t in group if t[0] == 0 and t[1] == 0 and t[2] == 0]
+    if nobody:
+        print(f"      {len(nobody)} of these had NOBODY vote at all: "
+              + ", ".join(f"#{n}" for n in nobody))
+
+
+def _print_outcomes(passed, failed):
     print("== outcomes, as yes votes ==")
-    for label, group in (("passed", passed), ("failed", failed)):
-        if not group:
-            continue
-        ys = [t[0] for _, t in group]
-        print(f"  {label:<7} n={len(group)}  yes min {min(ys)} max {max(ys)}"
-              f" mean {sum(ys) / len(ys):.1f}")
-        nobody = [n for n, t in group if t[0] == 0 and t[1] == 0 and t[2] == 0]
-        if nobody:
-            print(f"      {len(nobody)} of these had NOBODY vote at all: "
-                  + ", ".join(f"#{n}" for n in nobody))
+    _print_group("passed", passed)
+    _print_group("failed", failed)
     anyno = [n for n, t in passed + failed if t[1] > 0]
     print(f"  votes recording any 'against': {len(anyno)}"
           + (f" ({', '.join('#%s' % n for n in anyno)})" if anyno else ""))
     print()
 
-    reopened([p["number"] for p in withvote])
 
+def _print_sittings(stamps):
+    """The last eight sittings of three or more binding votes, and the gaps."""
     print("== when votes are actually cast ==")
     groups = [g for g in sittings(stamps) if len(g) >= 3]
     for g in sorted(groups, key=lambda g: g[0])[-8:]:
@@ -455,7 +477,44 @@ def main():
         print(f"  gaps in days: {gaps}")
         print("  Two or three observed sittings establish a gap, NOT a published")
         print("  schedule. Ask the Foundation for the calendar before relying on it.")
+
+
+def _control_passes():
+    """Run the positive control and say so. False means print NO numbers."""
+    ok, why = control()
+    print("positive control:", "PASS" if ok else "FAIL", "-", why)
+    if not ok:
+        print("\nRefusing to print numbers from a parser that failed its control.")
+    return ok
+
+
+def full_survey():
+    """The whole-repository report. Nothing prints until the control passes."""
+    if not _control_passes():
+        return 1
+    print()
+    _print_rules(config())
+    rows = proposals()
+    withvote = [p for p in rows if _has_vote(p)]
+    _print_reach(rows, withvote)
+    openers, stamps, passed, failed = survey(withvote)
+    print(f"  concluded             {len(passed) + len(failed)}"
+          f"  (passed {len(passed)}, failed {len(failed)})")
+    print()
+    _print_openers(openers)
+    _print_outcomes(passed, failed)
+    reopened([p["number"] for p in withvote])
+    _print_sittings(stamps)
     return 0
+
+
+def main():
+    args = sys.argv[1:]
+    if args and args[0] == "asks":
+        return asks(args[1]) if len(args) > 1 else usage()
+    if args:
+        return one(args[0])
+    return full_survey()
 
 
 if __name__ == "__main__":

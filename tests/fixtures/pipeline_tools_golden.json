@@ -1,0 +1,373 @@
+{
+ "pq RETRACTED line does not count as posted": {
+  "calls": [
+   "before_posting.py:one.md",
+   "before_posting.py:three.md"
+  ],
+  "leftover_answers": [],
+  "log": "RETRACTED 2026-11-03 one.md\n2026-11-01 two.md\n",
+  "result": 0,
+  "stderr": "",
+  "stdout": "2 of 3 drafts still to post.\nAlready posted, per docs/drafts/posted.log: two.md\n\n========================================================================\n1 of 2   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nDRY RUN: would copy 22 characters and open the page.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n\n========================================================================\n2 of 2   three.md\nWHY NOW: why three\n========================================================================\nchecked ok\nlast\nwarn line\n\nDRY RUN: would copy 22 characters and open the page.\nGO HERE:  https://lists.sync.global/g/cip-discuss/topics then press Post\n\n========================================================================\nDRY RUN finished. Every draft above passed its checks and\nnothing was copied, opened or logged. Run it without\n--dry-run to actually work through them.\n\n"
+ },
+ "pq dry run, three drafts": {
+  "calls": [
+   "before_posting.py:one.md",
+   "before_posting.py:two.md",
+   "before_posting.py:three.md"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 0,
+  "stderr": "",
+  "stdout": "3 of 3 drafts still to post.\n\n========================================================================\n1 of 3   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nDRY RUN: would copy 22 characters and open the page.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n\n========================================================================\n2 of 3   two.md\nWHY NOW: why two\n========================================================================\nchecked ok\nlast\nwarn line\n\nDRY RUN: would copy 22 characters and open the page.\nGO HERE:  https://github.com/acme/widget/pull/7 then press Post\n\n========================================================================\n3 of 3   three.md\nWHY NOW: why three\n========================================================================\nchecked ok\nlast\nwarn line\n\nDRY RUN: would copy 22 characters and open the page.\nGO HERE:  https://lists.sync.global/g/cip-discuss/topics then press Post\n\n========================================================================\nDRY RUN finished. Every draft above passed its checks and\nnothing was copied, opened or logged. Run it without\n--dry-run to actually work through them.\n\n========================================================================\nWRITTEN BUT NOT OWED. The last word in each of these is already\nyours, measured 4 November 2026. Sending one is a choice, not a\ndebt, and an unprompted reply spends credit rather than earning it.\n\n  opt.md\n    not owed\n\n"
+ },
+ "pq everything already logged": {
+  "calls": [],
+  "leftover_answers": [],
+  "log": "2026-11-01 one.md  (verified)\n2026-11-02 two.md\nRETRACTED 2026-11-03 three.md\n2026-11-03 three.md\n",
+  "result": 0,
+  "stderr": "",
+  "stdout": "0 of 3 drafts still to post.\nAlready posted, per docs/drafts/posted.log: one.md, three.md, two.md\nNothing left. Everything in the queue is logged as posted.\n\n========================================================================\nWRITTEN BUT NOT OWED. The last word in each of these is already\nyours, measured 4 November 2026. Sending one is a choice, not a\ndebt, and an unprompted reply spends credit rather than earning it.\n\n  opt.md\n    not owed\n\n"
+ },
+ "pq forum reply posted, confirmed": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open",
+   "fetch"
+  ],
+  "leftover_answers": [],
+  "log": "2026-11-24 one.md  (verified)\n",
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nCONFIRMED: last post is #3 by orumedominic at 2026-11-05T10:03\nLogged. one.md\n\n========================================================================\n1 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq forum reply, not there": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open",
+   "fetch"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nNOT THERE: last post is #2 by someone at 2026-11-05T10:02, not you\nNothing written to the log, so this draft comes back.\nIf you did post it, the page may not have caught up: run\nthis again in a minute.\n\n========================================================================\n0 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq forum reply, nothing changed": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open",
+   "fetch"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nNOT THERE: nothing changed. Before you were sent there it already said: last post is #3 by orumedominic at 2026-11-05T10:03. That is the same post, so this confirms yesterday, not today\nNothing written to the log, so this draft comes back.\nIf you did post it, the page may not have caught up: run\nthis again in a minute.\n\n========================================================================\n0 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq forum unreachable, typed no": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open",
+   "fetch"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nCANNOT CHECK: could not reach the forum: no fetch recorded\n[prompt] Logging it on your word alone. Type 'yes' if it is really posted: no\nNot logged, so it comes back.\n\n========================================================================\n0 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq forum unreachable, typed yes": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open",
+   "fetch"
+  ],
+  "leftover_answers": [],
+  "log": "2026-11-24 one.md  (unverified, on your word)\n",
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nCANNOT CHECK: could not reach the forum: no fetch recorded\n[prompt] Logging it on your word alone. Type 'yes' if it is really posted: yes\nLogged. one.md\n\n========================================================================\n1 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq gate fails on the second draft": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open",
+   "fetch",
+   "before_posting.py:two.md"
+  ],
+  "leftover_answers": [
+   ""
+  ],
+  "log": "2026-11-24 one.md  (verified)\n",
+  "result": 1,
+  "stderr": "",
+  "stdout": "3 of 3 drafts still to post.\n\n========================================================================\n1 of 3   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nCONFIRMED: last post is #3 by orumedominic at 2026-11-05T10:03\nLogged. one.md\n\n========================================================================\n2 of 3   two.md\nWHY NOW: why two\n========================================================================\nchecked ok\nlast\nwarn line\n\nThis draft did NOT pass. The queue stops here rather than\nskipping it, because a skipped draft is how an unchecked\none gets posted later. Fix it and run this again.\n"
+ },
+ "pq gate fails, queue stops": {
+  "calls": [
+   "before_posting.py:one.md"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 1,
+  "stderr": "",
+  "stdout": "3 of 3 drafts still to post.\n\n========================================================================\n1 of 3   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThis draft did NOT pass. The queue stops here rather than\nskipping it, because a skipped draft is how an unchecked\none gets posted later. Fix it and run this again.\n"
+ },
+ "pq github gh fails": {
+  "calls": [
+   "before_posting.py:two.md",
+   "pbcopy",
+   "gh",
+   "open",
+   "gh"
+  ],
+  "leftover_answers": [],
+  "log": "2026-11-24 two.md  (unverified, on your word)\n",
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   two.md\nWHY NOW: w\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://github.com/acme/widget/pull/7 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nCANNOT CHECK: gh could not read the pull request\n[prompt] Logging it on your word alone. Type 'yes' if it is really posted: yes\nLogged. two.md\n\n========================================================================\n1 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq github pr confirmed": {
+  "calls": [
+   "before_posting.py:two.md",
+   "pbcopy",
+   "gh",
+   "open",
+   "gh"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   two.md\nWHY NOW: w\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://github.com/acme/widget/pull/7 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nNOT THERE: nothing changed. Before you were sent there it already said: last comment is by dominicrume. That is the same post, so this confirms yesterday, not today\nNothing written to the log, so this draft comes back.\nIf you did post it, the page may not have caught up: run\nthis again in a minute.\n\n========================================================================\n0 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq github pr not ours": {
+  "calls": [
+   "before_posting.py:two.md",
+   "pbcopy",
+   "gh",
+   "open",
+   "gh"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   two.md\nWHY NOW: w\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://github.com/acme/widget/pull/7 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nNOT THERE: last comment is by someone, not you\nNothing written to the log, so this draft comes back.\nIf you did post it, the page may not have caught up: run\nthis again in a minute.\n\n========================================================================\n0 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq groups.io cannot check": {
+  "calls": [
+   "before_posting.py:three.md",
+   "pbcopy",
+   "open"
+  ],
+  "leftover_answers": [],
+  "log": "2026-11-24 three.md  (unverified, on your word)\n",
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   three.md\nWHY NOW: w\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://lists.sync.global/g/cip-discuss/topics then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nCANNOT CHECK: a Groups.io list, which returns 402 to automated fetches. Check the RSS feed by eye\n[prompt] Logging it on your word alone. Type 'yes' if it is really posted: yes\nLogged. three.md\n\n========================================================================\n1 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq new category topic absent": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open",
+   "fetch"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://forum.canton.network/c/sig/security/20 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nNOT THERE: no topic by orumedominic in the last 6 hours. The newest in that category is 5 'Old topic' by someone at 2023-01-01T00:00\nNothing written to the log, so this draft comes back.\nIf you did post it, the page may not have caught up: run\nthis again in a minute.\n\n========================================================================\n0 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq new category topic posted": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open",
+   "fetch"
+  ],
+  "leftover_answers": [],
+  "log": "2026-11-24 one.md  (verified)\n",
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://forum.canton.network/c/sig/security/20 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nCONFIRMED: topic 6 'Brand new topic' by orumedominic at 2023-11-14T21:00\nLogged. one.md\n\n========================================================================\n1 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq no Post-To line": {
+  "calls": [
+   "before_posting.py:one.md"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 1,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\nNo Post-To line in one.md, so I do not know where it goes.\n"
+ },
+ "pq no sources": {
+  "calls": [],
+  "leftover_answers": [],
+  "log": null,
+  "result": 1,
+  "stderr": "",
+  "stdout": "No sources in <TMP>/drafts/sources, so no quote could be checked. Stopping.\n"
+ },
+ "pq pbcopy fails, full queue, optional printed": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open",
+   "fetch",
+   "before_posting.py:two.md",
+   "pbcopy",
+   "gh",
+   "open",
+   "before_posting.py:three.md",
+   "pbcopy",
+   "open"
+  ],
+  "leftover_answers": [],
+  "log": "2026-11-24 one.md  (verified)\n2026-11-24 three.md  (unverified, on your word)\n",
+  "result": 0,
+  "stderr": "",
+  "stdout": "3 of 3 drafts still to post.\n\n========================================================================\n1 of 3   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\npbcopy failed. Open <TMP>/drafts/one.md and copy it by hand.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nCONFIRMED: last post is #3 by orumedominic at 2026-11-05T10:03\nLogged. one.md\n\n========================================================================\n2 of 3   two.md\nWHY NOW: why two\n========================================================================\nchecked ok\nlast\nwarn line\n\npbcopy failed. Open <TMP>/drafts/two.md and copy it by hand.\nGO HERE:  https://github.com/acme/widget/pull/7 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: s\nSkipped, and nothing written to the log, so it comes back.\n\n========================================================================\n3 of 3   three.md\nWHY NOW: why three\n========================================================================\nchecked ok\nlast\nwarn line\n\npbcopy failed. Open <TMP>/drafts/three.md and copy it by hand.\nGO HERE:  https://lists.sync.global/g/cip-discuss/topics then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nCANNOT CHECK: a Groups.io list, which returns 402 to automated fetches. Check the RSS feed by eye\n[prompt] Logging it on your word alone. Type 'yes' if it is really posted: yes\nLogged. three.md\n\n========================================================================\nWRITTEN BUT NOT OWED. The last word in each of these is already\nyours, measured 4 November 2026. Sending one is a choice, not a\ndebt, and an unprompted reply spends credit rather than earning it.\n\n  opt.md\n    not owed\n\n========================================================================\n2 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "pq quit first": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 0,
+  "stderr": "",
+  "stdout": "3 of 3 drafts still to post.\n\n========================================================================\n1 of 3   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: q\nStopped. 0 posted this run.\n"
+ },
+ "pq skip then quit": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "fetch",
+   "open",
+   "before_posting.py:two.md",
+   "pbcopy",
+   "gh",
+   "open"
+  ],
+  "leftover_answers": [],
+  "log": null,
+  "result": 0,
+  "stderr": "",
+  "stdout": "3 of 3 drafts still to post.\n\n========================================================================\n1 of 3   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://forum.canton.network/t/some-topic/9001 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: s\nSkipped, and nothing written to the log, so it comes back.\n\n========================================================================\n2 of 3   two.md\nWHY NOW: why two\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://github.com/acme/widget/pull/7 then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: Q\nStopped. 0 posted this run.\n"
+ },
+ "pq unknown destination": {
+  "calls": [
+   "before_posting.py:one.md",
+   "pbcopy",
+   "open"
+  ],
+  "leftover_answers": [],
+  "log": "2026-11-24 one.md  (unverified, on your word)\n",
+  "result": 0,
+  "stderr": "",
+  "stdout": "1 of 1 drafts still to post.\n\n========================================================================\n1 of 1   one.md\nWHY NOW: why one\n========================================================================\nchecked ok\nlast\nwarn line\n\nThe body is on your clipboard. 22 characters.\nGO HERE:  https://example.invalid/x then press Post\n(opened in your browser)\n\n[prompt] Enter once it is posted, s to skip, q to stop: \nchecking that it is actually there...\nCANNOT CHECK: no check is written for this destination\n[prompt] Logging it on your word alone. Type 'yes' if it is really posted: yes\nLogged. one.md\n\n========================================================================\n1 posted this run, and written into docs/drafts/posted.log.\n\nCommit the log so the repository records what left and when:\n  git add docs/drafts/posted.log && git commit -m 'Posted the\n  replies that were owed' && git push\n"
+ },
+ "vote asks: missing argument": {
+  "result": 2,
+  "stderr": "",
+  "stdout": "usage: vote_pipeline.py [<proposal>] | asks <proposal>\n"
+ },
+ "vote asks: never commented": {
+  "result": 0,
+  "stderr": "",
+  "stdout": "#861: @dominicrume has never commented. THAT is an unasked question.\n"
+ },
+ "vote asks: ours and answered/unanswered": {
+  "result": 0,
+  "stderr": "",
+  "stdout": "#860: 3 comments, 2 of them ours.\n\n  2026-10-09T09:00  Who champions this?\n      answered 2026-10-10T09:00 by @someone\n  2026-10-20T09:00  Ping, any news?\n      NO REPLY since. Asking again is a nudge unless something changed.\n"
+ },
+ "vote asks: unreadable": {
+  "result": 1,
+  "stderr": "",
+  "stdout": "Could not read #850.\n"
+ },
+ "vote capped list is refused": {
+  "result": "SystemExit:REFUSING TO REPORT: gh returned 2000 rows for a limit of 2000, so the\nlist is capped and every rate computed from it would be a rate over\nthe window rather than the population. Raise the limit and re-run.\nThis guard exists because the previous default of 400 silently\ndropped 216 proposals and those figures were published.",
+  "stderr": "",
+  "stdout": "positive control: PASS - #942 reads as 4 in favour, 1 absent, 4 binding rows\n\n== the rules, read from .github/.gitvote.yml ==\n  automation enabled   false   (false means every vote is opened by hand)\n  duration             21\n  pass threshold       51% of ALLOWED VOTERS, not of votes cast\n  allowed voter teams  tsc\n\n"
+ },
+ "vote control fails (942 unreadable)": {
+  "result": 1,
+  "stderr": "",
+  "stdout": "positive control: FAIL - could not read #942 at all\n\nRefusing to print numbers from a parser that failed its control.\n"
+ },
+ "vote control fails (942 wrong tally)": {
+  "result": 1,
+  "stderr": "",
+  "stdout": "positive control: FAIL - #942 tally parsed as (3, 0, 0, 2), expected (4, 0, 0, 1)\n\nRefusing to print numbers from a parser that failed its control.\n"
+ },
+ "vote full survey": {
+  "result": 0,
+  "stderr": "",
+  "stdout": "positive control: PASS - #942 reads as 4 in favour, 1 absent, 4 binding rows\n\n== the rules, read from .github/.gitvote.yml ==\n  automation enabled   false   (false means every vote is opened by hand)\n  duration             21\n  pass threshold       51% of ALLOWED VOTERS, not of votes cast\n  allowed voter teams  tsc\n\n== how far proposals get ==\n  proposals in repo     9  (every one, highest #942)\n  reached any vote      7  (77.8%)\n  concluded             3  (passed 2, failed 1)\n\n== who opens votes ==\n    5  @chair\n    1  @other\n\n== outcomes, as yes votes ==\n  passed  n=2  yes min 3 max 4 mean 3.5\n  failed  n=1  yes min 1 max 1 mean 1.0\n  votes recording any 'against': 1 (#880)\n\n== every vote that has FAILED, by history and not by label ==\n  prop   yes  no abs absent   failed on    re-opened\n  #866     0    0    0    5   2026-11-06   2026-11-09\n  #880     1    2    0    2   2026-10-28   no\n  #900     1    0    0    4   2026-10-28   2026-11-02\n  3 votes have failed. 2 recorded NO vote against at all: they failed\n  because the eligible voters did not vote, not because anybody objected.\n  2 of the 3 were re-opened afterwards, which resets the label and\n  removes the failure from any count taken by label, including this tool's own\n  until 10 November 2026.\n\n== when votes are actually cast ==\n  2026-10-14 Wed 15:00   3 binding votes over 6 min\n  2026-10-28 Wed 14:00   4 binding votes over 10 min\n  2026-11-04 Wed 15:00   4 binding votes over 20 min\n  sitting days: 2026-10-14, 2026-10-28, 2026-11-04\n  gaps in days: [14, 7]\n  Two or three observed sittings establish a gap, NOT a published\n  schedule. Ask the Foundation for the calendar before relying on it.\n"
+ },
+ "vote full survey, config unreadable": {
+  "result": 0,
+  "stderr": "",
+  "stdout": "positive control: PASS - #942 reads as 4 in favour, 1 absent, 4 binding rows\n\n== how far proposals get ==\n  proposals in repo     9  (every one, highest #942)\n  reached any vote      7  (77.8%)\n  concluded             3  (passed 2, failed 1)\n\n== who opens votes ==\n    5  @chair\n    1  @other\n\n== outcomes, as yes votes ==\n  passed  n=2  yes min 3 max 4 mean 3.5\n  failed  n=1  yes min 1 max 1 mean 1.0\n  votes recording any 'against': 1 (#880)\n\n== every vote that has FAILED, by history and not by label ==\n  prop   yes  no abs absent   failed on    re-opened\n  #866     0    0    0    5   2026-11-06   2026-11-09\n  #880     1    2    0    2   2026-10-28   no\n  #900     1    0    0    4   2026-10-28   2026-11-02\n  3 votes have failed. 2 recorded NO vote against at all: they failed\n  because the eligible voters did not vote, not because anybody objected.\n  2 of the 3 were re-opened afterwards, which resets the label and\n  removes the failure from any count taken by label, including this tool's own\n  until 10 November 2026.\n\n== when votes are actually cast ==\n  2026-10-14 Wed 15:00   3 binding votes over 6 min\n  2026-10-28 Wed 14:00   4 binding votes over 10 min\n  2026-11-04 Wed 15:00   4 binding votes over 20 min\n  sitting days: 2026-10-14, 2026-10-28, 2026-11-04\n  gaps in days: [14, 7]\n  Two or three observed sittings establish a gap, NOT a published\n  schedule. Ask the Foundation for the calendar before relying on it.\n"
+ },
+ "vote full survey, one proposal unreadable": {
+  "result": 0,
+  "stderr": "",
+  "stdout": "positive control: PASS - #942 reads as 4 in favour, 1 absent, 4 binding rows\n\n== the rules, read from .github/.gitvote.yml ==\n  automation enabled   false   (false means every vote is opened by hand)\n  duration             21\n  pass threshold       51% of ALLOWED VOTERS, not of votes cast\n  allowed voter teams  tsc\n\n== how far proposals get ==\n  proposals in repo     9  (every one, highest #942)\n  reached any vote      7  (77.8%)\n  concluded             2  (passed 2, failed 0)\n\n== who opens votes ==\n    4  @chair\n    1  @other\n\n== outcomes, as yes votes ==\n  passed  n=2  yes min 3 max 4 mean 3.5\n  votes recording any 'against': 0\n\n== every vote that has FAILED, by history and not by label ==\n  prop   yes  no abs absent   failed on    re-opened\n  #866     0    0    0    5   2026-11-06   2026-11-09\n  #900     1    0    0    4   2026-10-28   2026-11-02\n  2 votes have failed. 2 recorded NO vote against at all: they failed\n  because the eligible voters did not vote, not because anybody objected.\n  2 of the 2 were re-opened afterwards, which resets the label and\n  removes the failure from any count taken by label, including this tool's own\n  until 10 November 2026.\n\n== when votes are actually cast ==\n  2026-10-14 Wed 15:00   3 binding votes over 6 min\n  2026-11-04 Wed 15:00   4 binding votes over 20 min\n  sitting days: 2026-10-14, 2026-11-04\n  gaps in days: [21]\n  Two or three observed sittings establish a gap, NOT a published\n  schedule. Ask the Foundation for the calendar before relying on it.\n"
+ },
+ "vote list unreadable": {
+  "result": "raised ValueError: max() iterable argument is empty",
+  "stderr": "",
+  "stdout": "positive control: PASS - #942 reads as 4 in favour, 1 absent, 4 binding rows\n\n== the rules, read from .github/.gitvote.yml ==\n  automation enabled   false   (false means every vote is opened by hand)\n  duration             21\n  pass threshold       51% of ALLOWED VOTERS, not of votes cast\n  allowed voter teams  tsc\n\n== how far proposals get ==\n"
+ },
+ "vote one: config unreadable": {
+  "result": 0,
+  "stderr": "",
+  "stdout": "#942  Closed four in favour\n  opened        2026-10-07   state MERGED\n  gitvote       gitvote/passed\n  tally         in favour 4, against 0, abstain 0, did not vote 1\n  arithmetic    5 eligible, ?% threshold, so 3 binding yes needed\n  binding votes\n      2026-11-04 15:00:05  In favor  @a1\n      2026-11-04 15:05:00  In favor  @a2\n      2026-11-04 15:10:00  In favor  @a3\n      2026-11-04 15:20:00  In favor  @a4\n"
+ },
+ "vote one: no vote ever opened": {
+  "result": 0,
+  "stderr": "",
+  "stdout": "#860  Never had a vote\n  opened        2026-10-06   state OPEN\n  gitvote       NO VOTE HAS EVER BEEN OPENED\n\n  No vote exists, so the 21-day clock has never started.\n  automation.enabled is false - nothing opens a vote on its own.\n  The only thing that starts one is a person running the command.\n  Run this tool with no argument to see who that has always been.\n"
+ },
+ "vote one: open vote, no tally": {
+  "result": 0,
+  "stderr": "",
+  "stdout": "#863  Open vote, nobody voted yet\n  opened        2026-10-09   state OPEN\n  gitvote       gitvote/open\n"
+ },
+ "vote one: unreadable": {
+  "result": 1,
+  "stderr": "",
+  "stdout": "Could not read #850. Is `gh` authenticated for this repo?\n"
+ },
+ "vote one: with tally and binding rows": {
+  "result": 0,
+  "stderr": "",
+  "stdout": "#942  Closed four in favour\n  opened        2026-10-07   state MERGED\n  gitvote       gitvote/passed\n  tally         in favour 4, against 0, abstain 0, did not vote 1\n  arithmetic    5 eligible, 51% threshold, so 3 binding yes needed\n  binding votes\n      2026-11-04 15:00:05  In favor  @a1\n      2026-11-04 15:05:00  In favor  @a2\n      2026-11-04 15:10:00  In favor  @a3\n      2026-11-04 15:20:00  In favor  @a4\n"
+ }
+}

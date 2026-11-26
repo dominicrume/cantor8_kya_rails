@@ -262,35 +262,35 @@ def verify(url):
     return None, "no check is written for this destination"
 
 
-def main():
-    # --dry-run checks every draft and prints the whole plan without touching
-    # the clipboard, opening a browser or writing the log. It exists because
-    # testing this tool any other way opens five browser windows on somebody
-    # else's machine.
-    dry = "--dry-run" in sys.argv
-
-    sources = sorted(
+def source_files():
+    """Every .txt in the sources folder, sorted. Empty means nothing to quote."""
+    return sorted(
         os.path.join(SOURCES, f) for f in os.listdir(SOURCES)
         if f.endswith(".txt"))
-    if not sources:
-        print("No sources in %s, so no quote could be checked. Stopping."
-              % SOURCES)
-        return 1
 
+
+def logged_names():
+    """Draft names the log says were posted. RETRACTED lines do not count.
+
+    RETRACTED marks a line this log got wrong. It stays in the file, because
+    nothing here is quietly tidied, and it does not count as posted, because
+    it was not.
+    """
     done = set()
-    if os.path.exists(LOG):
-        with open(LOG) as f:
-            for line in f:
-                # RETRACTED marks a line this log got wrong. It stays in the
-                # file, because nothing here is quietly tidied, and it does
-                # not count as posted, because it was not.
-                if line.startswith("RETRACTED"):
-                    continue
-                parts = line.split()
-                if len(parts) >= 2:
-                    done.add(parts[1])
+    if not os.path.exists(LOG):
+        return done
+    with open(LOG) as f:
+        for line in f:
+            if line.startswith("RETRACTED"):
+                continue
+            parts = line.split()
+            if len(parts) >= 2:
+                done.add(parts[1])
+    return done
 
-    todo = [(n, why) for n, why in QUEUE if n not in done]
+
+def announce_queue(todo, done):
+    """Say what is left. Returns False when there is nothing to do."""
     print("%d of %d drafts still to post." % (len(todo), len(QUEUE)))
     if done:
         print("Already posted, per docs/drafts/posted.log: %s"
@@ -299,117 +299,147 @@ def main():
         print("Nothing left. Everything in the queue is logged as posted.")
         print()
         print_optional()
-        return 0
+        return False
     print()
+    return True
 
-    posted = 0
-    for i, (name, why) in enumerate(todo, 1):
-        path = os.path.join(DRAFTS, name)
-        print("=" * 72)
-        print("%d of %d   %s" % (i, len(todo), name))
-        print("WHY NOW: %s" % why)
-        print("=" * 72)
 
-        # Captured rather than inherited, for two reasons. The child writes
-        # straight to the terminal while the parent's prints are buffered, so
-        # inheriting puts every banner in the wrong place. And the child ends
-        # with its own POST IT AT and "Add --copy" lines, which are correct on
-        # their own and wrong here, because this queue does the copying.
-        sys.stdout.flush()
-        check = run([sys.executable, os.path.join(ROOT, "tools",
-                                                  "before_posting.py"),
-                     path] + sources, cwd=ROOT, capture_output=True, text=True)
-        for line in (check.stdout + check.stderr).splitlines():
-            if line.startswith("POST IT AT:") or line.startswith("Add --copy"):
-                continue
-            print(line)
-        sys.stdout.flush()
-        if check.returncode != 0:
-            print()
-            print("This draft did NOT pass. The queue stops here rather than")
-            print("skipping it, because a skipped draft is how an unchecked")
-            print("one gets posted later. Fix it and run this again.")
-            return 1
+def passes_gate(path, sources):
+    """Run tools/before_posting.py on one draft and show what it said.
 
-        destination, body = destination_and_body(path)
-        if not destination:
-            print("No Post-To line in %s, so I do not know where it goes."
-                  % name)
-            return 1
-
-        print()
-        if dry:
-            print("DRY RUN: would copy %d characters and open the page."
-                  % len(body))
-            print("GO HERE:  %s" % destination)
-            print()
+    Captured rather than inherited, for two reasons. The child writes
+    straight to the terminal while the parent's prints are buffered, so
+    inheriting puts every banner in the wrong place. And the child ends
+    with its own POST IT AT and "Add --copy" lines, which are correct on
+    their own and wrong here, because this queue does the copying.
+    """
+    sys.stdout.flush()
+    check = run([sys.executable, os.path.join(ROOT, "tools",
+                                              "before_posting.py"),
+                 path] + sources, cwd=ROOT, capture_output=True, text=True)
+    for line in (check.stdout + check.stderr).splitlines():
+        if line.startswith("POST IT AT:") or line.startswith("Add --copy"):
             continue
+        print(line)
+    sys.stdout.flush()
+    if check.returncode != 0:
+        print()
+        print("This draft did NOT pass. The queue stops here rather than")
+        print("skipping it, because a skipped draft is how an unchecked")
+        print("one gets posted later. Fix it and run this again.")
+        return False
+    return True
 
-        cp = run(["pbcopy"], input=body, text=True)
-        if cp.returncode == 0:
-            print("The body is on your clipboard. %d characters." % len(body))
-        else:
-            print("pbcopy failed. Open %s and copy it by hand." % path)
 
-        # Read the destination BEFORE sending him there, so that "confirmed"
-        # afterwards has something to be different from.
-        before_ok, before = verify(url_of(destination) or "")
+def copy_and_open(path, destination, body):
+    """Body to the clipboard, then the page. Returns the state read BEFORE.
+
+    The destination is read BEFORE sending him there, so that "confirmed"
+    afterwards has something to be different from.
+    """
+    cp = run(["pbcopy"], input=body, text=True)
+    if cp.returncode == 0:
+        print("The body is on your clipboard. %d characters." % len(body))
+    else:
+        print("pbcopy failed. Open %s and copy it by hand." % path)
+    _, before = verify(url_of(destination) or "")
+    print("GO HERE:  %s" % destination)
+    u = url_of(destination)
+    if u:
+        run(["open", u], capture_output=True)
+        print("(opened in your browser)")
+    return before
+
+
+def confirm(destination, before):
+    """Go and look. Returns the log note, or None when it is not to be logged.
+
+    Do not take the keystroke for the fact. Go and look. And looking is not
+    enough on its own: on 4 November 2026 this confirmed reply-leonid-9114.md
+    because the last post on that topic was already mine, from the day before.
+    Enter was pressed, nothing was posted, and the log said verified. A check
+    that passes before you act is not a check. So the state is read BEFORE
+    the browser opens and the answer afterwards must differ from it.
+    """
+    print("checking that it is actually there...")
+    ok, detail = verify(url_of(destination) or "")
+    if ok is True and detail == before:
+        ok = False
+        detail = ("nothing changed. Before you were sent there it "
+                  "already said: %s. That is the same post, so this "
+                  "confirms yesterday, not today" % before)
+    if ok is False:
+        print("NOT THERE: %s" % detail)
+        print("Nothing written to the log, so this draft comes back.")
+        print("If you did post it, the page may not have caught up: run")
+        print("this again in a minute.")
+        print()
+        return None
+    if ok is None:
+        return _on_your_word(detail)
+    print("CONFIRMED: %s" % detail)
+    return "  (verified)"
+
+
+def _on_your_word(detail):
+    """A destination that cannot be checked: demand the word, mark it so."""
+    print("CANNOT CHECK: %s" % detail)
+    again = input("Logging it on your word alone. Type 'yes' if it "
+                  "is really posted: ").strip().lower()
+    if again != "yes":
+        print("Not logged, so it comes back.")
+        print()
+        return None
+    return "  (unverified, on your word)"
+
+
+def post_one(name, path, destination, body):
+    """Copy, open, wait, verify, log. Returns posted, skipped or quit."""
+    before = copy_and_open(path, destination, body)
+    print()
+    ans = input("Enter once it is posted, s to skip, q to stop: ").strip()
+    if ans.lower() == "q":
+        return "quit"
+    if ans.lower() == "s":
+        print("Skipped, and nothing written to the log, so it comes back.")
+        print()
+        return "skipped"
+    note = confirm(destination, before)
+    if note is None:
+        return "skipped"
+    with open(LOG, "a") as f:
+        f.write("%s %s%s\n" % (time.strftime("%Y-%m-%d"), name, note))
+    print("Logged. %s" % name)
+    print()
+    return "posted"
+
+
+def process(i, total, name, why, sources, dry):
+    """One draft, start to finish. Returns posted, skipped, quit, dry or fail."""
+    path = os.path.join(DRAFTS, name)
+    print("=" * 72)
+    print("%d of %d   %s" % (i, total, name))
+    print("WHY NOW: %s" % why)
+    print("=" * 72)
+    if not passes_gate(path, sources):
+        return "fail"
+    destination, body = destination_and_body(path)
+    if not destination:
+        print("No Post-To line in %s, so I do not know where it goes."
+              % name)
+        return "fail"
+    print()
+    if dry:
+        print("DRY RUN: would copy %d characters and open the page."
+              % len(body))
         print("GO HERE:  %s" % destination)
-        u = url_of(destination)
-        if u:
-            run(["open", u], capture_output=True)
-            print("(opened in your browser)")
-
         print()
-        ans = input("Enter once it is posted, s to skip, q to stop: ").strip()
-        if ans.lower() == "q":
-            print("Stopped. %d posted this run." % posted)
-            return 0
-        if ans.lower() == "s":
-            print("Skipped, and nothing written to the log, so it comes back.")
-            print()
-            continue
+        return "dry"
+    return post_one(name, path, destination, body)
 
-        # Do not take the keystroke for the fact. Go and look. And looking
-        # is not enough on its own: on 4 November 2026 this confirmed
-        # reply-leonid-9114.md because the last post on that topic was
-        # already mine, from the day before. Enter was pressed, nothing was
-        # posted, and the log said verified. A check that passes before you
-        # act is not a check. So the state is read BEFORE the browser opens
-        # and the answer afterwards must differ from it.
-        print("checking that it is actually there...")
-        ok, detail = verify(url_of(destination) or "")
-        if ok is True and detail == before:
-            ok = False
-            detail = ("nothing changed. Before you were sent there it "
-                      "already said: %s. That is the same post, so this "
-                      "confirms yesterday, not today" % before)
-        if ok is False:
-            print("NOT THERE: %s" % detail)
-            print("Nothing written to the log, so this draft comes back.")
-            print("If you did post it, the page may not have caught up: run")
-            print("this again in a minute.")
-            print()
-            continue
-        if ok is None:
-            print("CANNOT CHECK: %s" % detail)
-            again = input("Logging it on your word alone. Type 'yes' if it "
-                          "is really posted: ").strip().lower()
-            if again != "yes":
-                print("Not logged, so it comes back.")
-                print()
-                continue
-            note = "  (unverified, on your word)"
-        else:
-            print("CONFIRMED: %s" % detail)
-            note = "  (verified)"
 
-        with open(LOG, "a") as f:
-            f.write("%s %s%s\n" % (time.strftime("%Y-%m-%d"), name, note))
-        posted += 1
-        print("Logged. %s" % name)
-        print()
-
+def finish(dry, posted):
+    """The closing banner, and the reminder to commit the log."""
     if dry:
         print("=" * 72)
         print("DRY RUN finished. Every draft above passed its checks and")
@@ -418,7 +448,6 @@ def main():
         print()
         print_optional()
         return 0
-
     print_optional()
     print("=" * 72)
     print("%d posted this run, and written into docs/drafts/posted.log." % posted)
@@ -427,6 +456,33 @@ def main():
     print("  git add docs/drafts/posted.log && git commit -m 'Posted the")
     print("  replies that were owed' && git push")
     return 0
+
+
+def main():
+    # --dry-run checks every draft and prints the whole plan without touching
+    # the clipboard, opening a browser or writing the log. It exists because
+    # testing this tool any other way opens five browser windows on somebody
+    # else's machine.
+    dry = "--dry-run" in sys.argv
+    sources = source_files()
+    if not sources:
+        print("No sources in %s, so no quote could be checked. Stopping."
+              % SOURCES)
+        return 1
+    done = logged_names()
+    todo = [(n, why) for n, why in QUEUE if n not in done]
+    if not announce_queue(todo, done):
+        return 0
+    posted = 0
+    for i, (name, why) in enumerate(todo, 1):
+        step = process(i, len(todo), name, why, sources, dry)
+        if step == "fail":
+            return 1
+        if step == "quit":
+            print("Stopped. %d posted this run." % posted)
+            return 0
+        posted += step == "posted"
+    return finish(dry, posted)
 
 
 if __name__ == "__main__":

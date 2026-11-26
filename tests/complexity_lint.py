@@ -96,22 +96,10 @@ EARNED = {
 # Too complicated, not yet fixed, and said plainly rather than dressed up as a
 # design decision. Added 2026-11-10 after CI had been red on this lint for days
 # while STATUS.md said the suite was green. Every entry: (date, repay-by).
+# tools/vote_pipeline.py:main (cc 46) and tools/post_queue.py:main (cc 31) were
+# split on 2026-11-24, 14 days past their repay-by of 2026-11-10.
+# tests/pipeline_tools_smoke.py pins their output byte for byte.
 DEBT = {
-    "tools/vote_pipeline.py:main": (
-        "2026-11-10",
-        "cc 46 as of 12 November, up from 42. Written in one sitting on "
-        "9 November to answer a single question, and it does five things: "
-        "reads the config, walks every proposal in the repository, tallies, "
-        "clusters the sittings, and prints. It said 'walks 400 proposals' "
-        "until 12 November, which was the defect itself written down as a "
-        "feature: 400 was the row cap, not the count. The first four jobs are "
-        "separable and the fifth is the only one that needs them all. Split "
-        "it into config(), survey(), sittings() and a print-only main."),
-    "tools/post_queue.py:main": (
-        "2026-11-10",
-        "cc 31. The queue walk, the gate call, the destination read-back and "
-        "the prompt loop are four jobs in one function. verify() was already "
-        "pulled out; the same should happen to the walk and the prompt."),
     "tests/mcp_adversarial_smoke.py:a_case": (
         "2026-11-26", "cc 14. One helper that sends bytes and asks whether the server is alive; the "
         "alive/eof/exit-code combinations are the branches. Not fixing today."),
