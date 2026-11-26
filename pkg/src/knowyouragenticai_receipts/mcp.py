@@ -14,8 +14,10 @@ import os
 import sys
 from typing import Any, Mapping
 
+from . import _safe
 from . import (
     GENESIS,
+    BrokenChain,
     Chain,
     __version__,
     canonical,
@@ -160,20 +162,20 @@ def log(msg: str) -> None:
 
 
 def _atomic_write_json(path: str, data: Any) -> None:
-    """Write data to path atomically using a temporary file and replace."""
-    tmp = f"{path}.tmp.{os.getpid()}"
-    try:
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-            f.write("\n")
-        os.replace(tmp, path)
-    except Exception:
-        if os.path.exists(tmp):
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
-        raise
+    """Write data to path atomically (unpredictable temp name, O_EXCL, fsync, replace)."""
+    _safe.atomic_write_json(path, data)
+
+
+def _load_chain_file(path: str) -> Chain:
+    """A chain read from a regular file, bounded, and verified. Raises on any problem."""
+    receipts = _safe.read_json(path)
+    if not isinstance(receipts, list):
+        raise BrokenChain("%s does not contain a list of receipts." % _safe._shown(path))
+    chain = Chain(receipts)
+    ok, bad = chain.verify()
+    if not ok:
+        raise BrokenChain("%s does not verify: receipt %s." % (_safe._shown(path), bad))
+    return chain
 
 
 def _read_pins(path: str) -> tuple[list[Any], str | None]:
@@ -187,21 +189,17 @@ def _read_pins(path: str) -> tuple[list[Any], str | None]:
     pins: list[Any] = []
     number = 0
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            for number, line in enumerate(f, start=1):
-                if line.strip():
-                    pins.append(json.loads(line))
-    except (OSError, ValueError) as e:
+        for number, line in enumerate(_safe.read_text(path).splitlines(), start=1):
+            if line.strip():
+                pins.append(_safe.parse_json(line))
+    except (OSError, ValueError) as e:      # Rejected and UnicodeDecodeError are ValueErrors
         return [], f"pin file {path} is unreadable near line {number}: {e}"
     return pins, None
 
 
 def _append_pin(path: str, pin: dict[str, Any]) -> None:
     """Append one pin and force it to disk. Never rewrites an earlier line."""
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(pin, sort_keys=True) + "\n")
-        f.flush()
-        os.fsync(f.fileno())
+    _safe.append_line(path, json.dumps(pin, sort_keys=True) + "\n")
 
 
 def _err_res(msg: str) -> dict[str, Any]:
@@ -232,7 +230,7 @@ def _load_existing_chain_fail_closed(path: str) -> tuple[Chain | None, str | Non
     if not (path and os.path.exists(path)):
         return None, None
     try:
-        return Chain.load(path), None
+        return _load_chain_file(path), None
     except Exception as e:
         return None, (
             f"Refusing to stamp: existing file at '{path}' does not verify ({e}). "
@@ -335,23 +333,17 @@ def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) 
 
 
 def _load_verify_receipts(file_path: str | None, receipts_json: str | None) -> tuple[list[Any] | None, str | None]:
-    if file_path:
-        if not os.path.exists(file_path):
-            return None, f"File not found: {file_path}"
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f), None
-        except Exception as e:
-            return None, f"Could not read JSON from {file_path}: {e}"
-    if receipts_json:
-        try:
-            return json.loads(receipts_json), None
-        except Exception as e:
-            return None, f"Invalid JSON string: {e}"
-    active = DEFAULT_RECEIPTS_PATH
-    if os.path.exists(active):
-        with open(active, "r", encoding="utf-8") as f:
-            return json.load(f), None
+    try:
+        if file_path:
+            if not os.path.exists(file_path):
+                return None, f"File not found: {file_path}"
+            return _safe.read_json(file_path), None
+        if receipts_json:
+            return _safe.parse_json(receipts_json), None
+        if os.path.exists(DEFAULT_RECEIPTS_PATH):
+            return _safe.read_json(DEFAULT_RECEIPTS_PATH), None
+    except (OSError, ValueError) as e:      # Rejected and decode errors are ValueErrors
+        return None, f"Could not read receipts: {e}"
     return SESSION_CHAIN.receipts, None
 
 
@@ -396,15 +388,12 @@ def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None)
 
 
 def _get_disclosure_input(file_path: str | None) -> list[Any]:
-    if file_path and os.path.exists(file_path):
-        with open(file_path, "r", encoding="utf-8") as f:
-            from_file: list[Any] = json.load(f)
-            return from_file
-    active = DEFAULT_RECEIPTS_PATH
-    if os.path.exists(active):
-        with open(active, "r", encoding="utf-8") as f:
-            from_active: list[Any] = json.load(f)
-            return from_active
+    for candidate in (file_path, DEFAULT_RECEIPTS_PATH):
+        if candidate and os.path.exists(candidate):
+            data = _safe.read_json(candidate)
+            if not isinstance(data, list):
+                raise _safe.Rejected("%s does not contain a JSON array of receipts" % _safe._shown(candidate))
+            return data
     return SESSION_CHAIN.receipts
 
 
@@ -415,7 +404,10 @@ def handle_disclose(arguments: dict[str, Any], meta: dict[str, Any] | None = Non
             f"File already exists at '{save_path}'. Pass overwrite=true to explicitly allow replacing this file."
         )
 
-    receipts = _get_disclosure_input(arguments.get("file_path"))
+    try:
+        receipts = _get_disclosure_input(arguments.get("file_path"))
+    except (OSError, ValueError) as e:
+        return _err_res(f"Could not read receipts: {e}")
     disclosure = disclose(receipts)
     digest = outcome_digest(receipts)
 
@@ -445,7 +437,7 @@ def handle_status(arguments: dict[str, Any], meta: dict[str, Any] | None = None)
     file_problem = None
     if os.path.exists(active_path):
         try:
-            chain = Chain.load(active_path)
+            chain = _load_chain_file(active_path)
         except Exception as e:  # noqa: BLE001 - reported to the caller, never swallowed
             # The file on disk is the record. If it cannot be loaded or does not verify,
             # saying nothing and reporting the in-memory chain instead would hide exactly
@@ -479,23 +471,83 @@ TOOL_HANDLERS = {
 }
 
 
+STR_FIELDS = {
+    "kya_stamp": ("what", "currency", "payee", "rule", "outcome", "approved_by", "ledger",
+                  "agent_ref", "save_path", "pin_file"),
+    "kya_verify": ("file_path", "receipts_json", "pin_file"),
+    "kya_disclose": ("file_path", "save_path"),
+    "kya_status": (),
+}
+BOOL_FIELDS = {"kya_disclose": ("overwrite",)}
+
+
+def _bad_string(tool: str, args: dict[str, Any]) -> str | None:
+    for key in STR_FIELDS[tool]:
+        value = args.get(key)
+        if value is not None and not isinstance(value, str):
+            return f"Field '{key}' must be a string."
+        if value is not None and len(value) > _safe.MAX_FIELD_CHARS:
+            return f"Field '{key}' is longer than {_safe.MAX_FIELD_CHARS} characters."
+    return None
+
+
+def _bad_bool(tool: str, args: dict[str, Any]) -> str | None:
+    for key in BOOL_FIELDS.get(tool, ()):
+        if args.get(key) is not None and not isinstance(args[key], bool):
+            return f"Field '{key}' must be true or false."
+    return None
+
+
+def _bad_amount(args: dict[str, Any]) -> str | None:
+    """A string, or (as before) a plain number. Anything else, or a huge string, is refused."""
+    amount = args.get("amount")
+    if isinstance(amount, str):
+        return None if len(amount) <= _safe.MAX_FIELD_CHARS else "Field 'amount' is too long."
+    if amount is None or (isinstance(amount, (int, float)) and not isinstance(amount, bool)):
+        return None
+    return "Field 'amount' must be a string."
+
+
+def _bad_argument(tool: str, args: dict[str, Any]) -> str | None:
+    """Why `args` are not acceptable for `tool`, or None. Runs BEFORE any file is touched."""
+    found = _bad_string(tool, args) or _bad_bool(tool, args)
+    if found or tool != "kya_stamp":
+        return found
+    return _bad_amount(args)
+
+
 def _execute_tool(tool_name: str | None, args: dict[str, Any],
                   meta: dict[str, Any] | None = None) -> dict[str, Any]:
-    handler = TOOL_HANDLERS.get(tool_name or "")
-    if not handler:
-        raise KeyError(f"Tool not found: {tool_name}")
-    return handler(args, meta)
+    bad = _bad_argument(str(tool_name), args)
+    if bad:
+        return _err_res(bad)
+    return TOOL_HANDLERS[str(tool_name)](args, meta)
+
+
+def _call_shape(req: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
+    """(tool name, arguments) if tools/call params have the right shape, else None."""
+    params = {} if req.get("params") is None else req.get("params")
+    if not isinstance(params, dict):
+        return None
+    name, arguments = params.get("name"), params.get("arguments")
+    if not isinstance(name, str) or not (arguments is None or isinstance(arguments, dict)):
+        return None
+    return name, arguments or {}
 
 
 def _handle_tools_call(req: dict[str, Any], msg_id: Any, meta: dict[str, Any] | None) -> dict[str, Any]:
-    params = req.get("params") or {}
+    shape = _call_shape(req)
+    if shape is None:
+        return _error(msg_id, -32602, "Invalid params: 'name' must be a string and 'arguments' an object")
+    name, arguments = shape
+    if name not in TOOL_HANDLERS:
+        return _error(msg_id, -32602, f"Unknown tool: {name[:64]}")
     try:
-        res = _execute_tool(params.get("name"), params.get("arguments") or {}, meta)
-        return {"jsonrpc": "2.0", "id": msg_id, "result": res}
-    except KeyError as e:
-        return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32601, "message": str(e)}}
-    except Exception as e:
-        return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": -32000, "message": str(e)}}
+        return {"jsonrpc": "2.0", "id": msg_id, "result": _execute_tool(name, arguments, meta)}
+    except Exception as e:  # noqa: BLE001 - any failure becomes an isError result; the loop goes on
+        log(f"tool {name} failed: {type(e).__name__}")
+        return {"jsonrpc": "2.0", "id": msg_id, "result": _err_res(
+            f"Internal error ({type(e).__name__}); the request was not completed.")}
 
 
 def _error(msg_id: Any, code: int, message: str, data: Any = None) -> dict[str, Any]:
@@ -560,6 +612,8 @@ def dispatch(req: Any) -> dict[str, Any]:
     if not isinstance(req, dict):
         return _error(None, -32600, "Invalid request: a JSON-RPC request must be an object")
     msg_id = req.get("id")
+    if not _safe.id_is_sane(msg_id):
+        return _error(None, -32600, "Invalid request: id is too long or not strict JSON")
     if req.get("method") == "server/discover":
         return _discover(msg_id)
     failure, meta, modern = _gate(req, msg_id)
@@ -571,28 +625,52 @@ def dispatch(req: Any) -> dict[str, Any]:
     return resp
 
 
+def _emit(resp: dict[str, Any]) -> bool:
+    """Write one reply as strict JSON. False if stdout is gone."""
+    try:
+        text = json.dumps(resp, allow_nan=False)
+    except (TypeError, ValueError, RecursionError):
+        text = json.dumps(_error(None, -32603, "Internal error: reply could not be encoded"))
+    try:
+        print(text, flush=True)
+    except (BrokenPipeError, OSError):
+        return False
+    return True
+
+
+def _parse_request(line: bytes) -> tuple[Any, dict[str, Any] | None]:
+    """(request, error reply). Bytes that are not UTF-8 are replaced, never fatal."""
+    try:
+        return _safe.parse_json(line.decode("utf-8", errors="replace")), None
+    except ValueError as e:     # JSONDecodeError and Rejected
+        return None, _error(None, -32700, f"Parse error: {e}")
+
+
+def _serve_one(stream: Any) -> bool:
+    """Read and answer one message. False at end of input or when stdout is gone."""
+    line, too_long = _safe.read_message(stream)
+    if line is None:
+        return False
+    if too_long:
+        return _emit(_error(None, -32600, f"Invalid request: message longer than {_safe.MAX_LINE_BYTES} bytes"))
+    if not line.strip():
+        return True
+    req, err = _parse_request(line)
+    resp = err if err else dispatch(req)
+    return _emit(resp) if resp else True
+
+
 def main() -> int:
     log(f"Starting KYA Receipts MCP Server v{__version__}...")
-    for line in sys.stdin:
-        line = line.strip()
-        if not line:
-            continue
+    stream = sys.stdin.buffer
+    while True:
         try:
-            req = json.loads(line)
-        except json.JSONDecodeError as e:
-            err_resp = {
-                "jsonrpc": "2.0",
-                "id": None,
-                "error": {"code": -32700, "message": f"Parse error: {e}"}
-            }
-            print(json.dumps(err_resp), flush=True)
-            continue
-
-        resp = dispatch(req)
-        if resp:
-            print(json.dumps(resp), flush=True)
-
-    return 0
+            if not _serve_one(stream):
+                return 0
+        except Exception as e:  # noqa: BLE001 - the loop must outlive any one message
+            log(f"message failed: {type(e).__name__}")
+            if not _emit(_error(None, -32603, f"Internal error ({type(e).__name__})")):
+                return 0
 
 
 if __name__ == "__main__":
