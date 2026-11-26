@@ -150,6 +150,11 @@ def main():
         check("anchor" in verify_text["message"].lower() or "anchor" in verify_text.get("note", "").lower(),
               "verification caveats tail truncation anchor (Finding 3)")
 
+        # A copy that stays valid, for the disclose-with-overwrite check below: since
+        # 26 Nov 2026 kya_disclose refuses a chain that does not verify (F4).
+        with open("good.json", "w") as f:
+            json.dump(chain_data, f)
+
         # Finding 1: Stamping onto a tampered file MUST FAIL CLOSED and NOT overwrite
         # Now tamper with receipts.json
         chain_data[1]["outcome"] = "ACCEPTED"
@@ -203,6 +208,7 @@ def main():
             {"jsonrpc": "2.0", "id": 10, "method": "tools/call", "params": {
                 "name": "kya_disclose",
                 "arguments": {
+                    "file_path": "good.json",
                     "save_path": "existing_doc.txt",
                     "overwrite": True
                 }
@@ -212,6 +218,11 @@ def main():
         check("isError" not in resps[0]["result"], "disclose succeeds with overwrite=True")
         with open("existing_doc.txt") as f:
             check("entries" in f.read(), "disclosure written when explicitly permitted")
+
+        # F4: a tampered chain is not disclosed, with or without overwrite.
+        resps = run_mcp([{"jsonrpc": "2.0", "id": 11, "method": "tools/call", "params": {
+            "name": "kya_disclose", "arguments": {"file_path": "receipts.json"}}}], cwd=workdir)
+        check(resps[0]["result"].get("isError") is True, "disclose refuses a tampered chain (F4)")
 
         # Status must say so when the file on disk is the thing that is broken.
         with open("receipts.json") as f:

@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import Any, Mapping
+from typing import Any, Mapping, NamedTuple
 
 from . import _safe
 from . import (
@@ -139,6 +139,10 @@ TOOLS = [
                     "type": "string",
                     "description": "Optional path to save the redacted disclosure file."
                 },
+                "pin_file": {
+                    "type": "string",
+                    "description": "Optional. A pin log in use. Only guards it: save_path equal to it is refused."
+                },
                 "overwrite": {
                     "type": "boolean",
                     "description": "Set to true to explicitly allow replacing an existing file at save_path."
@@ -151,7 +155,12 @@ TOOLS = [
         "description": "Get current status of the active session receipt chain: receipt count, head hash, active file path, and verification status.",
         "inputSchema": {
             "type": "object",
-            "properties": {}
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Optional. The chain file to report on. Defaults to 'receipts.json'."
+                }
+            }
         }
     }
 ]
@@ -166,16 +175,49 @@ def _atomic_write_json(path: str, data: Any) -> None:
     _safe.atomic_write_json(path, data)
 
 
-def _load_chain_file(path: str) -> Chain:
-    """A chain read from a regular file, bounded, and verified. Raises on any problem."""
-    receipts = _safe.read_json(path)
-    if not isinstance(receipts, list):
-        raise BrokenChain("%s does not contain a list of receipts." % _safe._shown(path))
-    chain = Chain(receipts)
-    ok, bad = chain.verify()
-    if not ok:
-        raise BrokenChain("%s does not verify: receipt %s." % (_safe._shown(path), bad))
-    return chain
+class Loaded(NamedTuple):
+    """What load_verified found. `error` is set when nothing usable was read."""
+    receipts: list[Any] | None
+    ok: bool            # the chain verifies (meaningless when error is set)
+    broken_at: int      # first bad receipt when ok is False
+    error: str | None   # why nothing usable was read; None when receipts is a list
+
+
+def check_receipts(data: Any, origin: str) -> Loaded:
+    """Verify an already parsed value. Anything that is not a JSON array is an error."""
+    if not isinstance(data, list):
+        return Loaded(None, False, 0, f"{origin} does not contain a JSON array of receipts.")
+    ok, bad = verify(data)
+    return Loaded(data, ok, bad, None)
+
+
+def load_verified(path: str) -> Loaded:
+    """THE read: a chain file, bounded, parsed and verified, or an error. Never a default.
+
+    A missing file, an unparseable one, a non-array, a FIFO or device, or one over
+    the size cap each come back as `error`. kya_status, kya_disclose, kya_verify and
+    kya_stamp all read through here, so none of them can invent an empty chain.
+    """
+    if not os.path.exists(path):
+        return Loaded(None, False, 0, f"File not found: {path}")
+    try:
+        data = _safe.read_json(path)
+    except (OSError, ValueError) as e:      # Rejected and decode errors are ValueErrors
+        return Loaded(None, False, 0, f"Could not read receipts: {e}")
+    return check_receipts(data, _safe._shown(path))
+
+
+def _chain_if_good(loaded: Loaded) -> Chain | None:
+    return Chain(loaded.receipts) if loaded.receipts is not None and loaded.ok else None
+
+
+_PROTECTED: set[str] = set()   # realpaths of chain and pin files this process has used
+
+
+def _remember(*paths: str | None) -> None:
+    for p in paths:
+        if p:
+            _PROTECTED.add(os.path.realpath(p))
 
 
 def _read_pins(path: str) -> tuple[list[Any], str | None]:
@@ -229,13 +271,15 @@ def _load_existing_chain_fail_closed(path: str) -> tuple[Chain | None, str | Non
     """If file exists, load it. If verification fails, return error rather than overwriting."""
     if not (path and os.path.exists(path)):
         return None, None
-    try:
-        return _load_chain_file(path), None
-    except Exception as e:
-        return None, (
-            f"Refusing to stamp: existing file at '{path}' does not verify ({e}). "
-            "Stamping onto a broken or tampered chain is prohibited to preserve evidence."
-        )
+    loaded = load_verified(path)
+    chain = _chain_if_good(loaded)
+    if chain is not None:
+        return chain, None
+    why = loaded.error or f"BROKEN at receipt {loaded.broken_at}"
+    return None, (
+        f"Refusing to stamp: existing file at '{path}' does not verify ({why}). "
+        "Stamping onto a broken or tampered chain is prohibited to preserve evidence."
+    )
 
 
 def _client_ref(meta: dict[str, Any] | None) -> str:
@@ -293,16 +337,29 @@ def _stamp_and_persist(arguments: dict[str, Any], agent_ref: Any,
     return receipt
 
 
-def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
-    global SESSION_CHAIN
+def _same_file(a: str | None, b: str) -> bool:
+    return bool(a) and os.path.realpath(str(a)) == os.path.realpath(b)
+
+
+def _stamp_preflight(arguments: dict[str, Any], meta: dict[str, Any] | None) -> tuple[Any, str, str | None]:
+    """(agent_ref, save_path, error). Everything that can be refused before a file is read."""
+    save_path = arguments.get("save_path") or DEFAULT_RECEIPTS_PATH
     val_err = _validate_stamp_fields(arguments)
     if val_err:
-        return _err_res(val_err)
+        return "", save_path, val_err
     agent_ref, ref_err = _agent_ref_for(arguments, meta)
     if ref_err:
-        return _err_res(ref_err)
+        return "", save_path, ref_err
+    if _same_file(arguments.get("pin_file"), save_path):
+        return "", save_path, "Refusing to stamp: pin_file and save_path are the same file."
+    return agent_ref, save_path, None
 
-    save_path = arguments.get("save_path") or DEFAULT_RECEIPTS_PATH
+
+def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
+    global SESSION_CHAIN
+    agent_ref, save_path, pre_err = _stamp_preflight(arguments, meta)
+    if pre_err:
+        return _err_res(pre_err)
     loaded_chain, load_err = _load_existing_chain_fail_closed(save_path)
     if load_err:
         return _err_res(load_err)
@@ -318,6 +375,7 @@ def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) 
         receipt = _stamp_and_persist(arguments, agent_ref, save_path, pin_file)
     except Exception as e:
         return _err_res(f"Failed to stamp receipt: {e}")
+    _remember(save_path, pin_file)
 
     return {
         "content": [{
@@ -332,19 +390,15 @@ def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) 
     }
 
 
-def _load_verify_receipts(file_path: str | None, receipts_json: str | None) -> tuple[list[Any] | None, str | None]:
-    try:
-        if file_path:
-            if not os.path.exists(file_path):
-                return None, f"File not found: {file_path}"
-            return _safe.read_json(file_path), None
-        if receipts_json:
-            return _safe.parse_json(receipts_json), None
-        if os.path.exists(DEFAULT_RECEIPTS_PATH):
-            return _safe.read_json(DEFAULT_RECEIPTS_PATH), None
-    except (OSError, ValueError) as e:      # Rejected and decode errors are ValueErrors
-        return None, f"Could not read receipts: {e}"
-    return SESSION_CHAIN.receipts, None
+def _verify_source(file_path: str | None, receipts_json: str | None) -> Loaded:
+    if file_path:
+        return load_verified(file_path)
+    if receipts_json:
+        try:
+            return check_receipts(_safe.parse_json(receipts_json), "receipts_json")
+        except ValueError as e:
+            return Loaded(None, False, 0, f"Invalid JSON string: {e}")
+    return load_verified(DEFAULT_RECEIPTS_PATH)
 
 
 def _pin_check(receipts: list[Any], pin_file: str | None) -> dict[str, Any] | None:
@@ -360,15 +414,13 @@ def _pin_check(receipts: list[Any], pin_file: str | None) -> dict[str, Any] | No
 
 
 def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
-    receipts, err = _load_verify_receipts(arguments.get("file_path"), arguments.get("receipts_json"))
-    if err:
-        return _err_res(err)
-    if not isinstance(receipts, list):
-        return _err_res("Receipts data must be a JSON array.")
-
-    ok, bad = verify(receipts)
+    loaded = _verify_source(arguments.get("file_path"), arguments.get("receipts_json"))
+    if loaded.error or loaded.receipts is None:
+        return _err_res(loaded.error or "No receipts to verify.")
+    receipts, ok, bad = loaded.receipts, loaded.ok, loaded.broken_at
     head = receipts[-1].get("seal", GENESIS) if receipts else GENESIS
     msg = f"{len(receipts)} receipts, every seal holds." if ok else f"BROKEN at receipt {bad}."
+    _remember(arguments.get("pin_file"))
     pin_check = _pin_check(receipts, arguments.get("pin_file"))
 
     return {
@@ -387,27 +439,47 @@ def handle_verify(arguments: dict[str, Any], meta: dict[str, Any] | None = None)
     }
 
 
-def _get_disclosure_input(file_path: str | None) -> list[Any]:
-    for candidate in (file_path, DEFAULT_RECEIPTS_PATH):
-        if candidate and os.path.exists(candidate):
-            data = _safe.read_json(candidate)
-            if not isinstance(data, list):
-                raise _safe.Rejected("%s does not contain a JSON array of receipts" % _safe._shown(candidate))
-            return data
-    return SESSION_CHAIN.receipts
+def _is_evidence_file(arguments: dict[str, Any], source: str, target: str) -> bool:
+    """True if `target` (a realpath) is the chain being read, the default chain, or a pin log."""
+    known = {os.path.realpath(source), os.path.realpath(DEFAULT_RECEIPTS_PATH)} | _PROTECTED
+    pin = arguments.get("pin_file")
+    if pin:
+        known.add(os.path.realpath(pin))
+    return target in known
+
+
+def _disclose_refusal(arguments: dict[str, Any], source: str) -> str | None:
+    """Why this disclosure must not be written, or None. Nothing is read or written yet."""
+    save_path = arguments.get("save_path")
+    if not save_path:
+        return None
+    if _is_evidence_file(arguments, source, os.path.realpath(save_path)):
+        return (f"Refusing to write the disclosure over '{save_path}': it is the receipt chain or a "
+                "pin log. The evidence is never overwritten by a view of itself.")
+    if os.path.exists(save_path) and not arguments.get("overwrite"):
+        return f"File already exists at '{save_path}'. Pass overwrite=true to explicitly allow replacing this file."
+    return None
+
+
+def _ok_receipts(loaded: Loaded) -> tuple[list[Any] | None, str | None]:
+    """(receipts, None) only for a chain that was read and verifies; else (None, why)."""
+    if loaded.error or loaded.receipts is None:
+        return None, f"Refusing to disclose: {loaded.error or 'no receipts'}."
+    if not loaded.ok:
+        return None, (f"Refusing to disclose: the chain does not verify (BROKEN at receipt "
+                      f"{loaded.broken_at}). A disclosure of a tampered chain would vouch for it.")
+    return loaded.receipts, None
 
 
 def handle_disclose(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
     save_path = arguments.get("save_path")
-    if save_path and os.path.exists(save_path) and not arguments.get("overwrite"):
-        return _err_res(
-            f"File already exists at '{save_path}'. Pass overwrite=true to explicitly allow replacing this file."
-        )
-
-    try:
-        receipts = _get_disclosure_input(arguments.get("file_path"))
-    except (OSError, ValueError) as e:
-        return _err_res(f"Could not read receipts: {e}")
+    source = arguments.get("file_path") or DEFAULT_RECEIPTS_PATH
+    refusal = _disclose_refusal(arguments, source)
+    if refusal:
+        return _err_res(refusal)
+    receipts, why = _ok_receipts(load_verified(source))
+    if why or receipts is None:
+        return _err_res(why or "no receipts")
     disclosure = disclose(receipts)
     digest = outcome_digest(receipts)
 
@@ -431,36 +503,48 @@ def handle_disclose(arguments: dict[str, Any], meta: dict[str, Any] | None = Non
     }
 
 
-def handle_status(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
-    active_path = DEFAULT_RECEIPTS_PATH
-    chain = SESSION_CHAIN
-    file_problem = None
-    if os.path.exists(active_path):
-        try:
-            chain = _load_chain_file(active_path)
-        except Exception as e:  # noqa: BLE001 - reported to the caller, never swallowed
-            # The file on disk is the record. If it cannot be loaded or does not verify,
-            # saying nothing and reporting the in-memory chain instead would hide exactly
-            # what an auditor needs to know.
-            file_problem = "%s: %s" % (type(e).__name__, e)
+def _status_result(body: dict[str, Any], is_error: bool) -> dict[str, Any]:
+    res: dict[str, Any] = {"content": [{"type": "text", "text": json.dumps(body, indent=2)}]}
+    if is_error:
+        res["isError"] = True
+    return res
 
-    ok, bad = chain.verify()
-    return {
-        "content": [{
-            "type": "text",
-            "text": json.dumps({
-                "receipt_count": len(chain),
-                "chain_head": chain.head,
-                "verified": ok,
-                "broken_at": bad if not ok else None,
-                "storage": f"persisting to {active_path} by default unless overridden by save_path",
-                "active_file": active_path if os.path.exists(active_path) else None,
-                "file_problem": file_problem,
-                "note": "Agent MCP stamps are self-attested. Standalone verification proves no edits; anchor chain_head externally to prove non-truncation.",
-                "version": __version__
-            }, indent=2)
-        }]
+
+def _status_view(path: str) -> tuple[list[Any] | None, bool, int, str | None]:
+    """(receipts or None, verifies, broken_at, problem) for what kya_status reports on."""
+    if os.path.exists(path):
+        loaded = load_verified(path)
+        broken = None if loaded.error or loaded.ok else f"BrokenChain: {path} does not verify: receipt {loaded.broken_at}."
+        return loaded.receipts, loaded.ok, loaded.broken_at, loaded.error or broken
+    ok, bad = SESSION_CHAIN.verify()
+    return SESSION_CHAIN.receipts, ok, bad, None
+
+
+def _count_and_head(receipts: list[Any] | None) -> tuple[int | None, str | None]:
+    if receipts is None:
+        return None, None
+    return len(receipts), (receipts[-1].get("seal", GENESIS) if receipts else GENESIS)
+
+
+def handle_status(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
+    path = arguments.get("file_path") or DEFAULT_RECEIPTS_PATH
+    receipts, ok, bad, problem = _status_view(path)
+    # The file on disk is the record. If it cannot be read or does not verify, saying
+    # nothing and reporting an in-memory chain instead would hide exactly what an
+    # auditor needs to know: so a file problem is verified:false, and no count or head.
+    count, head = _count_and_head(receipts)
+    body = {
+        "receipt_count": count,
+        "chain_head": head,
+        "verified": bool(ok and receipts is not None),
+        "broken_at": bad if receipts is not None and not ok else None,
+        "storage": f"persisting to {path} by default unless overridden by save_path",
+        "active_file": path if os.path.exists(path) else None,
+        "file_problem": problem,
+        "note": "Agent MCP stamps are self-attested. Standalone verification proves no edits; anchor chain_head externally to prove non-truncation.",
+        "version": __version__
     }
+    return _status_result(body, problem is not None)
 
 
 TOOL_HANDLERS = {
@@ -475,8 +559,8 @@ STR_FIELDS = {
     "kya_stamp": ("what", "currency", "payee", "rule", "outcome", "approved_by", "ledger",
                   "agent_ref", "save_path", "pin_file"),
     "kya_verify": ("file_path", "receipts_json", "pin_file"),
-    "kya_disclose": ("file_path", "save_path"),
-    "kya_status": (),
+    "kya_disclose": ("file_path", "save_path", "pin_file"),
+    "kya_status": ("file_path",),
 }
 BOOL_FIELDS = {"kya_disclose": ("overwrite",)}
 
@@ -641,7 +725,7 @@ def _emit(resp: dict[str, Any]) -> bool:
 def _parse_request(line: bytes) -> tuple[Any, dict[str, Any] | None]:
     """(request, error reply). Bytes that are not UTF-8 are replaced, never fatal."""
     try:
-        return _safe.parse_json(line.decode("utf-8", errors="replace")), None
+        return _safe.parse_json(line.decode("utf-8", errors="replace"), reject_duplicate_keys=True), None
     except ValueError as e:     # JSONDecodeError and Rejected
         return None, _error(None, -32700, f"Parse error: {e}")
 
