@@ -34,7 +34,7 @@ Run from anywhere; paths resolve relative to the repository root.
 import ast, os, sys
 
 MAX_CC = 8
-SKIP_DIRS = {".git", "__pycache__", ".daml", "node_modules", ".auditor"}
+SKIP_DIRS = {".git", "__pycache__", ".daml", "node_modules", ".auditor", ".claude"}
 
 # Functions allowed above the ceiling, each with the reason it is earned.
 # A reason must say why splitting it would make the code WORSE. "It is long"

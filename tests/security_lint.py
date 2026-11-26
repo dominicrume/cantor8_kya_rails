@@ -158,7 +158,7 @@ def scannable():
     here = os.path.abspath(__file__)
     for base, dirs, names in os.walk(ROOT):
         dirs[:] = [d for d in dirs
-                   if d not in (".git", ".daml", "__pycache__", "node_modules")]
+                   if d not in (".git", ".daml", "__pycache__", "node_modules", ".claude")]
         for name in names:
             if not name.endswith((".py", ".sh", ".md", ".yml", ".yaml")):
                 continue
