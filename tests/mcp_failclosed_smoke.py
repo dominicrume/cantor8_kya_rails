@@ -9,6 +9,9 @@ agents' finding ids, 26 Nov 2026) and is written to go RED on the code that had 
   F4   kya_disclose never verified, so a tampered chain gave a normal disclosure
   F5   kya_disclose save_path could overwrite the chain file or the pin log
   A6   duplicate keys in a request were resolved last-wins
+  F6   one global chain: stamping a.json then b.json leaked a.json into b.json
+  ROLLBACK  a failed save left the receipt in memory
+  LOCK a held lock must stop a stamp, and nothing may be left half written
 
 The positive controls (a good chain still verifies, discloses and reports) are in
 the same file so a fix that refuses everything cannot pass.
@@ -26,7 +29,7 @@ from typing import Any, Callable
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "pkg", "src"))
 sys.dont_write_bytecode = True
-from knowyouragenticai_receipts import Chain, mcp  # noqa: E402
+from knowyouragenticai_receipts import Chain, _safe, mcp  # noqa: E402
 
 FAILS: list[str] = []
 
@@ -152,6 +155,69 @@ def group_duplicates() -> None:
     check(err is None and req["method"] == "ping", "control: a normal request parses")
 
 
+# -------------------------------------------------------------- chain state
+def count_in(path: str) -> int:
+    err, out = call(mcp.handle_status, {"file_path": path})
+    return int(out["receipt_count"])
+
+
+def group_per_file(d: str) -> None:
+    print("F6: chain state is per file")
+    os.chdir(d)
+    a, b = os.path.join(d, "a.json"), os.path.join(d, "b.json")
+    good_chain(a, 1)
+    good_chain(b, 1)
+    check(count_in(a) == 1 and count_in(b) == 1, "a.json has 1 receipt and b.json has 1 (was 1 and 2)")
+    err, out = call(mcp.handle_stamp, stamp_args(a, "again"))
+    check(out["total_receipts"] == 2 and len(json.loads(read(b))) == 1, "a third stamp to a.json does not touch b.json")
+
+
+def group_rollback(d: str) -> None:
+    print("ROLLBACK: a failed save leaves memory and the file unchanged")
+    os.chdir(d)
+    p = os.path.join(d, "r.json")
+    real = mcp._atomic_write_json
+
+    def boom(path: str, data: Any) -> None:
+        raise OSError("disk full (MOCKED)")
+    mcp._atomic_write_json = boom
+    try:
+        err, out = call(mcp.handle_stamp, stamp_args(p))
+    finally:
+        mcp._atomic_write_json = real
+    check(err and not os.path.exists(p), "the failed stamp is an error and wrote nothing")
+    err, out = call(mcp.handle_status, {"file_path": p})
+    check(out["receipt_count"] == 0, "kya_status after the failure counts 0 (was 1)")
+    err, out = call(mcp.handle_stamp, stamp_args(p))
+    check(not err and out["total_receipts"] == 1 and out["receipt"]["n"] == 1, "the retry is receipt 1, not 2")
+    check(not [f for f in os.listdir(d) if ".tmp-" in f], "no temp file left behind")
+
+
+def group_lock(d: str) -> None:
+    print("LOCK: a chain being written by someone else is not written to")
+    os.chdir(d)
+    p = os.path.join(d, "l.json")
+    good_chain(p, 1)
+    try:
+        import fcntl
+    except ImportError:
+        print("  SKIP no fcntl on this platform (the no-lock fallback is labelled in the code)")
+        return
+    holder = os.open(p + ".lock", os.O_RDWR | os.O_CREAT, 0o666)
+    fcntl.flock(holder, fcntl.LOCK_EX)
+    old = _safe.LOCK_TIMEOUT_S
+    _safe.LOCK_TIMEOUT_S = 0.3
+    try:
+        err, out = call(mcp.handle_stamp, stamp_args(p, "blocked"))
+    finally:
+        _safe.LOCK_TIMEOUT_S = old
+        os.close(holder)
+    check(err and "lock" in out["error"].lower(), "stamp while the lock is held: error naming the lock")
+    check(len(json.loads(read(p))) == 1, "and the file is unchanged")
+    err, out = call(mcp.handle_stamp, stamp_args(p, "free"))
+    check(not err and out["total_receipts"] == 2, "control: once the lock is released the stamp lands")
+
+
 def fresh_process_state() -> None:
     """The server is a fresh process per test group: forget whatever chain state the last one left."""
     if hasattr(mcp, "SESSION_CHAIN"):
@@ -162,7 +228,8 @@ def fresh_process_state() -> None:
 
 def main() -> int:
     mcp.log = lambda msg: None
-    groups: list[Callable[..., None]] = [group_status, group_disclose, group_save_path]
+    groups: list[Callable[..., None]] = [group_status, group_disclose, group_save_path,
+                                          group_per_file, group_rollback, group_lock]
     for g in groups:
         fresh_process_state()
         with tempfile.TemporaryDirectory(prefix="kya-fc-") as d:

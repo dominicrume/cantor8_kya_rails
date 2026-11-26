@@ -45,8 +45,11 @@ SERVER_INFO = {
 
 DEFAULT_RECEIPTS_PATH = "receipts.json"
 
-# In-memory chain instance for interactive sessions
-SESSION_CHAIN = Chain()
+# What this process last COMMITTED to each chain file, keyed by realpath. An entry is
+# written only after the file write succeeded, and is a cache and a tripwire (kya_status
+# can say "the file went missing"), never the source of truth: the file is read, verified
+# and extended under a lock on every stamp.
+STORE: dict[str, Chain] = {}
 
 TOOLS = [
     {
@@ -304,22 +307,26 @@ def _agent_ref_for(arguments: dict[str, Any], meta: dict[str, Any] | None) -> tu
     return explicit, None
 
 
-def _pin_gate(pin_file: str | None) -> str | None:
-    """Error text if the session chain does not match the pin log, else None."""
+def _pin_gate(pin_file: str | None, chain: Chain) -> str | None:
+    """Error text if `chain` does not match the pin log, else None."""
     if not pin_file:
         return None
     pins, pin_err = _read_pins(pin_file)
     if pin_err:
         return pin_err
-    pins_ok, why = check_pins(SESSION_CHAIN.receipts, pins)
+    pins_ok, why = check_pins(chain.receipts, pins)
     if pins_ok:
         return None
     return f"Refusing to stamp: this chain does not match the pin log ({why}). Nothing was written."
 
 
-def _stamp_and_persist(arguments: dict[str, Any], agent_ref: Any,
-                       save_path: str | None, pin_file: str | None) -> Any:
-    receipt = SESSION_CHAIN.stamp(
+def _stamp_and_persist(arguments: dict[str, Any], agent_ref: Any, save_path: str, chain: Chain) -> Any:
+    """Stamp onto `chain` (a private copy), write the file, and only THEN commit to STORE.
+
+    If the write raises, STORE and the file are exactly as they were, and a retry
+    builds the same receipt number again.
+    """
+    receipt = chain.stamp(
         what=arguments["what"],
         amount=str(arguments["amount"]),
         currency=arguments["currency"],
@@ -330,10 +337,8 @@ def _stamp_and_persist(arguments: dict[str, Any], agent_ref: Any,
         ledger=arguments.get("ledger"),
         agent_ref=agent_ref
     )
-    if save_path:
-        _atomic_write_json(save_path, SESSION_CHAIN.receipts)
-    if pin_file:
-        _append_pin(pin_file, head_pin(SESSION_CHAIN.receipts))
+    _atomic_write_json(save_path, chain.receipts)
+    STORE[os.path.realpath(save_path)] = chain
     return receipt
 
 
@@ -355,39 +360,66 @@ def _stamp_preflight(arguments: dict[str, Any], meta: dict[str, Any] | None) -> 
     return agent_ref, save_path, None
 
 
-def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
-    global SESSION_CHAIN
-    agent_ref, save_path, pre_err = _stamp_preflight(arguments, meta)
-    if pre_err:
-        return _err_res(pre_err)
-    loaded_chain, load_err = _load_existing_chain_fail_closed(save_path)
-    if load_err:
-        return _err_res(load_err)
-    if loaded_chain is not None:
-        SESSION_CHAIN = loaded_chain
+def _base_chain(save_path: str) -> tuple[Chain | None, str | None]:
+    """The chain to extend: the file's (verified), else a COPY of what this process last
+    committed to that path, else an empty one. Never another file's chain."""
+    chain, err = _load_existing_chain_fail_closed(save_path)
+    if err or chain is not None:
+        return chain, err
+    known = STORE.get(os.path.realpath(save_path))
+    return (Chain(known.receipts) if known is not None else Chain()), None
 
-    pin_file = arguments.get("pin_file")
-    gate_err = _pin_gate(pin_file)
-    if gate_err:
-        return _err_res(gate_err)
 
-    try:
-        receipt = _stamp_and_persist(arguments, agent_ref, save_path, pin_file)
-    except Exception as e:
-        return _err_res(f"Failed to stamp receipt: {e}")
-    _remember(save_path, pin_file)
-
+def _stamp_reply(receipt: Any, chain: Chain, save_path: str) -> dict[str, Any]:
     return {
         "content": [{
             "type": "text",
             "text": json.dumps({
                 "receipt": receipt,
-                "chain_head": SESSION_CHAIN.head,
-                "total_receipts": len(SESSION_CHAIN),
+                "chain_head": chain.head,
+                "total_receipts": len(chain),
                 "saved_to": save_path
             }, indent=2)
         }]
     }
+
+
+def _append_pin_after_write(pin_file: str | None, chain: Chain, save_path: str) -> str | None:
+    """Error text if the pin could not be appended. The receipt is already in the file."""
+    if not pin_file:
+        return None
+    try:
+        _append_pin(pin_file, head_pin(chain.receipts))
+    except OSError as e:
+        return f"The receipt WAS written to '{save_path}' but its pin could not be appended: {e}"
+    return None
+
+
+def _stamp_under_lock(arguments: dict[str, Any], agent_ref: Any, save_path: str) -> dict[str, Any]:
+    """Read, verify, pin-check, append and write: all inside the lock."""
+    chain, load_err = _base_chain(save_path)
+    pin_file = arguments.get("pin_file")
+    gate_err = load_err or (_pin_gate(pin_file, chain) if chain is not None else None)
+    if gate_err or chain is None:
+        return _err_res(gate_err or "no chain")
+    try:
+        receipt = _stamp_and_persist(arguments, agent_ref, save_path, chain)
+    except Exception as e:
+        return _err_res(f"Failed to stamp receipt: {e}")
+    _remember(save_path, pin_file)
+    pin_err = _append_pin_after_write(pin_file, chain, save_path)
+    return _err_res(pin_err) if pin_err else _stamp_reply(receipt, chain, save_path)
+
+
+def handle_stamp(arguments: dict[str, Any], meta: dict[str, Any] | None = None) -> dict[str, Any]:
+    agent_ref, save_path, pre_err = _stamp_preflight(arguments, meta)
+    if pre_err:
+        return _err_res(pre_err)
+    try:
+        with _safe.file_lock(save_path):
+            return _stamp_under_lock(arguments, agent_ref, save_path)
+    except (OSError, _safe.Rejected) as e:      # the lock could not be taken
+        return _err_res(f"Failed to stamp receipt: {e}")
 
 
 def _verify_source(file_path: str | None, receipts_json: str | None) -> Loaded:
@@ -516,8 +548,12 @@ def _status_view(path: str) -> tuple[list[Any] | None, bool, int, str | None]:
         loaded = load_verified(path)
         broken = None if loaded.error or loaded.ok else f"BrokenChain: {path} does not verify: receipt {loaded.broken_at}."
         return loaded.receipts, loaded.ok, loaded.broken_at, loaded.error or broken
-    ok, bad = SESSION_CHAIN.verify()
-    return SESSION_CHAIN.receipts, ok, bad, None
+    known = STORE.get(os.path.realpath(path))
+    if known is None:
+        return [], True, 0, None            # nothing stamped to this path yet: an empty chain
+    return known.receipts, False, 0, (
+        f"File not found: {path}, but this process committed {len(known)} receipts to it. "
+        "The file has been removed or moved since.")
 
 
 def _count_and_head(receipts: list[Any] | None) -> tuple[int | None, str | None]:

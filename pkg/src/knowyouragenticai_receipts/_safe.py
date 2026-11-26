@@ -14,11 +14,22 @@ Standard library only.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
 import stat
-from typing import Any, BinaryIO
+import time
+from typing import Any, BinaryIO, Iterator
+
+try:                                    # POSIX
+    import fcntl
+except ImportError:                     # Windows
+    fcntl = None                        # type: ignore[assignment]
+try:                                    # Windows
+    import msvcrt
+except ImportError:                     # POSIX
+    msvcrt = None                       # type: ignore[assignment]
 
 MAX_FILE_BYTES = 64 * 1024 * 1024    # one input file (chain, pin log)
 MAX_LINE_BYTES = 16 * 1024 * 1024    # one JSON-RPC message on stdin
@@ -26,6 +37,7 @@ MAX_FIELD_CHARS = 64 * 1024          # one string argument
 MAX_DEPTH = 64                       # JSON nesting
 MAX_INT_DIGITS = 40                  # any integer in a request
 MAX_ID_CHARS = 256                   # a request id, as serialised
+LOCK_TIMEOUT_S = 30.0                # how long a stamp waits for another writer
 
 _STRINGS = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"', re.S)
 _BRACKETS = re.compile(r'[\[\]{}]')
@@ -197,3 +209,55 @@ def read_message(stream: BinaryIO) -> tuple[bytes | None, bool]:
         chunk = stream.readline(1 << 20)
         if not chunk or chunk.endswith(b"\n"):
             return b"", True
+
+
+# ------------------------------------------------------------------ lock
+def _try_lock(fd: int) -> bool:
+    """One non-blocking attempt at an exclusive lock on `fd`."""
+    try:
+        if fcntl is not None:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        elif msvcrt is not None:
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)      # type: ignore[attr-defined,unused-ignore]
+        # else: NO LOCK on this platform. Concurrent writers can lose stamps here;
+        # the chain still verifies, because every write is atomic.
+        return True
+    except OSError:
+        return False
+
+
+def _unlock(fd: int) -> None:
+    try:
+        if fcntl is not None:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        elif msvcrt is not None:
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)      # type: ignore[attr-defined,unused-ignore]
+    except OSError:
+        pass  # nosec B110 - closing the descriptor releases the lock anyway
+
+
+@contextlib.contextmanager
+def file_lock(path: str) -> Iterator[None]:
+    """An exclusive advisory lock for the chain at `path`, held on a sibling `<path>.lock`.
+
+    Wraps read, verify, append and write, so concurrent processes cannot both extend the
+    same head and lose one stamp. Waits up to LOCK_TIMEOUT_S, then raises Rejected: a
+    crashed holder frees the lock with its process, but a live one that never lets go must
+    not hang the server. The .lock file is left in place on purpose (deleting it races).
+    """
+    flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path + ".lock", flags, 0o666)
+    try:
+        deadline = time.monotonic() + LOCK_TIMEOUT_S
+        while not _try_lock(fd):
+            if time.monotonic() >= deadline:
+                raise Rejected("another process holds the lock on this chain (%s); nothing was written"
+                               % _shown(path + ".lock"))
+            time.sleep(0.002)
+        try:
+            yield
+        finally:
+            _unlock(fd)
+    finally:
+        os.close(fd)

@@ -34,7 +34,7 @@ def chain_of(n, payee="acme"):
 
 
 def stamp(save, pin=None, payee="acme"):
-    mcp.SESSION_CHAIN = Chain()          # a fresh process each time
+    mcp.STORE.clear()                    # a fresh process each time
     args = {"what": "pay", "amount": "1.00", "currency": "USD", "payee": payee,
             "rule": "cap", "outcome": "ACCEPTED", "save_path": save}
     if pin:
