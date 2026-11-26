@@ -1,0 +1,31 @@
+{
+  "kind": "know-your-agenticai-disclosure",
+  "spec": "1.3",
+  "count": 1,
+  "head": "b791627b001ffd1d38b44e08048dfeab42a896d0d250eb13dce386241f09b01c",
+  "shown": 1,
+  "disclosing": "every entry whose outcome is not ACCEPTED",
+  "outcomes": "b7d5632f6d1951d5869c9740680a23c4d6c6db9660b60743a7564962bfff3de2",
+  "entries": [
+    {
+      "n": 1,
+      "outcome": "REFUSED",
+      "prev": "GENESIS",
+      "seal": "b791627b001ffd1d38b44e08048dfeab42a896d0d250eb13dce386241f09b01c",
+      "body": {
+        "n": 1,
+        "what": "code review support_tools.py",
+        "amount": "6",
+        "payee": "production",
+        "currency": "FINDINGS",
+        "instrument": "",
+        "rule": "no_critical_to_production",
+        "outcome": "REFUSED",
+        "approved_by": "",
+        "ledger": "",
+        "at": "2026-11-26T02:09:16Z",
+        "prev": "GENESIS"
+      }
+    }
+  ]
+}
