@@ -69,10 +69,10 @@ book = bookWithExpiry (hours 24)
 testChargeUnderCapAccepted : Script ()
 testChargeUnderCapAccepted = script do
   (b, m0) <- book
-  m1 <- submit b.operator do
+  m1 <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with
       amount = 40.0; payee = b.recipient; memo = "payout to verified recipient"
-  _ <- submit b.operator do
+  _ <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m1 Charge with
       amount = 35.0; payee = b.settlement; memo = "settlement partner leg"
   pure ()
@@ -82,11 +82,11 @@ testChargeUnderCapAccepted = script do
 testOverCapRefused : Script ()
 testOverCapRefused = script do
   (b, m0) <- book
-  m1 <- submit b.operator do
+  m1 <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with amount = 40.0; payee = b.recipient; memo = "payout 1"
-  m2 <- submit b.operator do
+  m2 <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m1 Charge with amount = 35.0; payee = b.settlement; memo = "payout 2"
-  submitMustFail b.operator do
+  submitMustFail (actAs [b.principal, b.operator]) do
     exerciseCmd m2 Charge with
       amount = 60.0; payee = b.recipient; memo = "would exceed the cap"
 
@@ -102,12 +102,12 @@ testOverCapRefused = script do
 testPayoutRedirectionRefused : Script ()
 testPayoutRedirectionRefused = script do
   (b, m0) <- book
-  submitMustFail b.operator do
+  submitMustFail (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with
       amount = 10.0
       payee = b.unverified
       memo = "change of account, send it here instead"
-  _ <- submit b.operator do
+  _ <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with
       amount = 10.0; payee = b.recipient; memo = "same amount, to the account the principal authorised"
   pure ()
@@ -121,7 +121,7 @@ testAfterRevokeRefused : Script ()
 testAfterRevokeRefused = script do
   (b, m0) <- book
   submit b.principal do exerciseCmd m0 Revoke
-  submitMustFail b.operator do
+  submitMustFail (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with
       amount = 5.0; payee = b.recipient; memo = "after the principal revoked"
 
@@ -132,7 +132,7 @@ testAfterExpiryRefused : Script ()
 testAfterExpiryRefused = script do
   (b, m0) <- bookWithExpiry (hours 1)
   passTime (hours 2)
-  submitMustFail b.operator do
+  submitMustFail (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with
       amount = 5.0; payee = b.recipient; memo = "after the mandate expired"
 
@@ -164,7 +164,7 @@ testOwnerCannotChargeAsSpender = script do
 testChargeRecordReadableByOwnerAndPayee : Script ()
 testChargeRecordReadableByOwnerAndPayee = script do
   (b, m0) <- book
-  _ <- submit b.operator do
+  _ <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with
       amount = 40.0; payee = b.recipient; memo = "payout to verified recipient"
   byOwner    <- query @ChargeRecord b.principal
@@ -180,7 +180,7 @@ testChargeRecordReadableByOwnerAndPayee = script do
 testRefusedChargeLeavesNoRecord : Script ()
 testRefusedChargeLeavesNoRecord = script do
   (b, m0) <- book
-  submitMustFail b.operator do
+  submitMustFail (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with
       amount = 10.0; payee = b.unverified; memo = "unauthorised account"
   recs <- query @ChargeRecord b.principal
@@ -201,11 +201,11 @@ testRefusedChargeLeavesNoRecord = script do
 testOverCapRefusedByTheCapAssertion : Script ()
 testOverCapRefusedByTheCapAssertion = script do
   (b, m0) <- book
-  m1 <- submit b.operator do
+  m1 <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with amount = 40.0; payee = b.recipient; memo = "payout 1"
-  m2 <- submit b.operator do
+  m2 <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m1 Charge with amount = 35.0; payee = b.settlement; memo = "payout 2"
-  result <- trySubmit b.operator do
+  result <- trySubmit (actAs [b.principal, b.operator]) do
     exerciseCmd m2 Charge with
       amount = 60.0; payee = b.recipient; memo = "would exceed the cap"
   case result of
@@ -249,16 +249,16 @@ cappedPerPeriod len = script do
 
 -- Spend one full period limit, then step past the window, `i` times over.
 -- Top level because Daml does not permit recursive local bindings.
-drainWindows : Party -> Party -> ContractId KyaMandate -> Int
+drainWindows : Party -> Party -> Party -> ContractId KyaMandate -> Int
             -> Script (ContractId KyaMandate)
-drainWindows operator recipient m i =
+drainWindows principal operator recipient m i =
   if i == 0 then pure m
   else do
-    m' <- submit operator do
+    m' <- submit (actAs [principal, operator]) do
       exerciseCmd m Charge with
         amount = 20.0; payee = recipient; memo = "window payout"
     passTime (minutes 2)
-    drainWindows operator recipient m' (i - 1)
+    drainWindows principal operator recipient m' (i - 1)
 
 -- 12. Two payouts inside one window that together breach the period limit.
 --     Both are far below the total cap of 100, so only the period fence can
@@ -266,9 +266,9 @@ drainWindows operator recipient m i =
 testPeriodLimitRefusedWithinWindow : Script ()
 testPeriodLimitRefusedWithinWindow = script do
   (b, m0) <- cappedPerPeriod (hours 24)
-  m1 <- submit b.operator do
+  m1 <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with amount = 15.0; payee = b.recipient; memo = "payout 1"
-  submitMustFail b.operator do
+  submitMustFail (actAs [b.principal, b.operator]) do
     exerciseCmd m1 Charge with amount = 10.0; payee = b.recipient; memo = "same window"
 
 -- 13. The same two payouts, separated by more than the window, both succeed.
@@ -281,10 +281,10 @@ testPeriodResetsAfterTheWindow = script do
   -- fence would refuse the second payout and the test would look like a
   -- working period reset. That mistake is why this comment exists.
   (b, m0) <- cappedPerPeriod (minutes 1)
-  m1 <- submit b.operator do
+  m1 <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with amount = 15.0; payee = b.recipient; memo = "payout 1"
   passTime (minutes 2)
-  _ <- submit b.operator do
+  _ <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m1 Charge with amount = 15.0; payee = b.recipient; memo = "next window"
   pure ()
 
@@ -295,9 +295,9 @@ testPeriodResetDoesNotResetTheTotalCap : Script ()
 testPeriodResetDoesNotResetTheTotalCap = script do
   (b, m0) <- cappedPerPeriod (minutes 1)
   -- Five windows of 20 each reaches the total cap of 100 exactly.
-  mFinal <- drainWindows b.operator b.recipient m0 5
+  mFinal <- drainWindows b.principal b.operator b.recipient m0 5
   -- The period window is open again, but the total cap is spent.
-  submitMustFail b.operator do
+  submitMustFail (actAs [b.principal, b.operator]) do
     exerciseCmd mFinal Charge with
       amount = 1.0; payee = b.recipient; memo = "patience should not buy more"
 
@@ -306,10 +306,10 @@ testPeriodResetDoesNotResetTheTotalCap = script do
 testPeriodLimitDoesNotWeakenTheCap : Script ()
 testPeriodLimitDoesNotWeakenTheCap = script do
   (b, m0) <- cappedPerPeriod (minutes 1)
-  mFinal <- drainWindows b.operator b.recipient m0 4   -- 80 of 100, window fresh
+  mFinal <- drainWindows b.principal b.operator b.recipient m0 4   -- 80 of 100, window fresh
   -- 20 is inside the period limit but 80 + 20 = 100 is exactly the cap, so
   -- this succeeds; 21 would breach the cap while staying inside the period.
-  submitMustFail b.operator do
+  submitMustFail (actAs [b.principal, b.operator]) do
     exerciseCmd mFinal Charge with
       amount = 21.0; payee = b.recipient; memo = "inside the window, over the cap"
 
@@ -318,9 +318,9 @@ testPeriodLimitDoesNotWeakenTheCap = script do
 testNoPeriodConfiguredIsUnchanged : Script ()
 testNoPeriodConfiguredIsUnchanged = script do
   (b, m0) <- book
-  m1 <- submit b.operator do
+  m1 <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with amount = 40.0; payee = b.recipient; memo = "payout 1"
-  _ <- submit b.operator do
+  _ <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m1 Charge with amount = 35.0; payee = b.settlement; memo = "payout 2"
   pure ()
 
@@ -332,7 +332,7 @@ testNoPeriodConfiguredIsUnchanged = script do
 testAmountMustBePositive : Script ()
 testAmountMustBePositive = script do
   (b, m0) <- book
-  submitMustFail b.operator do
+  submitMustFail (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with
       amount = 0.0; payee = b.recipient; memo = "a payout of nothing"
 
@@ -345,7 +345,7 @@ testAmountMustBePositive = script do
 testAdjustBelowSpentRefused : Script ()
 testAdjustBelowSpentRefused = script do
   (b, m0) <- book
-  m1 <- submit b.operator do
+  m1 <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with amount = 40.0; payee = b.recipient; memo = "payout 1"
   result <- trySubmit (actAs [b.principal, b.operator]) do
     exerciseCmd m1 Adjust with newCap = 10.0
@@ -424,7 +424,7 @@ tryRule b m amount payee = do
 testRefusalIsOnLedgerAndNothingMoved : Script ()
 testRefusalIsOnLedgerAndNothingMoved = script do
   (b, m0) <- book
-  m1 <- submit b.operator do
+  m1 <- submit (actAs [b.principal, b.operator]) do
     exerciseCmd m0 Charge with amount = 40.0; payee = b.recipient; memo = "payout 1"
   before <- query @ChargeRecord b.principal
 
@@ -562,12 +562,12 @@ bothAgree prespend amount toAllowed = script do
   (b1, m1) <- book
   (b2, m2) <- book
   m1' <- if prespend > 0.0
-           then submit b1.operator do
+           then submit (actAs [b1.principal, b1.operator]) do
                   exerciseCmd m1 Charge with
                     amount = prespend; payee = b1.recipient; memo = "setup"
            else pure m1
   m2' <- if prespend > 0.0
-           then submit b2.operator do
+           then submit (actAs [b2.principal, b2.operator]) do
                   exerciseCmd m2 Charge with
                     amount = prespend; payee = b2.recipient; memo = "setup"
            else pure m2
@@ -578,11 +578,11 @@ bothAgree prespend amount toAllowed = script do
   case r.refusal of
     Some _ ->
       -- TryCharge refused it, so Charge must abort on the same input.
-      submitMustFail b2.operator do
+      submitMustFail (actAs [b2.principal, b2.operator]) do
         exerciseCmd m2' Charge with amount; payee = p2; memo = "probe"
     None -> do
       -- TryCharge let it through, so Charge must let it through too.
-      _ <- submit b2.operator do
+      _ <- submit (actAs [b2.principal, b2.operator]) do
         exerciseCmd m2' Charge with amount; payee = p2; memo = "probe"
       pure ()
 
@@ -688,3 +688,103 @@ testNoAuditorDisclosesToNobody = script do
   -- The owner still has it. Withholding from everybody is not the point.
   byOwner <- query @ChargeRefused b.principal
   assertMsg "the owner cannot see their own refusal" (not (null byOwner))
+
+-- ---------------------------------------------------------------------------
+-- Threat model N4: the agent used to choose whether a refusal was recorded.
+--
+-- `Charge` aborts and leaves nothing; `TryCharge` records. While the agent
+-- alone could exercise either, a refusal was on the ledger only if the agent
+-- wanted it there. `Charge` is now controlled by owner AND spender, so the
+-- only door the agent holds on its own is the one that records.
+--
+-- Two tests prove the fix. Two more prove what it does not cover, because a
+-- limit stated only in a sentence can drift from the code and one stated in a
+-- test cannot.
+-- ---------------------------------------------------------------------------
+
+-- The agent alone tries an attempt that trips `rule`.
+--   1. The aborting door is closed to it. It must be stopped by authority,
+--      BEFORE it reaches the fence. A bare submitMustFail would pass even
+--      with the door open, because the fence itself aborts the attempt, so
+--      this checks that the failure does not name the rule.
+--   2. The door it does hold records the attempt, naming that same rule.
+agentAloneIsRecorded : Book -> ContractId KyaMandate -> Decimal -> Party -> Text
+                    -> Script ()
+agentAloneIsRecorded b m amount payee rule = do
+  r <- trySubmit b.operator do
+    exerciseCmd m Charge with amount; payee; memo = "silent"
+  case r of
+    Right _ -> abort ("the agent ALONE got a charge through the aborting door, rule " <> rule)
+    Left e -> assertMsg ("the agent alone reached the fence \"" <> rule
+                         <> "\" through the aborting door, so it can still choose silence")
+                        (not (rule `isInfixOf` show e))
+  (recorded, _) <- tryRule b m amount payee
+  assertMsg ("recorded \"" <> recorded <> "\" instead of \"" <> rule <> "\"") (recorded == rule)
+
+-- 31. Remove this fix (put `controller spender` back on Charge) and this goes red.
+--
+--     A perfectly VALID charge is the sharpest probe: no fence stands in its
+--     way, so only authority can refuse it. The control is the same charge
+--     with both signatories, which succeeds, so what stopped the agent was
+--     authority and nothing else.
+testTheAgentAloneCannotTakeTheSilentRefusal : Script ()
+testTheAgentAloneCannotTakeTheSilentRefusal = script do
+  (b, m0) <- book
+  submitMustFail b.operator do
+    exerciseCmd m0 Charge with
+      amount = 1.0; payee = b.recipient; memo = "agent alone, valid charge"
+  _ <- submit (actAs [b.principal, b.operator]) do
+    exerciseCmd m0 Charge with
+      amount = 1.0; payee = b.recipient; memo = "control: both signatories"
+  pure ()
+
+-- 32. Every one of the five rules, tripped by the agent alone, ends in a
+--     ChargeRefused naming that rule, and never by the aborting door.
+testEveryRuleTheAgentTripsAloneIsRecorded : Script ()
+testEveryRuleTheAgentTripsAloneIsRecorded = script do
+  (b, m) <- book
+  agentAloneIsRecorded b m 0.0 b.recipient "amount must be positive"
+  (b2, m2) <- book
+  agentAloneIsRecorded b2 m2 100.01 b2.recipient "charge would exceed the cap"
+  (b3, m3) <- book
+  agentAloneIsRecorded b3 m3 10.0 b3.unverified "payee is not on the allow-list"
+  (b4, m4) <- bookWithExpiry (hours 1)
+  passTime (hours 2)
+  agentAloneIsRecorded b4 m4 10.0 b4.recipient "mandate expired"
+  (b5, m5) <- cappedPerPeriod (hours 24)
+  agentAloneIsRecorded b5 m5 25.0 b5.recipient "charge would exceed the period limit"
+
+-- 33. DECLARED LIMIT, as a test. The owner and the spender together can still
+--     refuse silently: the aborting door now needs the pair, it is not gone.
+--     One submitter acting as both parties is the case this does not cover.
+testOwnerAndSpenderTogetherCanStillRefuseSilently : Script ()
+testOwnerAndSpenderTogetherCanStillRefuseSilently = script do
+  (b, m0) <- book
+  submitMustFail (actAs [b.principal, b.operator]) do
+    exerciseCmd m0 Charge with
+      amount = 500.0; payee = b.recipient; memo = "over the cap, both signatories"
+  seen <- query @ChargeRefused b.principal
+  assertMsg "the pair's aborted charge left a record, so this limit is out of date"
+            (null seen)
+
+-- 34. DECLARED LIMIT, as a test. A refusal recorded by TryCharge lives in the
+--     submitter's transaction. Put one command next to it that cannot succeed
+--     and the whole transaction aborts, the recorded refusal with it. The
+--     control: TryCharge on its own does record, so it was the companion
+--     command that erased it.
+testAFailingCompanionCommandStillErasesARecordedRefusal : Script ()
+testAFailingCompanionCommandStillErasesARecordedRefusal = script do
+  (b, m0) <- book
+  now <- getTime
+  let attempt = exerciseCmd m0 TryCharge with
+        amount = 500.0; payee = b.recipient; memo = "refusal plus a command that fails"
+  let sidecar = createCmd ChargeRecord with
+        owner = b.principal; spender = b.operator; payee = b.recipient
+        amount = 1.0; memo = "needs the owner, so it fails"; chargedAt = now
+  submitMustFail b.operator ((,) <$> attempt <*> sidecar)
+  seen <- query @ChargeRefused b.principal
+  assertMsg "the refusal survived a failed transaction, so this limit is out of date"
+            (null seen)
+  (rule, _) <- tryRule b m0 500.0 b.recipient
+  assertMsg "control: TryCharge alone should have recorded the refusal"
+            (rule == "charge would exceed the cap")

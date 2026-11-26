@@ -144,12 +144,42 @@ template KyaMandate
 
     signatory owner, spender
 
+    -- | The ABORTING door. It takes BOTH signatories, on purpose (threat model N4).
+    --
+    -- `Charge` refuses with assertMsg, which aborts the transaction and leaves
+    -- nothing on the ledger. While the agent alone could exercise it, the agent
+    -- chose, per attempt, whether a refusal would ever be recorded: `TryCharge`
+    -- and the refusal is a ChargeRefused contract, `Charge` and it is nothing.
+    -- A record the actor can decline to write about itself is not evidence.
+    --
+    -- So the controller is `owner, spender`. The agent alone can no longer take
+    -- the silent road; the only door it holds on its own is `TryCharge`, which
+    -- records. Every fence below still fires, still in the same order, and is
+    -- still tested through this choice.
+    --
+    -- What this does NOT do, stated here so it is not discovered later:
+    --   * Whoever holds BOTH owner and spender authority (one submitter acting
+    --     as both) can still abort silently. This moves the choice from the
+    --     agent to the pair; it does not remove it.
+    --   * A refusal recorded by TryCharge sits in the submitter's transaction.
+    --     Submit it with a command that fails and the whole transaction aborts,
+    --     record included. An attempt that never reaches the ledger leaves
+    --     nothing either.
+    -- Each is a named test: testTheAgentAloneCannotTakeTheSilentRefusal,
+    -- testOwnerAndSpenderTogetherCanStillRefuseSilently and
+    -- testAFailingCompanionCommandStillErasesARecordedRefusal.
+    --
+    -- UPGRADE: the controller expression changed from `spender`. Measured with
+    -- a local `daml build` against the 1.1.0 DAR (`upgrades:`): accepted, as
+    -- a warning (upgraded-choice-expression-changed), not an error. Removing
+    -- this choice was measured too and is REFUSED: "Choice Charge appears in
+    -- package that is being upgraded, but does not appear in this package."
     choice Charge : ContractId KyaMandate
       with
         amount : Decimal
         payee  : Party
         memo   : Text
-      controller spender
+      controller owner, spender
       do
         now <- getTime
         assertMsg "mandate expired" (now < expiresAt)

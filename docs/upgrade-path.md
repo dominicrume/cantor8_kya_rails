@@ -107,3 +107,20 @@ tool more than **one major version** behind may be marked outdated. One patch
 behind is not that, and `docs/dev-hub-entry.json` states 3.4.10, which is true.
 Shipping a false version number to avoid looking stale would be the worse
 trade.
+
+## Removing versus re-controlling a choice (measured 2026-11-24)
+
+Threat model N4 needed the agent to lose the aborting `Charge` door. Both ways
+of doing that were measured with a local `daml build` whose `daml.yaml` carried
+`upgrades: <the 1.1.0 DAR>`, built from commit `a70b6ee^`:
+
+| Change to `Charge` | Verdict |
+|---|---|
+| Remove the choice | **Refused.** `Choice Charge appears in package that is being upgraded, but does not appear in this package.` |
+| Change the controller from `spender` to `owner` | Accepted, warning `upgraded-choice-expression-changed` |
+| Change the controller to `owner, spender` (what shipped) | Accepted, same warning |
+
+The check was given a positive control first: renaming a record field in
+`ChargeRecord` made the same build fail with a DsError. A check that cannot
+fail proves nothing. This is the build-time check only. Canton's upload-time
+vetting on DevNet is the authority and has not been run for this change.

@@ -484,6 +484,16 @@ MUTATIONS = [
      '  | m.spent + amount >= m.cap    = Some "charge would exceed the cap"',
      "python3 tests/daml_tests.py"),
 
+    # Threat model N4. While the agent alone controlled Charge it chose, per
+    # attempt, whether a refusal was ever recorded: Charge aborts and leaves
+    # nothing, TryCharge records. Charge now needs owner AND spender. Put the
+    # old controller back and the agent holds the silent road again.
+    ("the agent alone can take the aborting door again, so it chooses whether a refusal is recorded",
+     "step-1-mandate/daml/KyaMandate.daml",
+     '      controller owner, spender\n      do\n        now <- getTime\n        assertMsg "mandate expired" (now < expiresAt)',
+     '      controller spender\n      do\n        now <- getTime\n        assertMsg "mandate expired" (now < expiresAt)',
+     "python3 tests/daml_tests.py"),
+
     # The real rail. Until tests/devnet_parse_smoke.py existed, every one of
     # these could have shipped: no suite ran this file.
     # The scanners all read files, so none of them could catch a command whose

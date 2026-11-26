@@ -73,10 +73,10 @@ testAChargeAtTheInstantOfExpiryIsRefused : Script ()
 testAChargeAtTheInstantOfExpiryIsRefused = script do
   r <- rig 100.0 (hours 1) None None
   passTime (minutes 59)
-  _ <- submit r.spender (charge r r.mandate 10.0)           -- one minute before: allowed
+  _ <- submit (actAs [r.owner, r.spender]) (charge r r.mandate 10.0)           -- one minute before: allowed
   r2 <- rig 100.0 (hours 1) None None
   passTime (hours 1)                                         -- now == expiresAt exactly
-  refusedWith "mandate expired" (actAs r2.spender) (charge r2 r2.mandate 10.0)
+  refusedWith "mandate expired" (actAs [r2.owner, r2.spender]) (charge r2 r2.mandate 10.0)
 
 testARecordedRefusalAtTheInstantOfExpiryNamesExpiry : Script ()
 testARecordedRefusalAtTheInstantOfExpiryNamesExpiry = script do
@@ -94,8 +94,8 @@ testARecordedRefusalAtTheInstantOfExpiryNamesExpiry = script do
 testANegativeChargeIsRefusedWhenSomethingIsAlreadySpent : Script ()
 testANegativeChargeIsRefusedWhenSomethingIsAlreadySpent = script do
   r <- rig 100.0 (hours 24) None None
-  m1 <- submit r.spender (charge r r.mandate 40.0)
-  refusedWith "amount must be positive" (actAs r.spender) (charge r m1 (-5.0))
+  m1 <- submit (actAs [r.owner, r.spender]) (charge r r.mandate 40.0)
+  refusedWith "amount must be positive" (actAs [r.owner, r.spender]) (charge r m1 (-5.0))
   now <- fieldsOf r m1
   assertMsg "the spent total moved" (now.spent == 40.0)
 
@@ -116,7 +116,7 @@ testTheOwnerAloneCannotAdjustTheCap = script do
 testAdjustToExactlyWhatIsSpentIsAllowed : Script ()
 testAdjustToExactlyWhatIsSpentIsAllowed = script do
   r <- rig 100.0 (hours 24) None None
-  m1 <- submit r.spender (charge r r.mandate 40.0)
+  m1 <- submit (actAs [r.owner, r.spender]) (charge r r.mandate 40.0)
   refusedWith "new cap below what is already spent" (actAs [r.owner, r.spender]) do
     exerciseCmd m1 Adjust with newCap = 39.99
   m2 <- submit (actAs [r.owner, r.spender]) do exerciseCmd m1 Adjust with newCap = 40.0
@@ -132,8 +132,8 @@ testAdjustToExactlyWhatIsSpentIsAllowed = script do
 testAPeriodLimitWithNoWindowNeverResets : Script ()
 testAPeriodLimitWithNoWindowNeverResets = script do
   r <- rig 100.0 (hours 24) (Some 50.0) None
-  m1 <- submit r.spender (charge r r.mandate 30.0)
-  refusedWith "charge would exceed the period limit" (actAs r.spender) (charge r m1 30.0)
+  m1 <- submit (actAs [r.owner, r.spender]) (charge r r.mandate 30.0)
+  refusedWith "charge would exceed the period limit" (actAs [r.owner, r.spender]) (charge r m1 30.0)
 
 testATryChargeWithNoWindowAccumulatesAndRefuses : Script ()
 testATryChargeWithNoWindowAccumulatesAndRefuses = script do
@@ -184,11 +184,11 @@ testTheWindowRollsOverExactlyAtItsBoundaryOnTryCharge = script do
 testTheWindowRollsOverExactlyAtItsBoundaryOnCharge : Script ()
 testTheWindowRollsOverExactlyAtItsBoundaryOnCharge = script do
   r <- rig 1000.0 (hours 100) (Some 50.0) (Some (hours 1))
-  m1 <- submit r.spender (charge r r.mandate 40.0)
+  m1 <- submit (actAs [r.owner, r.spender]) (charge r r.mandate 40.0)
   passTime (minutes 59)
-  refusedWith "charge would exceed the period limit" (actAs r.spender) (charge r m1 40.0)
+  refusedWith "charge would exceed the period limit" (actAs [r.owner, r.spender]) (charge r m1 40.0)
   passTime (minutes 1)
-  m2 <- submit r.spender (charge r m1 40.0)
+  m2 <- submit (actAs [r.owner, r.spender]) (charge r m1 40.0)
   now <- fieldsOf r m2
   assertMsg ("the window rolled at the boundary, got " <> show now.periodSpent)
             (now.periodSpent == 40.0)
