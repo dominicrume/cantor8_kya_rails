@@ -116,7 +116,7 @@ class Server:
         try:
             for line in iter(self.p.stdout.readline, b""):
                 self.q.put(line)
-        except Exception:
+        except Exception:  # nosec B110 - harness cleanup and probing are best effort
             pass
         self.q.put(None)
 
@@ -128,7 +128,7 @@ class Server:
                     return
                 if len(self.err) < 200000:
                     self.err += b
-        except Exception:
+        except Exception:  # nosec B110 - harness cleanup and probing are best effort
             pass
 
     def send(self, raw: bytes, threaded=False):
@@ -136,7 +136,7 @@ class Server:
             try:
                 self.p.stdin.write(raw)
                 self.p.stdin.flush()
-            except Exception:
+            except Exception:  # nosec B110 - harness cleanup and probing are best effort
                 pass
         if threaded:
             threading.Thread(target=w, daemon=True).start()
@@ -146,7 +146,7 @@ class Server:
     def close_stdin(self):
         try:
             self.p.stdin.close()
-        except Exception:
+        except Exception:  # nosec B110 - harness cleanup and probing are best effort
             pass
 
     def recv(self, timeout=10):
@@ -202,7 +202,7 @@ class Server:
         try:
             self.p.kill()
             self.p.wait(timeout=5)
-        except Exception:
+        except Exception:  # nosec B110 - harness cleanup and probing are best effort
             pass
 
     def stop(self):
@@ -261,7 +261,7 @@ def a_case(ctx, id_, title, raw, trigger, sev, *, timeout=10, threaded=False, eo
         if eof:
             try:
                 s.p.wait(timeout=5)
-            except Exception:
+            except Exception:  # nosec B110 - harness cleanup and probing are best effort
                 pass
         alive = s.p.poll() is None and (s.alive() if not eof else False)
         rc = s.p.poll()
@@ -376,9 +376,9 @@ def a7(ctx):
         big = "x" * (1 << 20)
         s.send(json.dumps({"jsonrpc": "2.0", "id": big, "method": "ping"}).encode() + b"\n", threaded=True)
         r = s.recv(15)
-        ok = isinstance(r, bytes) and len(r) > (1 << 20) - 100
-        rec("A7b", "A", "1 MiB string id is echoed and server survives", ok and s.alive(),
-            'id = "x" * 1048576', "reply_bytes=%s (echoed in full: no cap)" % (len(r) if isinstance(r, bytes) else r), "low")
+        ok = isinstance(r, bytes) and len(r) < 4096 and b'"error"' in r
+        rec("A7b", "A", "1 MiB string id is refused with a short error and server survives", ok and s.alive(),
+            'id = "x" * 1048576', "reply_bytes=%s (an id is capped at 256 serialised characters; it used to be echoed in full)" % (len(r) if isinstance(r, bytes) else r), "low")
     finally:
         s.kill()
 
@@ -447,7 +447,7 @@ def a11(ctx):
         r = s.recv(5)
         try:
             s.p.wait(timeout=5)
-        except Exception:
+        except Exception:  # nosec B110 - harness cleanup and probing are best effort
             pass
         rec("A11", "A", "request with no trailing newline, then EOF: answered, clean exit",
             isinstance(r, bytes) and b'"result"' in r and s.p.poll() == 0, "ping bytes without newline, then close stdin",
@@ -806,7 +806,7 @@ class Listener:
                 outer.hits.append((self.command, self.path))
                 try:
                     fn(self, outer)
-                except Exception:
+                except Exception:  # nosec B110 - harness cleanup and probing are best effort
                     pass
             do_GET = do_POST = _go
 
@@ -1102,7 +1102,7 @@ def d2(ctx):
         if os.path.exists(f):
             try:
                 verifies = len(kr.Chain.load(f)) >= 1
-            except Exception:
+            except Exception:  # nosec B110 - harness cleanup and probing are best effort
                 pass
         size = os.path.getsize(f) / 1e6 if os.path.exists(f) else 0
         rec("D2a", "D", "10 MB 'what' field: server survives and any chain written verifies", s.alive() and (verifies or not accepted),
@@ -1167,7 +1167,7 @@ def d4(ctx):
         try:
             s.send(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
                 "name": "kya_stamp", "arguments": stamp_args(what="k%d" % trial, save_path=f)}}).encode() + b"\n")
-            time.sleep(random.uniform(0.15, 0.6))
+            time.sleep(random.uniform(0.15, 0.6))  # nosec B311 - timing jitter for the kill, not security
             s.p.send_signal(signal.SIGKILL)
             s.p.wait()
         finally:
@@ -1383,7 +1383,7 @@ def main():
         try:
             props = [t for t in r["result"]["tools"] if t["name"] == "kya_stamp"][0]["inputSchema"]["properties"]
             ctx.has_witness = "witness_url" in props
-        except Exception:
+        except Exception:  # nosec B110 - harness cleanup and probing are best effort
             pass
         s.kill()
         print("tree=%s version=%s witness_url_supported=%s" % (ctx.tree, kr.__version__, ctx.has_witness))
